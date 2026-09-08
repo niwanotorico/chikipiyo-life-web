@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {Vector3,Euler} from 'three';
+import {furnitureDefinitions as furniture} from '../src/world/furniture.js';
+import {findPath} from '../src/simulation/navigation.js';
+import {LifeSimulation} from '../src/simulation/life.js';
+const character=(id,x=1.8,z=-1.3)=>({id,name:id,root:{position:new Vector3(x,0,z),rotation:new Euler()}});
+test('all furniture destinations are mutually reachable',()=>{for(const from of furniture)for(const to of furniture){assert.ok(findPath(from.spot,to.spot,furniture).length,`${from.id} -> ${to.id}`);}});
+test('reserved furniture cannot be taken by another character',()=>{const a=character('a'),b=character('b');const sim=new LifeSimulation([a,b],furniture);assert.equal(sim.command(a,'bed'),true);assert.equal(sim.command(b,'bed'),false);});
+test('pause freezes simulation and commands reach an acting state after resume',()=>{const a=character('a');const sim=new LifeSimulation([a],furniture);assert.ok(sim.command(a,'kitchen'));sim.paused=true;const before=a.root.position.clone();sim.update(2);assert.ok(a.root.position.equals(before));assert.equal(sim.time,0);sim.paused=false;for(let i=0;i<1200&&a.phase!=='acting';i++)sim.update(1/60);assert.equal(a.phase,'acting');assert.equal(a.action,'cook');});

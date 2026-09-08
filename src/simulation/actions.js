@@ -1,0 +1,1 @@
+export const actions={idle:{label:'ひとやすみ',duration:3},sleep:{label:'すやすや、お昼寝',duration:15},relax:{label:'ソファでのんびり',duration:12},eat:{label:'ごはんをもぐもぐ',duration:10},cook:{label:'おいしくなあれ',duration:12},snack:{label:'おやつを探し中',duration:8},vr:{label:'VRの世界へ！',duration:13},read:{label:'本のつづきが気になる',duration:12},clean:{label:'お部屋をおそうじ',duration:10}};

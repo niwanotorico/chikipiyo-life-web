@@ -1,0 +1,9 @@
+import {findPath} from './navigation.js';
+import {actions} from './actions.js';
+export class LifeSimulation{
+ constructor(characters,furniture,onEvent=()=>{}){this.characters=characters;this.furniture=furniture;this.onEvent=onEvent;this.paused=false;this.time=0;for(const c of characters)Object.assign(c,{action:'idle',phase:'acting',remaining:1+Math.random()*2,path:[],target:null,elapsed:0});}
+ command(c,id){const target=this.furniture.find(f=>f.id===id);if(!target)return false;if(this.characters.some(other=>other!==c&&other.target?.id===id))return false;const path=findPath(c.root.position.toArray(),target.spot,this.furniture);if(!path.length)return false;c.target=target;c.path=path;c.phase='walking';c.action=target.action;c.elapsed=0;this.onEvent(`${c.name}が${target.name}へ向かいます`);return true;}
+ choose(c){const available=this.furniture.filter(f=>!this.characters.some(o=>o!==c&&o.target?.id===f.id));if(Math.random()<.15){c.target=null;c.action='clean';c.phase='acting';c.remaining=10;c.elapsed=0;}else if(available.length){this.command(c,available[Math.floor(Math.random()*available.length)].id);}}
+ update(dt){if(this.paused)return;this.time+=dt;for(const c of this.characters){c.elapsed+=dt;if(c.phase==='walking'){const p=c.path[0];if(!p){c.phase='acting';c.remaining=actions[c.action].duration;c.elapsed=0;this.onEvent(`${c.name}：${actions[c.action].label}`);continue;}const dx=p[0]-c.root.position.x,dz=p[2]-c.root.position.z,d=Math.hypot(dx,dz);if(d<.055){c.path.shift();continue;}const distance=Math.min(d,dt*.9);c.root.position.x+=dx/d*distance;c.root.position.z+=dz/d*distance;this.turn(c,Math.atan2(dx,dz),dt);}else{if(c.target)this.turn(c,c.target.face,dt);c.remaining-=dt;if(c.remaining<=0){c.target=null;this.choose(c);}}}}
+ turn(c,angle,dt){let delta=Math.atan2(Math.sin(angle-c.root.rotation.y),Math.cos(angle-c.root.rotation.y));c.root.rotation.y+=delta*Math.min(1,dt*9);}
+}
