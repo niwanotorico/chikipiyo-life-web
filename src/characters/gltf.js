@@ -1,7 +1,7 @@
 import {Group,Matrix4} from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 
-export const characterAssetPaths={chicken:'../assets/characters/chicken.glb',chick:'../assets/characters/piyokichi.glb'};
+export const characterAssetPaths={chicken:'../assets/characters/chicken.glb',chick:'../assets/characters/piyokichi.glb',piyomi:'../assets/characters/piyomi.glb'};
 const partNames=['Body','Head','Wing_L','Wing_R','Leg_L','Leg_R'];
 
 // Imported rigid parts reuse the existing animation pivots; behavior never sees a new rig.

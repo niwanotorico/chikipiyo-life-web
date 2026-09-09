@@ -47,6 +47,16 @@ test('both characters face away from the sofa backrest while relaxing',()=>{
  }
 });
 
+test('all three residents rest on the sofa cushion and sleep on the bed',()=>{
+ const furniture=createFurniture(new Scene()),sofa=furniture.find(f=>f.id==='sofa'),bed=furniture.find(f=>f.id==='bed');
+ for(const def of characterDefinitions){
+  const c=createCharacter(def);Object.assign(c,{action:'relax',phase:'acting',elapsed:1,target:sofa});animateCharacter(c,1);c.root.updateMatrixWorld(true);
+  assert.ok(new Box3().setFromObject(c.body).min.y>=.589,`${def.name} sofa body contact`);
+  c.root.position.set(...bed.spot);Object.assign(c,{action:'sleep',phase:'acting',elapsed:1,target:bed});animateCharacter(c,1);c.root.updateMatrixWorld(true);
+  assert.ok(new Box3().setFromObject(c.root).min.y>=.645,`${def.name} bed contact`);
+ }
+});
+
 
 test('piyokichi is clearly smaller, with both soles on the floor',()=>{
  const sizes=characterDefinitions.map(d=>{const c=createCharacter(d);c.props.visible=false;c.vr.visible=false;const b=new Box3();c.root.updateMatrixWorld(true);c.rig.traverseVisible(o=>{if(o.isMesh)b.expandByObject(o);});return b.getSize(new Vector3());});

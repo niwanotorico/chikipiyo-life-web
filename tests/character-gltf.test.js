@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {Vector3} from 'three';
+import fs from 'node:fs';
 import {createCharacter} from '../src/characters/model.js';
 import {characterDefinitions} from '../src/characters/config.js';
 import {loadCharacterVisual} from '../src/characters/gltf.js';
@@ -35,4 +36,13 @@ for(const def of characterDefinitions)test(`${def.name}: real GLB attaches durin
  Object.assign(c,{action:'idle',elapsed:0});animateCharacter(c,0);c.root.position.set(0,0,0);c.root.rotation.set(0,0,0);c.root.updateMatrixWorld(true);
  const head=c.head.getObjectByName('Head');assert.ok(head.getWorldPosition(new Vector3()).distanceTo(new Vector3(.1,.5,0))<1e-6);
  Object.assign(c,{action:'vr'});animateCharacter(c,1);assert.equal(c.vr.visible,true);assert.equal(head.parent.parent,c.head);
+});
+
+test('piyomi release GLB has six rigid parts and attaches to the small-character pivots',async()=>{
+ const bytes=fs.readFileSync(new URL('../assets/characters/piyomi.glb',import.meta.url));
+ const gltf=await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
+ for(const name of ['Body','Head','Wing_L','Wing_R','Leg_L','Leg_R'])assert.ok(gltf.scene.getObjectByName(name),name);
+ const c=createCharacter(characterDefinitions.find(def=>def.id==='piyomi'));
+ assert.equal(await loadCharacterVisual(c,'piyomi',{loadAsync:async()=>gltf}),true);
+ assert.equal(c.visualSource,'glb');assert.equal(c.head.position.y,.69);
 });

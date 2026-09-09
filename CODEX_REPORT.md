@@ -206,6 +206,8 @@ Chicken max Y=1.40310, width=.82188, depth=.69596; piyokichi max Y=1.11781, widt
 
 # 2026-09-09 Sofa orientation and Pages release
 
+<!-- Furniture export report is appended below; prior release report retained. -->
+
 ## Work Performed
 
 - Treated `assets/characters/chicken.glb` and `assets/characters/piyokichi.glb` as supplied, final assets. Their contents were not modified.
@@ -236,4 +238,55 @@ Chicken max Y=1.40310, width=.82188, depth=.69596; piyokichi max Y=1.11781, widt
 
 ## Final Status
 
+DONE
+
+# Piyomi resident and furniture anchors
+
+## Work Performed
+
+- Added `piyomi` as the third resident using the existing `piyormi` Blender meshes and the character sheet as references. The resulting rigid GLB is `assets/characters/piyomi.glb`; existing chicken and piyokichi GLBs were not changed.
+- Added the third definition, avatar, asset lookup, and UI card. Piyomi shares autonomous simulation and all existing furniture/action routes.
+- Kept the sofa facing direction and raised the relax pose from `rig.position.y=.35` to `.48` so all three bodies meet the cushion. The bed sleep anchor and corrected pillow orientation remain unchanged.
+- Updated visible labels to `トリ家族のおうち` and `ちきんとぴよこたちはきままにやっています`. Added the pink piyomi avatar styling.
+
+## Files Changed
+
+`src/characters/config.js`, `src/characters/gltf.js`, `src/main.js`, `src/characters/animation.js`, `src/ui.js`, `src/style.css`, `tests/character-gltf.test.js`, `tests/character-model.test.js`, and `assets/characters/piyomi.glb`.
+
+## Validation
+
+- `npm test`: PASS — 22 tests passed, 0 failed, including three-resident GLB, sofa cushion, and bed contact checks.
+- `npm run build`: PASS. Production output includes chicken, piyokichi, and piyomi GLBs.
+- Browser check at 127.0.0.1:5175: three resident cards and 3D characters visible; requested title and free-text visible; piyomi sofa action and bed action dialog exercised.
+- Piyomi GLB inspection: six rigid required parts, pink cheek material `#ffaac8`, and no armature/animation dependency.
+
+## Known Limitations
+
+The sofa and bed contact checks use geometry bounds and the existing action anchors; the browser camera view can partially occlude characters behind the room rails. Existing furniture, room, 3DP mechanism, camera, and the chicken/piyokichi GLBs were preserved.
+
+## Final Status
+
+DONE_WITH_NOTES
+
+# Furniture GLB export for Blender editing
+
+## Changes
+Exported current procedural furniture without modifying application code or character GLBs. Seven individual files use local installation origins; furniture-layout.glb preserves current room placement. All 69 meshes retain their geometry and PBR materials, with stable part names for editing. No deployment or commit was performed for this export.
+
+## Files
+- scripts/export-furniture.mjs
+- assets/furniture/{bed,sofa,table,kitchen,fridge,vr,desk,furniture-layout}.glb
+- assets/furniture/layout.json and README.md
+- CODEX_REPORT.md
+
+## Validation
+- node scripts/export-furniture.mjs: all eight GLBs exported and reloaded; mesh counts and geometry bounds match the source.
+- Blender 5.2 factory-startup import of furniture-layout.glb: PASS, 69 meshes.
+- npm test: PASS, 16 tests.
+- npm run build: PASS; existing bundle-size warning remains.
+
+## Limitations / Claude review
+These are editing exports, not a furniture loader implementation. Edited GLBs do not automatically update the Web app. Desk includes the adjacent build plate; VR includes its table. Preserve installation origins, scale, and interaction heights when editing. The exporter overwrites its output filenames when rerun, so edited copies should be saved separately.
+
+## Final Status
 DONE

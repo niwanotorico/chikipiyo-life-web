@@ -13,7 +13,7 @@ export function animateCharacter(c,time){const t=c.elapsed,walking=c.phase==='wa
   c.rig.quaternion.copy(c.root.getWorldQuaternion(new Quaternion()).invert()).multiply(sleepRotation);
   c.head.scale.y=.98+Math.sin(t*1.7)*.012;
  }else c.head.scale.y=1;
- if(a==='relax'){c.rig.position.set(0,.35,.75);c.rig.rotation.x=-.18;c.legs.forEach(p=>p.rotation.x=-1.15);}
+ if(a==='relax'){c.rig.position.set(0,.48,.75);c.rig.rotation.x=-.18;c.legs.forEach(p=>p.rotation.x=-1.15);}
  if(['read','eat'].includes(a)){c.arms.forEach(p=>p.rotation.x=-.8);c.head.rotation.x=.12+Math.sin(t*3)*.035;if(a==='eat')c.food.position.y=.76+Math.sin(t*4)*.13;}
  if(a==='cook'){c.arms[1].rotation.x=-.8+Math.sin(t*5)*.3;c.arms[0].rotation.x=-.7;c.food.position.y=.8;}
  if(a==='vr'){c.head.rotation.y=Math.sin(t*1.5)*.55;c.arms.forEach((p,i)=>{p.rotation.x=-.9+Math.sin(t*3+i)*.4;p.rotation.z=Math.sin(t*2+i)*.3;});}

@@ -6,7 +6,7 @@ import {createFurniture} from './world/furniture.js';
 import {characterDefinitions} from './characters/config.js';
 import {createCharacter} from './characters/model.js';
 import {characterAssetPaths,loadCharacterVisual} from './characters/gltf.js';
-const characterAssets=import.meta.glob('../assets/characters/{chicken,piyokichi}.glb',{eager:true,query:'?url',import:'default'});
+const characterAssets=import.meta.glob('../assets/characters/{chicken,piyokichi,piyomi}.glb',{eager:true,query:'?url',import:'default'});
 import {animateCharacter} from './characters/animation.js';
 import {LifeSimulation} from './simulation/life.js';
 import {createUI} from './ui.js';
