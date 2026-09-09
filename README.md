@@ -19,6 +19,26 @@ npm run preview
 npm test
 ```
 
+## GitHub Pagesでスマホ確認
+
+1. このプロジェクトを公開先のGitHubリポジトリへpushします（`package-lock.json` と `.github/workflows/pages.yml` も含めます）。
+2. リポジトリの **Settings → Pages → Build and deployment → Source** を **GitHub Actions** にします。
+3. デフォルトブランチ（`main` または現在の `master`）へpushすると、テスト成功後に自動公開します。初回設定後や再実行時は **Actions → Deploy to GitHub Pages → Run workflow** でデフォルトブランチを選びます。
+4. Actionsの `github-pages` に表示される公開URLをスマホで開きます。通常は `https://<ユーザー名>.github.io/<リポジトリ名>/` です。PCを起動し続ける必要はありません。
+
+公開するのはビルド済みの `dist` のみです。Pagesが返すパスをビルド時に指定するため、リポジトリ名や独自ドメインに合わせてソースを変更する必要はありません。通常のローカル起動・ビルドの設定も維持します。デフォルトブランチが `main` / `master` 以外の場合は、ワークフローの `push.branches` を合わせてください。
+
+スマホでは1本指ドラッグで回転、ピンチでズーム、2本指でパンできます。画面を下へスクロールするとキャラクター選択・家具の操作欄があります。
+
+公開前にサブフォルダでの読み込みをローカル確認する場合:
+
+```sh
+npm run build -- --base /chikipiyo-life-web/
+npm run preview -- --base /chikipiyo-life-web/
+```
+
+表示されたサーバーURLの `/chikipiyo-life-web/` を開きます。公開設定の参考: [Vite公式のGitHub Pages手順](https://vite.dev/guide/static-deploy.html#github-pages)。
+
 ## 操作
 
 - ドラッグ：回転、ホイール／ピンチ：ズーム、右ドラッグ／2本指移動：パン
