@@ -72,5 +72,5 @@ export function createCharacter(def){
   const leg=new T.Shape();leg.moveTo(-.014,-.035);leg.lineTo(.016,-.039);leg.lineTo(-.015,-.10);leg.lineTo(.042,-.155);leg.lineTo(.018,-.202);leg.lineTo(.09,-.209);leg.lineTo(.09,-.24);leg.lineTo(-.018,-.24);leg.lineTo(-.033,-.21);leg.lineTo(.005,-.161);leg.lineTo(-.048,-.108);leg.closePath();
   const mesh=plate(pivot,leg,[0,0,.02],def.feet,.026,0);mesh.scale.x=side;legs.push(pivot);
  }
- const props=new T.Group();rig.add(props);const book=box(props,[.42,.29,.07],[0,.66,.39],0x769d94);const food=ball(props,[.11,.09,.11],[.24,.7,.37],0xdb9760);const vr=box(head,[.65,.22,.17],[0,.025,chicken?.34:.30],0x455851);if(!chicken)vr.scale.setScalar(.85);const broom=new T.Group();props.add(broom);box(broom,[.045,.85,.045],[.4,.53,.3],0xa67b52);box(broom,[.32,.17,.12],[.4,.1,.3],0xe5c882);
- return {...def,root,rig,body,head,arms,legs,props,book,food,vr,broom};}
+ const props=new T.Group();rig.add(props);const book=box(props,[.42,.29,.07],[0,.66,.39],0x769d94);const food=ball(props,[.11,.09,.11],[.24,.7,.37],0xdb9760);const vr=new T.Group();vr.position.set(0,.025,chicken?.34:.30);if(!chicken)vr.scale.setScalar(.85);head.add(vr);const vrFallback=box(vr,[.65,.22,.17],[0,0,0],0x455851);const broom=new T.Group();props.add(broom);box(broom,[.045,.85,.045],[.4,.53,.3],0xa67b52);box(broom,[.32,.17,.12],[.4,.1,.3],0xe5c882);
+ return {...def,root,rig,body,head,arms,legs,props,book,food,vr,vrFallback,broom};}

@@ -1,5 +1,21 @@
 # VR GLB release with Piyomi — 2026-09-09
 
+## VR headset and supplied Piyomi release — 2026-09-10
+
+### Final status
+DONE
+
+### Changes / files changed
+- `assets/characters/piyomi.glb`: included the supplied update unchanged.
+- `assets/props/vr-headset.glb`: included the supplied headset unchanged.
+- `src/characters/model.js`, `src/characters/vr-gltf.js`, `src/main.js`: load the headset only into the existing head-attached VR group. The existing animation visibility switch, head movement and character dimensions remain in place.
+- `tests/vr-headset-gltf.test.js`: verifies the supplied headset remains head-attached for all three residents.
+
+### Validation
+- `npm.cmd test`: PASS — 26 passed, 0 failed.
+- `npm.cmd run build -- --base /chikipiyo-life-web/`: PASS. Production output contains `piyomi-DBcO-02r.glb` and `vr-headset-CDrAEWUL.glb`.
+
+
 ## Supplied Piyomi asset release — 2026-09-09
 
 Updated `assets/characters/piyomi.glb` for the supplied revision. The incoming GLB included meshes outside the required six rigid parts, so it was normalized to the existing Web contract (`Body`, `Head`, `Wing_L`, `Wing_R`, `Leg_L`, `Leg_R`) before release. No source code or other asset is changed for this update.
