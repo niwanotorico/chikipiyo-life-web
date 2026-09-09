@@ -9,7 +9,7 @@ export function animateCharacter(c,time){const t=c.elapsed,walking=c.phase==='wa
   // Place the head over the pillow (bed-local z=-.52), independently of body height.
   c.root.updateWorldMatrix(true,false);
   const bed=c.target.position;
-  c.rig.position.copy(c.root.worldToLocal(new Vector3(bed[0],1.14,bed[2]-.52+c.head.position.y)));
+  c.rig.position.copy(c.root.worldToLocal(new Vector3(bed[0],c.variant==='chicken'?1.14:1.065,bed[2]-.52+c.head.position.y)));
   c.rig.quaternion.copy(c.root.getWorldQuaternion(new Quaternion()).invert()).multiply(sleepRotation);
   c.head.scale.y=.98+Math.sin(t*1.7)*.012;
  }else c.head.scale.y=1;

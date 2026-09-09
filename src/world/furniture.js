@@ -2,7 +2,7 @@ import * as T from 'three';
 import {box,ball,cylinder} from './primitives.js';
 export const furnitureDefinitions=[
  {id:'bed',name:'ベッド',icon:'☾',action:'sleep',label:'寝る',position:[-3.7,0,2],spot:[-3.5,0,3.45],face:Math.PI,footprint:[2.3,2.5]},
- {id:'sofa',name:'ソファ',icon:'▱',action:'relax',label:'くつろぐ',position:[0,0,.2],spot:[.6,0,1.25],face:Math.PI,footprint:[2.7,1.35]},
+ {id:'sofa',name:'ソファ',icon:'▱',action:'relax',label:'くつろぐ',position:[0,0,.2],spot:[.6,0,1.25],face:0,footprint:[2.7,1.35]},
  {id:'table',name:'テーブル',icon:'◷',action:'eat',label:'食べる',position:[-3,0,-.8],spot:[-3,0,.45],face:Math.PI,footprint:[1.9,1.4]},
  {id:'kitchen',name:'キッチン',icon:'♨',action:'cook',label:'料理する',position:[-2.7,0,-3.2],spot:[-3.05,0,-2],face:Math.PI,footprint:[2.8,1.25]},
  {id:'fridge',name:'冷蔵庫',icon:'▥',action:'snack',label:'おやつを探す',position:[-4.65,0,-3.1],spot:[-4.85,0,-1.9],face:Math.PI,footprint:[1,1.25]},

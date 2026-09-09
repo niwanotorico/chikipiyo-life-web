@@ -10,7 +10,7 @@ for(const def of characterDefinitions){
  test(`${def.name}: grounded rig and original VR/animation anchors`,()=>{
   const c=createCharacter(def);c.book.visible=c.food.visible=c.vr.visible=c.broom.visible=false;
   assert.ok(Math.abs(new Box3().setFromObject(c.root).min.y-.01)<1e-6);
-  assert.equal(c.head.position.y,def.variant==='chicken'?1.01:.78);
+  assert.equal(c.head.position.y,def.variant==='chicken'?1.01:.69);
   assert.ok(c.body.position.y-c.body.scale.y>=.12);
   assert.equal(c.vr.parent,c.head);assert.deepEqual(c.vr.position.toArray(),[0,.025,def.variant==='chicken'?.34:.30]);
   assert.equal(c.arms.length,2);assert.equal(c.legs.length,2);
@@ -36,10 +36,21 @@ test('all furniture meshes retain raycast click ownership',()=>{
  }
 });
 
+test('both characters face away from the sofa backrest while relaxing',()=>{
+ const furniture=createFurniture(new Scene()),sofa=furniture.find(f=>f.id==='sofa');
+ assert.equal(sofa.face,0);
+ for(const def of characterDefinitions){
+  const c=createCharacter(def),sim=new LifeSimulation([c],furniture);
+  Object.assign(c,{action:'relax',phase:'acting',target:sofa,remaining:10});
+  sim.update(1);
+  assert.equal(c.root.rotation.y,0,def.name);
+ }
+});
+
 
 test('piyokichi is clearly smaller, with both soles on the floor',()=>{
  const sizes=characterDefinitions.map(d=>{const c=createCharacter(d);c.props.visible=false;c.vr.visible=false;const b=new Box3();c.root.updateMatrixWorld(true);c.rig.traverseVisible(o=>{if(o.isMesh)b.expandByObject(o);});return b.getSize(new Vector3());});
- assert.ok(sizes[1].y<sizes[0].y*.85);assert.ok(sizes[1].x<sizes[0].x*.9);
+ assert.ok(sizes[1].y<sizes[0].y*.75);assert.ok(sizes[1].x<sizes[0].x*.8);
 });
 for(const def of characterDefinitions)test(`${def.name}: sleep head stays at pillow for every approach yaw`,()=>{
  const bed=createFurniture(new Scene()).find(f=>f.id==='bed');

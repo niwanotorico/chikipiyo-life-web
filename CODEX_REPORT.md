@@ -1,9 +1,105 @@
+# Optional GLB character adapter — 2026-09-09
+
+## Final status
+DONE_WITH_NOTES
+
+## Changes / files changed this request
+- src/characters/gltf.js: GLTFLoader loading, rigid named-part validation and neutral-pose attachment to existing pivots. Missing/broken/unsupported files retain procedural visuals.
+- src/main.js: optional Vite asset discovery and async visual loading only; simulation setup unchanged.
+- assets/characters/.gitkeep: asset placement directory for chicken.glb and piyokichi.glb.
+- tests/character-gltf.test.js: missing/failing loader, invalid structure, real in-memory binary GLB parsing and loading during sleep for both characters; checks original rig/VR identity and neutral transforms.
+- README.md: file paths, rebuild instructions, six named rigid parts, axes, pivots, sizing, VR and limitations.
+- CODEX_REPORT.md: this report.
+
+## Contracts
+Procedural model generation, root position/rotation/scale, original head/wing/leg groups, props, VR, interaction anchors and all action/animation code unchanged this request. Adapter hides original visual children only after full structural validation. Imported parts are bound in neutral rig coordinates even if the current rig is sleeping or walking. Body reference remains the original internal procedural anchor; new visible body is under the same rig.
+
+## Validation
+- npm test: PASS, 15 tests, 0 failures (11 existing + 4 adapter cases).
+- npm run build: PASS, Vite 7.3.6, 21 modules, 1.13s. Nonfatal chunk warning: 653.99 kB JS / 172.36 kB gzip.
+- Browser production preview http://127.0.0.1:4173/: both procedural characters rendered without GLBs and autonomously walked toward desk/kitchen; Japanese UI present.
+- Development browser on 5173/5175 remained blank in this session, with no captured console errors; production preview succeeded. The development-browser issue was not conclusively diagnosed.
+- GLB success path verified with real GLTFLoader parsing an in-memory binary fixture, not a finished Blender character (none provided).
+
+## Limitations / Claude review focus
+Only six independent rigid parts (Body, Head, Wing_L/R, Leg_L/R) are supported to preserve current limb animation. Skinned armatures, embedded animation playback and compressed asset decoders are not supported. GLBs must be authored to documented neutral coordinates/dimensions; no automatic normalization or contact fitting. Review final Blender asset fit for VR, sleeping and sitting after delivery. Asset load errors are recorded on character.visualLoadError; no new UI added. Existing unrelated working-tree changes were preserved. Earlier review excluded GLTF conversion, but this latest explicit user request authorizes this bounded adapter.
+
+---
+
+# Character silhouette redesign — 2026-09-09
+
+## Final status
+DONE_WITH_NOTES
+
+## Changes / files changed this request
+- `src/characters/model.js`: rebuilt character appearance from drawn outlines using custom inflated BufferGeometry, thin extruded shapes and a continuous hood rim. Preserved root/rig/head/limb pivots, returned rig keys, props and VR code.
+- `CODEX_REPORT.md`: this report, earlier reports retained below.
+- No changes this request to animation.js, config, tests, house, furniture, camera, UI, movement, actions or sleep mechanism. Pre-existing changes from earlier turns remain.
+
+## Appearance
+- Piyokichi: wider dominant head, compact lobed body overlapping the head, planar black eyes and triangular beak, thin small wing silhouettes, one swept crest, simplified flat zigzag legs/feet and silhouette tail.
+- Chicken: broad round hood, recessed skin face inside a continuous white opening rim, flat three-section blunt fringe, horizontal line eyes, scalloped external red comb, short lobed white suit body and thin costume wings. Removed anatomical toes.
+- Head pivots remain 1.01 / .69. Arm and leg pivots, VR parent/size/position, all prop offsets and root transforms remain unchanged. Grounding and size-ratio tests still pass.
+
+## Validation
+- `npm test`: PASS, 11 tests, 0 failures, including grounding, original VR anchors, all real-model furniture arrivals, relative size, sleep orientation/containment for four approach yaws and return from sleep.
+- `npm run build`: PASS. Existing non-fatal warning for JS bundle exceeding 500 kB remains.
+- Browser: rendered actual imported models at identical scale in front, oblique and back views in a temporary review page. Corrected the initially visible applied-plate hood edge into a continuous curved rim and increased head/body overlap after inspecting it. Verified final three views and actual application rendering with original camera. Temporary review page removed after verification.
+
+## Self-review / limitations / Claude review focus
+- Front silhouette now reads as a human face in a white chicken hood and a big-headed compact chick; face, feather/wing outlines and zigzag feet are graphic rather than anatomical.
+- Compared with sheet: original hand-drawn irregularities are simplified; default chick uses neutral dot eyes rather than expressive chevrons. Comb is a rounded extruded strip and remains flatter across its width than the drawing's front-view dome. Head/body shading still reveals some separation in 3D despite silhouette overlap.
+- Review side/back hood curvature, swept crest and tail thickness, plus full-cycle prop fit with unchanged accessory anchors. Three-view review covers static appearance; existing tests cover transforms/behavior, not every animation's visual contact.
+
+---
+
+# Character appearance and sleep refinement — 2026-09-09
+
+## Final status
+DONE_WITH_NOTES
+
+## Changes / files changed
+- `src/characters/model.js`: smaller piyokichi head, torso, wings, beak, tail and finer swept crest; rounder chicken hood, circular face opening, visible skin, fitted fringe, clearer red comb, rounder torso and finer bird feet.
+- `src/characters/animation.js`: sleep-only support height for piyokichi reduced from 1.14 to 1.065 to match its smaller head depth. Existing world-Z alignment, approach-yaw cancellation and pillow head anchor were already correct and retained.
+- `tests/character-model.test.js`: updated head-height expectation and strengthened relative-size thresholds (height <75%, width <80%).
+- `CODEX_REPORT.md`: this report; earlier reports preserved below.
+
+## Dimensions / preserved behavior
+- Visible standing height: chicken 1.505, piyokichi 1.12482 (74.7%); width: .88 / .62 (70.5%). Both soles remain y=.01.
+- Piyokichi head pivot .78 -> .69; torso center .41 -> .365; wing pivot .53 -> .45. Root, leg pivots and VR attachment positions unchanged.
+- No changes to house, furniture, camera, reel, build plate, simulation, UI or non-sleep animation branches.
+- Latest explicit user request authorizes smaller proportions and sleep correction beyond the earlier review's conservative size guidance. CURRENT_TASK.md and CLAUDE_REVIEW.md were read and not modified.
+
+## Tests / build
+- `npm test`: PASS, 11 tests, 0 failures. Includes real-model furniture arrival, grounding, size difference, sleep pillow alignment and bed containment across four approach yaws for both characters, and reset after sleep.
+- `npm run build`: PASS, Vite 7.3.6, 18 modules, 1.52s. Non-fatal >500 kB bundle warning (552.63 kB JS).
+- `npm run dev -- --port 5173`: local browser verification server.
+
+## Browser verification
+- Opened the actual app at http://127.0.0.1:5173/ with its unchanged default camera.
+- Observed clear size difference, white rounded chicken costume with skin/fringe face, and yellow chick with small body and swept crest while walking.
+- Issued bed command to chicken, observed sleep with head on pillow side and body along bed within its edges.
+- Moved chicken to sofa, selected piyokichi and issued bed command; observed the smaller chick sleeping in the same correct direction on the pillow side.
+
+## Limitations / Claude review focus
+- Character sheet translated into rounded 3D geometry; not an exact traced model. Default camera's rails partially occlude details, and close-up turntable inspection was not performed.
+- Review fringe/skin overlap and small-character accessory fit throughout non-sleep animations. Their existing logic and VR offsets were intentionally preserved.
+- Build bundle warning remains. Existing unrelated working-tree changes to review/manager/setup files were untouched.
+
+---
+
 # CODEX IMPLEMENTATION REPORT
 
 ## GitHub Pages deployment task — 2026-09-09
 
 ### Final status
-BLOCKED — local deployment preparation is complete; actual publication awaits the destination GitHub repository URL. No Git remote is configured. No commit, push, repository creation, or Pages setting change was performed.
+BLOCKED — destination confirmed as https://github.com/niwanotorico/chikipiyo-life-web (empty public repository, default branch main). Origin is configured and local commit 50f77a7 contains the current application, tests and Pages workflow. `git push -u origin master:main` has been started but is waiting for Git Credential Manager authentication; no successful push or public deployment has been verified. Pages settings have not yet been changed. The in-app browser is signed out of GitHub.
+
+### Repository connection follow-up
+- Preserved the local master branch and existing baseline history; the push targets remote main without force.
+- Committed current application changes and tests alongside deployment configuration. Unrelated local changes to CLAUDE_REVIEW.md, manager-loop-v2.ps1 and the SETUP_BASELINE.ps1 deletion remain uncommitted and untouched.
+- Re-ran `npm.cmd test`: 11 passed. Re-ran `npm.cmd run build -- --base /chikipiyo-life-web/`: passed, same non-fatal chunk warning.
+- Expected public URL after successful deployment: https://niwanotorico.github.io/chikipiyo-life-web/ . This is not yet a verified live site.
 
 ### Changes / files changed
 - `.github/workflows/pages.yml`: default-branch-only deployment on main/master pushes or manual dispatch, Node 22, npm ci, tests, Pages-derived build base, dist artifact upload and deployment. Official action revisions are pinned. Deployment permissions are limited to the deploy job.
@@ -68,3 +164,76 @@ Rendered the updated scene in the browser. Observed both characters autonomously
 
 ## Claude review focus
 Review face/fringe and rear silhouette, full-cycle VR fit, bed/sofa contact, revised clearances near the left dining/bed area, and the build plate/desk shared footprint. Compare against the reference while keeping the existing action contracts. Unrelated pre-existing working-tree changes (review, manager scripts, deleted setup script) were left untouched.
+
+# 2026-09-09 Existing Blender → six-part GLB delivery
+
+Final status: DONE_WITH_NOTES
+
+## Scope and changes
+The latest user request supersedes the earlier procedural-model implementation scope: GLB assets and review renders only. No Web source, CURRENT_TASK.md, or CLAUDE_REVIEW.md was changed in this task. Existing working-tree edits were preserved. The original references/ここからチキンズ_2026_09.blend was opened read-only and never saved over. Source SHA256: 7DFE8BCBBFBA5D1D092792742DC56A6151B1BC5EBEC4906554A1BE0D0CEE3D94.
+
+Every visible mesh derives from chicken_main (+ .001/.002/.003) or piyokichi in that blend. No replacement character was generated. Connected source components were partitioned into rigid groups; source bones and animations were excluded. One subdivision level smooths the retained topology. provenance.json records the exact source/component-to-part mapping.
+
+Adjustments: chicken uniform scale .96, head width +17%, head down .045, lower face extended to close the hood gap, internal neck material white, original wings lowered 52 degrees. Piyokichi uniform scale 1.25, original wings reduced/lowered, beak reduced to 64% about its local center, original crest turned 48 degrees to read from front and side. Materials converted to simple self-contained rough PBR colors. Original fringe, eyes, combs, body lobes, feet, and tails retained.
+
+## Files changed/created
+- assets/characters/chicken.glb (781,156 bytes)
+- assets/characters/piyokichi.glb (690,220 bytes)
+- model-work/chicken_piyokichi_web.blend: working derivative; separate WEB_chicken / WEB_piyokichi collections, chicken visible initially. Original rig remains available in the untouched source blend.
+- model-work/renders/: eight 640 x 640 PNGs, front / three-quarter / side / back for each character, equal camera scale.
+- model-work/review.html: render gallery.
+- model-work/build_models.py, inspect_source.py, source-components.json, provenance.json, validate_glb.mjs, validation.json, build.log: reproducible derivation, component inventory, and validation records.
+- CODEX_REPORT.md: this appended report, previous reports preserved.
+
+## Web contract and measurements
+GLBs contain exactly Body, Head, Wing_L, Wing_R, Leg_L, Leg_R, with no skins or animation clips. +Y up, +Z front, global origin zero; both soles min Y=0.010000005. Blender +Z up / -Y front converts on export. Wing_L and Leg_L denote -X, matching the current loader.
+Head pivots: chicken (0,1.01,0), piyokichi (0,.69,0). Wings: chicken (+/-.30,.67,0), piyokichi (+/-.195,.45,0). Legs: chicken (+/-.14,.25,0), piyokichi (+/-.11,.25,0). Body pivot zero. Geometry offsets absorb grounding; no Web anchor edits.
+Chicken max Y=1.40310, width=.82188, depth=.69596; piyokichi max Y=1.11781, width=.63897, depth=.78541 (including beak and tail).
+
+## Checks and results
+- Blender 5.2 --factory-startup background source inspection and build_models.py: successful exports, all eight renders, derivative blend saved.
+- node model-work/validate_glb.mjs: PASS for both actual final GLBs using Three.js GLTFLoader and existing installCharacterVisual. Verified six required parts, no skins/clips, floor bounds, successful installation.
+- npm.cmd test: 15 passed, 0 failed.
+- npm.cmd run build after final exports: PASS; both GLBs included in dist. Existing >500 kB JavaScript chunk warning remains.
+- Visually inspected all eight final PNGs. Face/hood gap corrected; swept crest visible from front, side, and back.
+
+## Limitations and Claude review focus
+- Kept piyokichi's original >< expression, matching the sheet's large front drawing; this intentionally differs from the older review's suggested neutral dot eyes.
+- Source body/hip lobes and volumetric feet remain more sculpted than the flat sheet. Keeping existing geometry took priority over replacing the whole silhouette. The crest is diagonally oriented to remain readable in multiple views.
+- Rigid segmentation does not retain the source's deforming armature. Web animation/furniture/VR contact was not visually tested in the running Web scene, per the GLB-only scope. Loader and unit checks do not establish those contacts. Review wing swings, head turns, seated hip volume, bed and VR fit before any later integration adjustments.
+- The source meshes retain some sculpted surface irregularities; these are visible in rear lighting and were not redesigned.
+- Placing the assets in the existing configured folder makes them discoverable by the already-present Web loader/build without code edits. Nothing was deployed.
+
+# 2026-09-09 Sofa orientation and Pages release
+
+## Work Performed
+
+- Treated `assets/characters/chicken.glb` and `assets/characters/piyokichi.glb` as supplied, final assets. Their contents were not modified.
+- Changed only the sofa's `face` target from `Math.PI` to `0`. The sofa backrest is at local/world -Z and character fronts are +Z, so this makes both characters face toward +Z and keep their backs toward the backrest. The existing seat point `[.6, 0, 1.25]` is unchanged.
+- Added a regression test that exercises both character definitions while relaxing and asserts the sofa target rotation is zero.
+- Limited Vite's GLB import list to the two current assets, excluding local `*_old.glb` backups from the production bundle.
+- No responsive CSS change was needed: the existing mobile rules passed a 390×844 interactive check without horizontal overflow.
+
+## Files Changed
+
+- `src/world/furniture.js`
+- `src/main.js`
+- `tests/character-model.test.js`
+- Existing GLB integration files and the two supplied current GLBs are included in the release commit. Local `*_old.glb`, `model-work/`, and source `.blend` files are excluded.
+
+## Validation
+
+- `npm test`: PASS — 16 tests passed, 0 failed. This includes both characters' sofa-facing regression test.
+- `npm run build`: PASS.
+- `npm run build -- --base /chikipiyo-life-web/`: PASS. Only `chicken.glb` and `piyokichi.glb` were emitted.
+- Served that Pages-base build at `/chikipiyo-life-web/`: PASS. Both latest GLB visuals, controls, and furniture panel appeared correctly.
+- Interactive 390×844 check: 3D view visible; document/body width 375px with scroll width 375px; furniture action dialog, pause/resume, drag rotation, and zoom were exercised. No unintended horizontal scroll occurred.
+
+## Known Limitations
+
+- The intentional JavaScript bundle-size warning (>500 kB) remains unchanged.
+- Production deployment verification is recorded after GitHub Actions completes.
+
+## Final Status
+
+DONE
