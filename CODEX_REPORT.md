@@ -1,3 +1,29 @@
+# VR GLB release with Piyomi — 2026-09-09
+
+## Final status
+DONE
+
+## Piyomi model repair — 2026-09-09
+
+The previous Piyomi export applied an extra head-height offset, causing the visible model to break apart. Rebuilt `assets/characters/piyomi.glb` from the supplied blend's existing `piyormi` meshes, with its six rigid parts authored at their matching Web pivots. The corrected asset spans floor `y=.01` to `y=1.073`; the broken asset's head extended to `y=1.703`.
+
+`model-work/export_piyomi_web.py` records the repeatable export. `tests/character-gltf.test.js` now guards against the duplicate vertical offset while retaining the existing six-part and attachment checks.
+
+## Changes / files changed
+- `assets/furniture/vr.glb`: used the user-supplied updated VR furniture model.
+- `src/world/furniture-gltf.js`: loads only the VR GLB and preserves the established furniture group, placement and click ownership.
+- `src/main.js`: makes the production asset URL available to that bounded loader.
+- `tests/furniture-gltf.test.js`: verifies the supplied VR GLB replaces only its rendering while retaining its installation origin and click target metadata.
+- `CODEX_REPORT.md`: this report.
+
+## Validation
+- `npm.cmd test`: PASS — 23 passed, 0 failed.
+- `npm.cmd run build -- --base /chikipiyo-life-web/`: PASS. The production output contains `piyomi`, `chicken`, `piyokichi`, and the updated `vr` GLBs.
+- Production preview opened at `/chikipiyo-life-web/` before publication.
+
+## Scope / limitations
+The updated VR model replaces only the visual children of the existing VR furniture group. Its world position, action anchor, click behavior, house, camera and all other furniture remain unchanged. The Piyomi implementation from the preceding commit is included in this release. Unrelated working-tree changes were preserved.
+
 # Optional GLB character adapter — 2026-09-09
 
 ## Final status

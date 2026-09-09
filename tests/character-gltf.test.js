@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
-import {Vector3} from 'three';
+import {Box3,Vector3} from 'three';
 import fs from 'node:fs';
 import {createCharacter} from '../src/characters/model.js';
 import {characterDefinitions} from '../src/characters/config.js';
@@ -42,6 +42,9 @@ test('piyomi release GLB has six rigid parts and attaches to the small-character
  const bytes=fs.readFileSync(new URL('../assets/characters/piyomi.glb',import.meta.url));
  const gltf=await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
  for(const name of ['Body','Head','Wing_L','Wing_R','Leg_L','Leg_R'])assert.ok(gltf.scene.getObjectByName(name),name);
+ const bounds=new Box3().setFromObject(gltf.scene);
+ assert.ok(Math.abs(bounds.min.y-.01)<.001,'piyomi soles stay on the floor');
+ assert.ok(bounds.max.y<1.1,'piyomi head does not receive a duplicate vertical offset');
  const c=createCharacter(characterDefinitions.find(def=>def.id==='piyomi'));
  assert.equal(await loadCharacterVisual(c,'piyomi',{loadAsync:async()=>gltf}),true);
  assert.equal(c.visualSource,'glb');assert.equal(c.head.position.y,.69);
