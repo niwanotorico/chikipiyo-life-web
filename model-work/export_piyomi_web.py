@@ -39,7 +39,7 @@ floor=min((obj.matrix_world @ vertex.co).z for obj in parts for vertex in obj.da
 for obj in parts:
  for vertex in obj.data.vertices: vertex.co.z+=.01-floor
 
-bpy.ops.object.select_all(action='DESELECT')
+for obj in bpy.context.scene.objects: obj.select_set(False)
 for obj in parts: obj.select_set(True)
 bpy.context.view_layer.objects.active=parts[0]
 bpy.ops.export_scene.gltf(filepath=str(OUT),export_format='GLB',use_selection=True,export_animations=False,export_yup=True,export_apply=True)

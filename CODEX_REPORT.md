@@ -1,5 +1,9 @@
 # VR GLB release with Piyomi — 2026-09-09
 
+## Supplied Piyomi asset release — 2026-09-09
+
+Updated `assets/characters/piyomi.glb` for the supplied revision. The incoming GLB included meshes outside the required six rigid parts, so it was normalized to the existing Web contract (`Body`, `Head`, `Wing_L`, `Wing_R`, `Leg_L`, `Leg_R`) before release. No source code or other asset is changed for this update.
+
 ## Final status
 DONE
 
