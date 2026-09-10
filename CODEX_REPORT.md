@@ -18,6 +18,9 @@ DONE
 ### Headset fit follow-up
 - `src/characters/vr-gltf.js`: moved only the imported headset visual by local `[0, -0.11, -0.28]`, lowering it over the eyes and bringing its center back toward the head. The two supplied GLBs, existing VR action, head attachment group and camera remain unchanged.
 
+### VR dock follow-up
+- `src/world/furniture-gltf.js`, `src/main.js`: while a resident is in the VR action, hide only the matching headset object on the VR dock. Its table and controllers stay visible, eliminating the duplicate headset while preserving the furniture interaction.
+
 
 ## Supplied Piyomi asset release — 2026-09-09
 

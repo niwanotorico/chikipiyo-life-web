@@ -3,7 +3,7 @@ import * as T from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {createHouse} from './world/house.js';
 import {createFurniture} from './world/furniture.js';
-import {furnitureAssetPaths,loadFurnitureVisual} from './world/furniture-gltf.js';
+import {furnitureAssetPaths,loadFurnitureVisual,setVrDockHeadsetVisible} from './world/furniture-gltf.js';
 import {characterDefinitions} from './characters/config.js';
 import {createCharacter} from './characters/model.js';
 import {characterAssetPaths,loadCharacterVisual} from './characters/gltf.js';
@@ -25,4 +25,4 @@ renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=
 controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.target.set(0,.5,0);controls.minDistance=9;controls.maxDistance=32;controls.maxPolarAngle=Math.PI*.47;controls.minPolarAngle=.15;controls.update();
 const resize=()=>{const {width,height}=host.getBoundingClientRect();renderer.setSize(width,height);camera.aspect=width/height;camera.updateProjectionMatrix();};new ResizeObserver(resize).observe(host);resize();
 const raycaster=new T.Raycaster(),pointer=new T.Vector2();let down=null;renderer.domElement.addEventListener('pointerdown',e=>{down=[e.clientX,e.clientY];});renderer.domElement.addEventListener('pointerup',e=>{if(e.button!==0||!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>6)return;const rect=host.getBoundingClientRect();pointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);const hit=raycaster.intersectObjects(furniture.map(f=>f.group),true)[0];if(hit)ui.selectFurniture(hit.object.userData.furnitureId);});
-const clock=new T.Clock();let uiElapsed=0;renderer.setAnimationLoop(()=>{const dt=Math.min(clock.getDelta(),.05);simulation.update(dt);characters.forEach(c=>animateCharacter(c,simulation.time));controls.update();renderer.render(scene,camera);uiElapsed+=dt;if(uiElapsed>.2){ui.update();uiElapsed=0;}});
+const vrDock=furniture.find(f=>f.id==='vr'),clock=new T.Clock();let uiElapsed=0;renderer.setAnimationLoop(()=>{const dt=Math.min(clock.getDelta(),.05);simulation.update(dt);characters.forEach(c=>animateCharacter(c,simulation.time));setVrDockHeadsetVisible(vrDock,!characters.some(c=>c.phase==='acting'&&c.action==='vr'));controls.update();renderer.render(scene,camera);uiElapsed+=dt;if(uiElapsed>.2){ui.update();uiElapsed=0;}});
