@@ -15,6 +15,9 @@ DONE
 - `npm.cmd test`: PASS — 26 passed, 0 failed.
 - `npm.cmd run build -- --base /chikipiyo-life-web/`: PASS. Production output contains `piyomi-DBcO-02r.glb` and `vr-headset-CDrAEWUL.glb`.
 
+### Headset fit follow-up
+- `src/characters/vr-gltf.js`: moved only the imported headset visual by local `[0, -0.11, -0.28]`, lowering it over the eyes and bringing its center back toward the head. The two supplied GLBs, existing VR action, head attachment group and camera remain unchanged.
+
 
 ## Supplied Piyomi asset release — 2026-09-09
 

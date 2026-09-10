@@ -12,4 +12,5 @@ for(const def of characterDefinitions)test(`${def.name}: supplied VR headset rem
  const c=createCharacter(def),position=c.vr.position.clone();
  assert.equal(await loadVrHeadsetVisual(c,'headset',{loadAsync:async()=>gltf}),true);
  assert.equal(c.vr.parent,c.head);assert.ok(c.vr.position.equals(position));assert.equal(c.vrFallback.visible,false);assert.equal(c.vr.visualSource,'glb');
+ const visual=c.vr.getObjectByName('GLB_vr-headset');assert.deepEqual(visual.position.toArray(),[0,-.11,-.28]);
 });
