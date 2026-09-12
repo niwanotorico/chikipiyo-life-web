@@ -1,5 +1,5 @@
 import * as T from 'three';
-import {ball,box,mat} from '../world/primitives.js';
+import {ball,box,cylinder,mat} from '../world/primitives.js';
 
 // Inflate a drawn outline in depth, keeping the broad front almost flat.
 // Unlike stacked spheres this preserves the sheet's cheeks, hem and wing contours.
@@ -72,5 +72,15 @@ export function createCharacter(def){
   const leg=new T.Shape();leg.moveTo(-.014,-.035);leg.lineTo(.016,-.039);leg.lineTo(-.015,-.10);leg.lineTo(.042,-.155);leg.lineTo(.018,-.202);leg.lineTo(.09,-.209);leg.lineTo(.09,-.24);leg.lineTo(-.018,-.24);leg.lineTo(-.033,-.21);leg.lineTo(.005,-.161);leg.lineTo(-.048,-.108);leg.closePath();
   const mesh=plate(pivot,leg,[0,0,.02],def.feet,.026,0);mesh.scale.x=side;legs.push(pivot);
  }
- const props=new T.Group();rig.add(props);const book=box(props,[.42,.29,.07],[0,.66,.39],0x769d94);const food=ball(props,[.11,.09,.11],[.24,.7,.37],0xdb9760);const vr=new T.Group();vr.position.set(0,.025,chicken?.34:.30);if(!chicken)vr.scale.setScalar(.85);head.add(vr);const vrFallback=box(vr,[.65,.22,.17],[0,0,0],0x455851);const broom=new T.Group();props.add(broom);box(broom,[.045,.85,.045],[.4,.53,.3],0xa67b52);box(broom,[.32,.17,.12],[.4,.1,.3],0xe5c882);
- return {...def,root,rig,body,head,arms,legs,props,book,food,vr,vrFallback,broom};}
+ const props=new T.Group();rig.add(props);
+ // 読書アクションは廃止したので本の小道具も持たない。
+ // 食べ物の小道具は「ちきんが持つ赤いコーヒーカップ」だけ。
+ // ぴよきち（プリン）とぴよみ（ホットドッグ）は部屋GLB側の机上に常設。
+ const food=new T.Group();food.position.set(.30,.50,.26);props.add(food);
+ if(chicken){
+  cylinder(food,.072,.115,[0,0,0],0xd23f2c);
+  cylinder(food,.060,.014,[0,.052,0],0xfff2e4);
+  const handle=new T.Mesh(new T.TorusGeometry(.045,.014,8,16),mat(0xd23f2c));handle.position.set(.081,.004,0);handle.rotation.y=Math.PI/2;handle.castShadow=true;food.add(handle);
+ }
+ const vr=new T.Group();vr.position.set(0,.025,chicken?.34:.30);if(!chicken)vr.scale.setScalar(.85);head.add(vr);const vrFallback=box(vr,[.65,.22,.17],[0,0,0],0x455851);const broom=new T.Group();props.add(broom);box(broom,[.045,.85,.045],[.4,.53,.3],0xa67b52);box(broom,[.32,.17,.12],[.4,.1,.3],0xe5c882);
+ return {...def,root,rig,body,head,arms,legs,props,food,vr,vrFallback,broom};}

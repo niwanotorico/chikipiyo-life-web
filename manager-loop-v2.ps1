@@ -121,13 +121,30 @@ PENDING
 Read AGENTS.md, CURRENT_TASK.md, CLAUDE_REVIEW.md, README.md,
 and the referenced character sheet if available.
 
-This is an IMPLEMENTATION task.
-Implement the task in this repository now.
-Follow Claude's approved guidance when reasonable.
-Make the smallest safe changes and preserve unrelated behavior.
-Run relevant tests and build checks.
+You are the IMPLEMENTATION engineer.
+Do not stop at analysis, planning, review, or recommendations.
 
-You MUST rewrite CODEX_REPORT.md before finishing using exactly these sections:
+Your job in this turn is to ACTUALLY EDIT THE REPOSITORY FILES and complete the task.
+
+Mandatory execution rules:
+1. Inspect the relevant implementation files.
+2. Make the required code changes in the repository.
+3. Do not return a plan instead of implementation.
+4. Do not end the turn with "No files changed" unless the task is genuinely impossible.
+5. If implementation is impossible, explain why in CODEX_REPORT.md and use Status: BLOCKED.
+6. After editing, run the relevant tests/build checks.
+7. Verify the changed files with git diff or git status.
+8. Rewrite CODEX_REPORT.md before finishing.
+
+The task is not complete unless:
+- at least one real implementation file is changed, OR
+- Status is BLOCKED with a concrete technical reason.
+
+Follow Claude's approved guidance when reasonable.
+Make the smallest safe code changes possible.
+Preserve unrelated existing behavior.
+
+CODEX_REPORT.md must use exactly these sections:
 
 # CODEX REPORT
 ## Work Performed

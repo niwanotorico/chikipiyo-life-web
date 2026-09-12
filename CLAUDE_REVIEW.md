@@ -1,126 +1,234 @@
-﻿# CLAUDE REVIEW - FINAL
+Read-only review complete — no files modified. Here is the content for `CLAUDE_REVIEW.md`:
 
-*Post-implementation review of the manager-loop run that started `2026-09-09 02:26:23`. Verified directly against the working tree, not against `CODEX_REPORT.md`.*
+---
 
-## What Codex Changed
+# CLAUDE REVIEW
 
-**Nothing.** No production file, no config file, no test file was modified.
+## Review
 
-`CLAUDE.md` step 3 asks me to inspect the git diff. That step is **not executable in this repo**:
+**Goal understanding**
 
-```
-$ git log --oneline -10
-fatal: your current branch 'master' does not have any commits yet
-```
+現行の仮造形キャラクター「ちき」「ぴよ」の見た目を、`references/chicken_piyokichi_character_sheet.png` を唯一の基準として「ちきん」「ぴよきち」へ差し替える。「ぴよみ」は今回対象外。生活ロジック・アニメーション・家具連携・日本語UIは維持し、見た目とそれに付随する最小限のオフセットのみを変更する。
 
-There are zero commits; `git status --porcelain` reports every path as untracked (`??`). So I verified by file timestamp and content instead, which is conclusive here.
+**キャラクターシート実物の確認結果**（画像を実際に確認済み）
 
-**Timeline evidence** 窶・the Codex step ran between `02:31:37` and `02:32:00` (`manager-loop.log`). Every source file predates it by two hours:
+シートの段構成は `CURRENT_TASK.md` の記述と一致している（上段 piyokichi ぴよきち／中段 chicken ちきん／下段 piyomi ぴよみ）。実装対象は上段・中段の2体。
 
-| File | Last write | Verdict |
+- **ちきん** — 白いニワトリ着ぐるみを着た「人」。フードの中に肌色の丸顔、濃茶のぱっつん前髪、細い横線の閉じ目。**くちばしは無い**。頭頂に小さな赤いトサカ、側面図では後頭部に3枚に割れた赤いトサカ、背面図では後頭部中央に縦長の赤い一本トサカ。胴体は白く丸い、両脇に垂れた白い翼、背面〜側面に小さな尾羽、黄色い鳥脚。ほお紅は無い。3体並びのカットではぴよきち・ぴよみより明確に背が高い。
+- **ぴよきち** — 黄色いひよこ。頭頂に**細く1本だけ後方へ跳ねた寝癖状のトサカ**（ぴよみの「四角い2本タフト」とは明確に別物、ここが両者の識別点）。小さなオレンジのくちばし、小さな翼、側面・背面に小さな尾羽、短い鳥脚。ニュートラル表情の小サイズ絵では**丸い点目**（正面大図の `><` は表情バリエーション）。ほお紅も表情バリエーション側にのみ出現するので、デフォルト造形には入れない。
+
+**現行実装の状態**
+
+`git status` 上、`src/` 配下は未変更（差分はレビュー用ドキュメントとループスクリプトのみ）。したがって本レビューは純粋な事前レビューとして扱う。
+
+**現行造形と目標の差分（要点）**
+
+`src/characters/model.js:3-12` は2体を完全に同一の造形関数で生成し、`def.color` / `def.accent` / `def.cheek` の3色を差し替えるだけで区別している。この設計では **ちきんを表現できない**。ちきんの頭部は「白いフード＋肌色の顔＋濃茶の前髪」の3マテリアル構成であり、かつ「くちばしを持たない」ため、色の差し替えだけでは足りず造形自体の分岐が必要になる。またトサカは現在 `for(let i=0;i<3;i++)` の3玉横並びで両者共通だが、ぴよきちは1本の細い跳ね毛、ちきんは頭頂＋後頭部の赤トサカと、形状も配置も異なる。尾羽は両者とも現在存在しない。
+
+結論として、本タスクは「色定義の差し替え」では完了せず、**`config.js` のスキーマ拡張＋`model.js` の2バリアント分岐**が必須である。ただしこれはリファクタリングではなく、`createCharacter` が返すリグ契約を維持したままの内部分岐であり、タスクの「変更してよい範囲（キャラクター生成部分・geometry/material）」に収まる。
+
+## Relevant Files / Architecture
+
+**変更してよいファイル**
+
+| ファイル | 役割 | 変更範囲 |
 |---|---|---|
-| `src/characters/model.js` | `00:26:20` | untouched |
-| `src/characters/config.js` | `00:26:20` | untouched |
-| `src/characters/animation.js` | `00:30:09` | untouched |
-| `src/ui.js` | `00:29:32` | untouched |
-| all other `src/**` | `00:26:16`窶伝00:29:34` | untouched |
-| `CODEX_REPORT.md` | `01:23:27` | **predates the run** |
+| `src/characters/config.js` | 名前・色・初期位置の定義（1行、配列長2） | 表示名と配色キーの拡張。`id` は変更禁止（後述） |
+| `src/characters/model.js` | `createCharacter(def)`。`root > rig > {body, head, arms[2], legs[2], props}` を構築し、animation が参照するリグ契約を返す | 造形の本体。ここが今回の主戦場 |
+| `src/characters/animation.js` | 行動別ポーズ。触るのは最終手段 | 原則変更しない。やむを得ない場合のみアンカー定数の微調整 |
 
-**Content evidence** 窶・`src/characters/model.js` is still the original 13-line single-builder file. Both characters continue to share one geometry function, differing only by `def.color` / `def.accent` / `def.cheek`:
+**変更禁止ファイル**
 
-```js
-const body=ball(rig,[.32,.38,.27],[0,.51,0],def.color);
-const head=new T.Group();head.position.y=1.01;rig.add(head);ball(head,[.4,.36,.34],[0,0,0],def.color);
-ball(head,[.07,.045,.07],[0,-.065,.34],def.accent);          // beak 窶・still on 縺｡縺・for(let i=0;i<3;i++)ball(head,[.075,.13,.08],窶ｦ,def.accent);  // still a 3-ball comb on both
+`src/simulation/life.js`（`c.root.position` と `c.root.rotation.y` のみを操作、キャラクターの寸法には一切依存しない）、`src/simulation/navigation.js`、`src/simulation/actions.js`、`src/world/house.js`、`src/world/furniture.js`、`src/main.js`、`src/style.css`、`tests/life.test.js`。
+
+**リグ契約（絶対に壊してはならないインターフェース）**
+
+`createCharacter` の戻り値は `src/characters/animation.js:1-12` が全面的に依存している。以下のキーと型を必ず維持すること。
+
+- `root` : `THREE.Group`。`life.js` が `position.x/z` と `rotation.y` を直接書き換える。**`root.position.y` は常に 0**、`root` 自身に回転・スケールを事前設定してはならない。
+- `rig` : `root` の直下 Group。animation が毎フレーム `position` / `rotation` を**絶対値で上書き**する（`animation.js:2-6`）。したがって `rig` に静的オフセットを持たせても無意味かつ危険。
+- `head` : Group（Mesh ではない）。`rotation.x/y` と `scale.y` が操作される。首基準の回転原点として現在 rig ローカル `y=1.01`。
+- `arms` : Group 2要素、`[左, 右]` の順（`arms[0]` = 左、`arms[1]` = 右。`cook` / `clean` が `arms[1]` を名指しで使う `animation.js:8,10`）。`rotation.x` と `rotation.z` で振られるため、**ジオメトリは pivot の子として肩からオフセット配置**すること。
+- `legs` : Group 2要素。同様に pivot 構造必須。
+- `props`, `book`, `food`, `vr`, `broom` : `visible` が毎フレーム切り替えられる。`vr` は **`head` の子**（`model.js:11`）であり、`head.rotation.y` と `head.scale.y` に追従する既存挙動を持つ。この親子関係を変えないこと。
+
+**寸法アンカーの実測値**（変更前の基準として記録）
+
+- 床上面 = `y=0.01`（`house.js` 床板 `box(...,[0,-.025,0])` 高さ .07 → 上面 .01）。
+- 現行の足裏最下点 = `0.25 - 0.12 - 0.12 = 0.01`。**床上面と完全一致**。これは偶然ではなく設計値であり、埋まり／浮きの判定基準になる。
+- 現行の胴体中心 `y=0.51`（半径 y=.38 → 上端 .89 / 下端 .13）、頭部原点 `y=1.01`、頭頂 `≈1.37`、頭幅 `0.80`。頭高 .72 / 全高 1.37 ≒ 2頭身弱。既に指定の2〜3頭身レンジ内。
+- `arms` pivot `(±.29, .67, 0)` / `legs` pivot `(±.14, .25, 0)`。
+- `vr` : `head` ローカル `(0,.025,.34)`、サイズ `[.65,.22,.17]`。z=.34 は頭部球の前面そのもの。
+- `book` `(0,.66,.39)` / `food` `(.24,.7,.37)` / `broom` `(.4,.53,.3)` は `props`（rig 直下）ローカル。
+
+**アニメーション側のハードコード定数（キャラクター側で吸収すべき制約）**
+
+- `sleep` : `rig.rotation.x=-π/2`, `rig.position=(0,.8,.7)`。x軸-90°回転により**ローカル z 方向が世界の垂直方向になる**。つまり寝姿勢での床（マットレス）との接触判定を決めるのは胴体・頭部の **z 半径**であり、y 半径ではない。現行の胴体 z 半径 .27 を大きく変えると、ベッドに沈む／浮く。逆に全高（ローカル y）を変えると、枕・ヘッドボード方向（-z）へのはみ出し量が変わる。
+- `relax` : `rig.position=(0,.35,.75)`, `legs.rotation.x=-1.15`。ソファ座面上面 ≈ `y=0.59`。着座深さは胴体中心 y と y 半径に依存。
+- `food` は `eat` / `cook` 時に `position.y` を**絶対値で上書き**される（`.76+sin`, `.8`）。`broom` も `rotation.z` を上書きされる。よってこれらの初期 y / 回転を造形都合で変えても実行時に無効化される。x/z のみ調整可能。
+
+## Risks
+
+**R1（高）— `id` 変更によるUI破壊**
+
+`src/ui.js:3` は `.avatar ${c.id}` と `#status-${c.id}` を id から組み立てており、`src/style.css` には `.avatar.piyo` の背景色ルールが存在する。`id` を `'chikin'` / `'piyokichi'` 等へ変更すると、ぴよきち側のアバター配色が黙って失われる（エラーにはならず、見た目だけ劣化する）。**`id` は `'chiki'` / `'piyo'` のまま据え置くこと。** 変更するのは `name` のみ。
+
+**R2（中）— 表示名の取りこぼし**
+
+`src/ui.js:3` に `<b id="selected-name">ちき</b>` が初期値としてハードコードされている。`config.js` の `name` を「ちきん」に変えても、ユーザーが一度もキャラクターカードをクリックしないうちは古い「ちき」が表示されたままになる。なおアバター文字は `${i===0?'ち':'ぴ'}` であり、「ちきん」「ぴよきち」でも頭文字は一致するため問題ない。
+
+**R3（高）— 床への埋まり／浮き**
+
+足裏最下点 = 0.01 という一致は暗黙の契約である。脚 pivot の y、足オフセット、足の y 半径のいずれを触っても崩れる。ぴよきちを低く、ちきんを高くする際、**脚を短くして全高を下げると足裏が浮く**。身長差は脚ではなく頭・胴のスケールで表現すべき。
+
+**R4（高）— sleep / relax アンカーの破綻**
+
+R3 と同じ理由で、`animation.js` のアンカーはキャラクター側から見て「暗黙の前提つき定数」になっている。特に sleep の z 半径依存（上記）は直感に反するため見落としやすい。ちきんを大型化すると、ベッドに沈む・枕を突き抜ける・ソファに浮くのいずれかが起きる可能性が高い。
+
+**R5（中）— VRヘッドセットの位置ずれ・貫通**
+
+`vr` は頭部前面 `z=.34`、幅 `.65`（頭幅 .80 の 81%）に合わせて調整済み。ちきんは「フードの中に一段引っ込んだ顔」という構造になるため、ヘッドセットをフード前面に置くと顔から浮き、顔面に置くとフードと z ファイティングを起こす。ぴよきちの頭を大きくすると幅 .65 では小さすぎる。
+
+**R6（中）— `def` スキーマ拡張時の undefined 色**
+
+`primitives.js:3` の `mat(color)` は `undefined` を渡されても例外を投げず、three 側のデフォルト（白）になる。新しい色キー（`skin` / `hair` / `comb` 等）を片方のキャラクターにだけ定義すると、もう片方が**無言で白いパーツを生やす**。
+
+**R7（中）— 自動テストがこの変更を一切カバーしない**
+
+`tests/life.test.js` はスタブのキャラクターオブジェクト（`root` のみ）を使っており、`model.js` も `config.js` も import していない。したがって `npm test` は緑のままでも造形が壊れている可能性がある。`npm run build` もビルド成功しか保証しない。**「テストが通った＝安全」と報告してはならない。**
+
+**R8（低）— ぴよきち／ぴよみの取り違え**
+
+現行の3玉トサカはむしろぴよみの2本タフトに近い印象を与える。1本の細い跳ね毛にしないと、今回対象外のぴよみと混同される造形になる。
+
+**R9（低）— スタイル逸脱**
+
+羽毛表現・法線マップ・新規ライト・高解像度テクスチャの追加は `## Style` 違反。`ball` / `box` / `mat`（`MeshStandardMaterial`, roughness .72）以外のマテリアルを持ち込まないこと。またシートの原色（純白・#FCD90B・鮮烈な赤）をそのまま使うと現行のパステル配色から浮くため、わずかに彩度を落とすこと。
+
+**R10（低）— 配列長の変更**
+
+`characterDefinitions` は長さ2前提でUIが組まれている（`${i===0?'ち':'ぴ'}`）。ぴよみを「ついでに」追加してはならない。
+
+## Recommended Implementation
+
+**方針：リグ契約を唯一の継ぎ目とし、その内側だけを2バリアントに分岐する。**
+
+**Step 1 — 事前計測（コード変更前）**
+
+`createCharacter` の現行出力について、`new THREE.Box3().setFromObject(root)` で `min.y` / `max.y` / 幅を記録し、`0.01` / `1.37` / `0.80` を確認する。これが以降の全比較の基準値になる。
+
+**Step 2 — `config.js` のスキーマ拡張**
+
+- `id` は据え置き（`'chiki'` / `'piyo'`）。`name` を `'ちきん'` / `'ぴよきち'` に変更。`start` と `personality` は据え置き。
+- `variant` キーを追加（`'chicken'` / `'chick'`）。造形分岐はこのキーだけで行い、`id` では分岐しないこと（id は UI 用の識別子であり、造形の責務を負わせない）。
+- 色は用途別キーに拡張し、**両キャラクターに全キーを定義**するか、`model.js` 側で分割代入デフォルト（`const {skin=0xfae3d2, hair=0x3b2b27, ...} = def`）を必ず与える（R6対策）。
+- 参考値（パステル寄せ済み）：ちきん = ボディ `0xfaf7f2` / 顔 `0xfae3d2` / 前髪 `0x3b2b27` / トサカ `0xe8563a` / 脚 `0xf2b13c`。ぴよきち = ボディ `0xf6d24f` / くちばし `0xe8873f` / 脚 `0xf0ab3c` / 目 `0x39453b`。
+- `cheek` はどちらのデフォルト造形でも使わなくなるが、キー自体は残して構わない（参照されなくなるだけで害はない）。
+
+**Step 3 — `model.js` の分岐**
+
+```
+export function createCharacter(def){
+  const root, rig を現行どおり生成（root.position.set(...def.start)）
+  const parts = def.variant === 'chicken' ? buildChicken(rig, def) : buildChick(rig, def);
+  return {...def, root, rig, ...parts};
+}
 ```
 
-`src/characters/config.js` still reads `name:'縺｡縺・` and `name:'縺ｴ繧・`. There is no `species` field, no `skin`/`hair`/`comb`/`foot` palette, no `rig.scale`. `tests/` contains only `life.test.js`; the recommended `tests/model.test.js` was never created.
+`buildChicken` / `buildChick` は必ず `{body, head, arms, legs, props, book, food, vr, broom}` を揃えて返す。props / book / food / broom の生成は共通ヘルパーに切り出してよいが、それ以上の抽象化はしない。
 
-**`CODEX_REPORT.md` is stale and self-reporting as not-started:**
+**Step 4 — ちきんの造形**
 
-```
-## Work Performed
-譛ｪ螳滓命
-## Files Changed
-縺ｪ縺・## Status
-PENDING
-```
+- 頭部 Group は `y=1.01` を維持。フード＝白い球 `[.42,.38,.36]` 相当を頭部原点に置く。
+- 顔：フード前面をわずかにくり抜いた見た目を、**肌色の扁平な球を前方 z にわずかに突き出して**表現する（ブーリアンは使わない）。前髪は濃茶の扁平球を顔上端に重ねる。目は細い横線＝極薄の黒い箱または扁平球を2つ。**くちばしは生成しない。**
+- トサカ：頭頂に小さな赤い球1〜2玉＋**後頭部（-z 側）に縦長の赤い扁平球**。背面シルエット要件はこの後頭部トサカが担保する。
+- 翼：現行 arms の垂れ下がった白い扁平球でシートに一致する。pivot 座標は据え置き。
+- 尾羽：小さな白い扁平球を `rig`（`props` ではない）の背面下部に追加。`props` に入れると `visible` 切替の巻き添えを食う。
+- 脚：黄色。**足裏最下点 0.01 を厳守。**
+- 身長：ぴよきちより高いことをシートが要求する。ただし脚は伸ばさず、頭・胴のスケールで +0.05 程度に留める（R3/R4）。
 
-It was never rewritten by this run 窶・it still carries the placeholder text and the `PENDING` status, which is not even one of the three values `AGENTS.md` permits (`DONE` / `DONE_WITH_NOTES` / `BLOCKED`).
+**Step 5 — ぴよきちの造形**
 
-**Why the loop did not catch this:** `manager-loop.ps1:137` gates only on `^\s*BLOCKED\s*$`. A report left at `PENDING` matches neither `BLOCKED` nor any valid status, so the script fell straight through to the final-review step and logged nothing wrong. `codex.cmd exec` returned exit 0 after ~23 seconds 窶・a silent no-op, not a crash. Contrast the `01:45` and `01:50` runs, which failed loudly with exit code 1; this failure mode is worse because it looks like success.
+- 現行造形をベースに、**3玉トサカを削除**し、頭頂やや後方から後上方へ跳ねる細い黄色の球を1つ（必要なら細い2玉で曲がりを表現）に置換。
+- 目は丸い点目のまま（`><` はシート上の表情バリエーションであり、デフォルト造形には入れない）。ほお紅は削除。
+- くちばしは現行位置を維持しつつ小さめに。小さな尾羽を `rig` に追加。
+- 全高は現行 1.37 から大きく変えない（-0.03 程度まで）。
 
-## Task Match
+**Step 6 — アンカー整合（`animation.js` を触らずに済ませる）**
 
-Measured against `CURRENT_TASK.md`:
+以下の4値を現行から動かさないことを最優先とする。動かさなければ `animation.js` の修正はゼロで済む。
 
-| Requirement | Status |
-|---|---|
-| 縺｡縺・竊・**縺｡縺阪ｓ** (white chicken costume, skin-tone face, dark fringe, comb, no beak) | **Not done** 窶・still the original shared model with an `accent`-colored beak |
-| 縺ｴ繧・竊・**縺ｴ繧医″縺｡** (yellow chick, big round head, single swept tuft) | **Not done** 窶・still a 3-ball comb, head/body ratio unchanged |
-| Distinct silhouettes front / side / **back** | **Not done** 窶・the two characters remain geometrically identical; 縺｡縺阪ｓ's back comb ridge, required explicitly by the task, does not exist |
-| Names updated in UI | **Not done** 窶・`config.js` still `縺｡縺港 / `縺ｴ繧・; `ui.js:3` still hard-codes `縺｡縺港 |
-| Character-sheet fidelity | **Not evaluable** 窶・`references/chicken_piyokichi_character_sheet.png` is present and correct, but nothing was built from it |
-| **Preserve all behavior** (autonomous movement, furniture, cook/eat/read/sleep/clean/relax/VR, anchors, camera, pause, Japanese UI, room) | **Trivially satisfied** 窶・zero lines changed, so nothing could regress |
-| `npm test` / `npm run build` run and reported | **Not done** 窶・no evidence in `CODEX_REPORT.md`, which was never updated |
+1. 足裏最下点 `y = 0.01`
+2. 胴体中心 `y ≈ 0.51`、y半径 `≈ 0.38`、**z半径 `≈ 0.27`**（sleep の垂直位置を決める）
+3. 頭部 Group 原点 `y = 1.01`
+4. arms / legs pivot 座標
 
-Task match: **0 of 6 substantive requirements**. The deliverable 窶・"繧ｭ繝｣繝ｩ繧ｯ繧ｿ繝ｼ繧ｷ繝ｼ繝域ｺ匁侠縺ｮ縲後■縺阪ｓ縲阪後・繧医″縺｡縲阪′縲∫樟蝨ｨ縺ｨ蜷後§繧医≧縺ｫ螳ｶ縺ｮ荳ｭ縺ｧ閾ｪ蠕狗噪縺ｫ證ｮ繧峨＠縺ｦ縺・ｋ迥ｶ諷・ 窶・is not present.
+どうしても動かす必要がある場合は、`animation.js` の定数ではなく**キャラクター側の子オフセットで吸収**する（`CURRENT_TASK.md` の指示どおり）。`rig` 自身のオフセットは毎フレーム上書きされるため吸収先として使えない点に注意。
 
-## Regressions / Risks
+**Step 7 — VRヘッドセット**
 
-**No regressions.** An empty diff cannot regress behavior. The app is exactly as it was before the run, and the seven binding conditions from the pre-implementation review are all vacuously satisfied.
+`vr` は `head` の子のまま維持。ちきんは顔面プレートよりわずかに前（z を +0.02〜0.04）に置き、幅は頭幅の 0.8 倍程度に合わせる。ぴよきちは頭サイズ変更に比例させる。両者で `vr` のサイズ・位置が異なってよい（バリアント関数内で決める）。
 
-The risks here are **process risks**, and they are the reason this run consumed a full cycle and produced nothing:
+**Step 8 — 構造テストの追加（推奨、任意）**
 
-**P1 窶・Silent no-op passes the gate (highest priority).** `codex.cmd exec` exited 0 without editing anything or updating its report, and the loop advanced to final review regardless. Until the loop verifies that work actually happened, every future run can fail this same way and still log `Manager loop complete`.
+既存テストは無改変のまま、`tests/character-model.test.js` を新規追加することを推奨する。`life.test.js` が既に `three` と `three/addons`（`RoundedBoxGeometry` 経由）を Node 上で import できていることから、WebGL 不要の headless 実行が可能であることは実証済み。検証内容：
 
-**P2 窶・`CLAUDE_REVIEW.md` is mojibake on disk, and Codex reads it as its primary spec.** The file currently contains double-encoded Japanese throughout 窶・`邵ｺ・｡邵ｺ髦ｪ・伝 where `縺｡縺阪ｓ` belongs, `遯ｶ繝ｻ` where `窶覗 belongs. Cause: `manager-loop.ps1:65` captures the `claude` CLI's stdout through the Windows PowerShell 5.1 console pipeline, which decodes UTF-8 bytes as the ANSI codepage (CP932) before `Set-Content -Encoding UTF8` re-encodes the damage. Note `src/characters/config.js` reads back clean (`name:'縺｡縺・`), which confirms this is specific to the script's capture path, not a repo-wide encoding problem. **This is a plausible direct contributor to the no-op** 窶・Codex was handed an implementation guide whose every character name and Japanese requirement was unreadable.
+- `createCharacter(def)` が `root/rig/body/head/arms/legs/props/book/food/vr/broom` を全て返し、`arms.length === 2`、`legs.length === 2`
+- `head` と各 pivot が `THREE.Group` であること
+- `Box3.setFromObject(root)` の `min.y` が `0.01 ± 0.02`（床埋まり・浮きの回帰検出）
+- `vr.parent === head`
 
-**P3 窶・Step 3 destroys step 1.** `manager-loop.ps1:187` overwrites `CLAUDE_REVIEW.md` with the final review. The pre-implementation design review 窶・the anchor-contract table, the `rig.scale` analysis, the R1窶迭10 risk list 窶・is **overwritten by this very document**. That analysis is not recoverable from git, because there are no commits. Losing it means the next Codex run starts without the guidance that made this task containable.
+これは R7 のギャップを最小コストで塞ぐもので、`npm test` に自動で拾われる（`node --test`）。
 
-**P4 窶・No baseline commit.** Flagged as R10 in the pre-implementation review, not addressed, and it has now cost real verification ability: I could not diff, and had to fall back on timestamps. Any future review has the same handicap.
+**やらないこと**
 
-**P5 窶・Markdown escaping in the spec files.** `CURRENT_TASK.md`, `CLAUDE.md`, and `CODEX_REPORT.md` are stored with literal backslash escapes (`\# CURRENT TASK`, `\- 逋ｽ縺・ル繝ｯ繝医Μ逹縺舌ｋ縺ｿ鬚ｨ縺ｮ繧ｷ繝ｫ繧ｨ繝・ヨ`) and doubled blank lines. The Japanese is intact and the content is readable, so this is lower severity than P2 窶・but it degrades heading structure for any agent parsing these files.
+`ui.js` は R2 のハードコード文字列 `ちき` を `characters[0].name` 相当へ直す1点のみ許容（表示名変更を deliverable に含めると判断した場合）。それ以外の UI・CSS・家具・部屋・シミュレーション・ナビゲーションには一切触れない。ぴよみは追加しない。GLTF 化やアセット読み込み機構の導入は今回の範囲外。
 
-## Test / Build Assessment
+**判断を要する前提（Codex/Astra は下記の解釈で進め、`CODEX_REPORT.md` に明記すること）**
 
-**No test or build evidence exists for this run.** `CODEX_REPORT.md` was never updated, so the `## Tests` section still reads `譛ｪ螳滓命`.
+`CURRENT_TASK.md` は「見た目だけを安全に変更する」と述べる一方、Deliverable では「ちきん」「ぴよきち」が暮らしている状態を求めている。本レビューは**表示名も「ちきん」「ぴよきち」へ更新する**解釈を採る（`config.js` の `name` と `ui.js` の初期文字列1箇所のみ、`id` は不変）。この解釈が意図と異なる場合はロールバックが容易な範囲に収めてある。
 
-I did not run `npm run build` myself, as it writes `dist/` and this review is under a do-not-modify-files instruction. `npm test` was blocked by the sandbox in this session.
+## Test Points
 
-This matters less than it normally would, and the reason is worth restating: **the current suite provides zero signal on this task.** `tests/life.test.js:7` fabricates characters as bare object literals and never imports `model.js`; it covers `navigation.js` and `life.js` only. Since no source file changed, `npm test` will pass exactly as it did before 窶・and it would also have passed had Codex shipped a character buried in the floor. Green here means "the simulation still works," never "the models are correct."
+**Automated**
 
-The `tests/model.test.js` recommended in the pre-implementation review 窶・the `Box3` bounds assertion guarding feet-at-`y竕・`, total height, head pivot `y=1.01`, arm index order, `head.scale.y===1`, and `createCharacter.length===1` 窶・remains the only automated check that would give this task real coverage. It was not written.
+- `npm test` が通ること。ただし R7 のとおり既存3テストは本変更を検証しない。緑であること自体を根拠にしないこと。
+- `npm run build` が成功すること（Node 20.19+ / 22.12+）。
+- 追加した構造テスト（Step 8）が通ること。
 
-## Follow-up
+**Anchor / geometry（数値検証、目視より優先）**
 
-Ordered. Items 1窶・ should land **before** the next Codex attempt, because re-running the loop as-is will most likely reproduce the same silent no-op.
+- `Box3.setFromObject(character.root).min.y` が両キャラクターとも `0.01 ± 0.02`（床に埋まらない・浮かない）。
+- 胴体中心 y、頭部原点 y、arms/legs pivot が変更前と一致（またはドキュメント化された意図的な差分のみ）。
+- `vr.parent === head` が維持されている。
+- `arms[1]` が右腕であり、`cook` / `clean` で正しい側が動く。
 
-1. **Fix the encoding capture (P2).** In `manager-loop.ps1`, force UTF-8 on the CLI capture before invoking `claude`:
-   ```powershell
-   $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
-   ```
-   Then re-run the pre-review to regenerate a legible `CLAUDE_REVIEW.md`. Do not hand Codex the current mojibake file.
+**Behavior（実機確認）**
 
-2. **Stop overwriting the design review (P3).** Write the pre-review to `CLAUDE_REVIEW.md` and the final review to `CLAUDE_FINAL_REVIEW.md` (or timestamp them). The design analysis is the most expensive artifact in the loop and is currently discarded on every run.
+- ちきん・ぴよきちが自律移動する（歩行アニメの脚振りが不自然に見えない）。
+- 家具クリック → ポップオーバー → 「やってみる」で正常に行動開始。
+- ソファ：座面に腰が乗る。浮かない・沈まない。
+- ベッド：マットレス／掛け布団の上に横たわる。頭がヘッドボードを突き抜けない。**ここが最も壊れやすい**（sleep の z 半径依存）。
+- テーブル：食べ物が口／手の高さに来る。天板を突き抜けない。
+- キッチン：右腕の調理モーションが自然。
+- VR：ヘッドセットが顔面に正しく装着され、フードや前髪と z ファイティングしない。頭の左右振り（`head.rotation.y`）に追従する。
+- 読書：本が体の前に保持される。
+- 掃除：ほうきが手の位置から生えて見える。
+- 一時停止／再開、回転・ズーム・パン、視点リセットが従来どおり。
+- 2体が同じ家具を同時に取れない（予約ロジック不変の確認）。
 
-3. **Make the no-op detectable (P1).** After the Codex step, fail the run unless real work happened:
-   - require `CODEX_REPORT.md` to match `^\s*(DONE|DONE_WITH_NOTES)\s*$` 窶・reject `PENDING` and any unrecognized status, rather than only catching `BLOCKED`;
-   - assert `CODEX_REPORT.md`'s `LastWriteTime` is later than the step's start time;
-   - once item 4 is done, assert `git status --porcelain` is non-empty.
+**Visual（正面・側面・背面の3方向すべてで確認）**
 
-4. **Create the baseline commit (P4).** Commit the current tree. `.gitignore` exists 窶・confirm it covers `node_modules/`, `dist/`, and `manager-loop.log` first. This makes every subsequent review diff-based instead of timestamp-based.
+- ちきんとぴよきちが色・シルエット・身長で明確に見分けられる。
+- ちきん：正面＝フード＋肌色の顔＋ぱっつん前髪＋細い横目、くちばしが無い。側面＝後頭部の赤トサカが見える。背面＝白い着ぐるみと後頭部の縦トサカでニワトリ着ぐるみと分かる。
+- ぴよきち：頭頂の跳ね毛が**1本**であり、ぴよみの2本タフトに見えない。背面で尾羽と跳ね毛が確認できる。
+- 現行のパステル／ソフトライティング／トイライクな質感から浮いていない。羽毛表現・写実的な鳥になっていない。
+- 部屋・家具・照明・影に意図しない変化がない（変更前後のスクリーンショット比較を推奨）。
 
-5. **Re-run implementation** against the seven binding conditions from the pre-implementation review, which remain valid and unconsumed: zero-line diff in `animation.js`; `src/simulation/**`, `src/world/**`, `src/main.js`, `src/style.css` untouched; procedural geometry only; `createCharacter` keeps arity 1 and its exact return key set; `def.id` stays `'chiki'`/`'piyo'` (CSS depends on it); Phase 1 committed before Phase 2; the only permitted `ui.js` edit is the hard-coded `縺｡縺港 at `ui.js:3`.
+**CODEX_REPORT.md への記載必須項目**
 
-6. **Land `tests/model.test.js` first**, before any geometry changes, so it locks the current anchors and then guards the swap.
+変更ファイル一覧 / `npm test` と `npm run build` の実出力 / アンカー調整の有無とその数値 / キャラクターシートとの差異とその理由 / 表示名変更の解釈を採ったかどうか。
 
-7. **Consider un-escaping the spec files (P5)** so `CURRENT_TASK.md` and `CLAUDE.md` parse as clean markdown.
+## Approval
 
-## Final Approval
-
-Nothing was implemented. `CODEX_REPORT.md` still reports `譛ｪ螳滓命` / `縺ｪ縺輿 / `PENDING`, and the working tree confirms it: every `src/**` file predates the Codex step by roughly two hours, and `model.js` remains the original single-builder function serving both characters. The task's core deliverable 窶・two distinct, character-sheet-accurate silhouettes for 縺｡縺阪ｓ and 縺ｴ繧医″縺｡ 窶・does not exist in the codebase.
-
-There is no code to reject here, so this is not a quality judgment on an implementation. It is a report that the run produced no implementation, and that the loop reported success anyway. The most useful outcome of this cycle is the diagnosis: the corrupted `CLAUDE_REVIEW.md` (P2) plausibly left Codex with an unreadable spec, and the missing exit gate (P1) let the empty result through undetected. Fix follow-ups 1窶・ before re-running, or the next cycle will likely land in the same place.
-
-CHANGES_REQUIRED
+APPROVED_WITH_NOTES

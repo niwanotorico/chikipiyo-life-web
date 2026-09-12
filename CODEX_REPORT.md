@@ -1,344 +1,212 @@
-# VR GLB release with Piyomi — 2026-09-09
+# 2026-09-12 — Apply human-authored printer corrections
 
-## VR headset and supplied Piyomi release — 2026-09-10
+Final status: DONE
 
-### Final status
-DONE
+Re-exported the saved chikipiyo-envato-room.blend without saving or modifying the source. SHA-256: 8e6891f32127df960cc478bcd5e92848877336ad87a7d736c2177f3fb0c28a8e.
+Removed the runtime +0.5 height / +0.15 depth rail corrections: the human-authored rail geometry now supplies both values directly. Existing nozzle animation, reveal, and return behavior remain unchanged.
 
-### Changes / files changed
-- `assets/characters/piyomi.glb`: included the supplied update unchanged.
-- `assets/props/vr-headset.glb`: included the supplied headset unchanged.
-- `src/characters/model.js`, `src/characters/vr-gltf.js`, `src/main.js`: load the headset only into the existing head-attached VR group. The existing animation visibility switch, head movement and character dimensions remain in place.
-- `tests/vr-headset-gltf.test.js`: verifies the supplied headset remains head-attached for all three residents.
+Files changed: assets/room/human-room.glb; assets/room/human-room-manifest.json; model-work/latest-export.log; src/world/printer-motion.js; CODEX_REPORT.md.
 
-### Validation
-- `npm.cmd test`: PASS — 26 passed, 0 failed.
-- `npm.cmd run build -- --base /chikipiyo-life-web/`: PASS. Production output contains `piyomi-DBcO-02r.glb` and `vr-headset-CDrAEWUL.glb`.
+Validation: Blender --factory-startup --background --python model-work/export_latest_room.py succeeded; npm test 36 passed / 0 failed (includes source hash and full-cycle rail clearance); npm run build succeeded with the existing size warning. Browser reloaded and checked printing through completion with the existing UI, including early print and returned idle positions.
 
-### Headset fit follow-up
-- `src/characters/vr-gltf.js`: moved only the imported headset visual by local `[0, -0.11, -0.28]`, lowering it over the eyes and bringing its center back toward the head. The two supplied GLBs, existing VR action, head attachment group and camera remain unchanged.
-
-### VR dock follow-up
-- `src/world/furniture-gltf.js`, `src/main.js`: while a resident is in the VR action, hide only the matching headset object on the VR dock. Its table and controllers stay visible, eliminating the duplicate headset while preserving the furniture interaction.
-
-
-## Supplied Piyomi asset release — 2026-09-09
-
-Updated `assets/characters/piyomi.glb` for the supplied revision. The incoming GLB included meshes outside the required six rigid parts, so it was normalized to the existing Web contract (`Body`, `Head`, `Wing_L`, `Wing_R`, `Leg_L`, `Leg_R`) before release. No source code or other asset is changed for this update.
-
-## Final status
-DONE
-
-## Piyomi model repair — 2026-09-09
-
-The previous Piyomi export applied an extra head-height offset, causing the visible model to break apart. Rebuilt `assets/characters/piyomi.glb` from the supplied blend's existing `piyormi` meshes, with its six rigid parts authored at their matching Web pivots. The corrected asset spans floor `y=.01` to `y=1.073`; the broken asset's head extended to `y=1.703`.
-
-`model-work/export_piyomi_web.py` records the repeatable export. `tests/character-gltf.test.js` now guards against the duplicate vertical offset while retaining the existing six-part and attachment checks.
-
-## Changes / files changed
-- `assets/furniture/vr.glb`: used the user-supplied updated VR furniture model.
-- `src/world/furniture-gltf.js`: loads only the VR GLB and preserves the established furniture group, placement and click ownership.
-- `src/main.js`: makes the production asset URL available to that bounded loader.
-- `tests/furniture-gltf.test.js`: verifies the supplied VR GLB replaces only its rendering while retaining its installation origin and click target metadata.
-- `CODEX_REPORT.md`: this report.
-
-## Validation
-- `npm.cmd test`: PASS — 23 passed, 0 failed.
-- `npm.cmd run build -- --base /chikipiyo-life-web/`: PASS. The production output contains `piyomi`, `chicken`, `piyokichi`, and the updated `vr` GLBs.
-- Production preview opened at `/chikipiyo-life-web/` before publication.
-
-## Scope / limitations
-The updated VR model replaces only the visual children of the existing VR furniture group. Its world position, action anchor, click behavior, house, camera and all other furniture remain unchanged. The Piyomi implementation from the preceding commit is included in this release. Unrelated working-tree changes were preserved.
-
-# Optional GLB character adapter — 2026-09-09
-
-## Final status
-DONE_WITH_NOTES
-
-## Changes / files changed this request
-- src/characters/gltf.js: GLTFLoader loading, rigid named-part validation and neutral-pose attachment to existing pivots. Missing/broken/unsupported files retain procedural visuals.
-- src/main.js: optional Vite asset discovery and async visual loading only; simulation setup unchanged.
-- assets/characters/.gitkeep: asset placement directory for chicken.glb and piyokichi.glb.
-- tests/character-gltf.test.js: missing/failing loader, invalid structure, real in-memory binary GLB parsing and loading during sleep for both characters; checks original rig/VR identity and neutral transforms.
-- README.md: file paths, rebuild instructions, six named rigid parts, axes, pivots, sizing, VR and limitations.
-- CODEX_REPORT.md: this report.
-
-## Contracts
-Procedural model generation, root position/rotation/scale, original head/wing/leg groups, props, VR, interaction anchors and all action/animation code unchanged this request. Adapter hides original visual children only after full structural validation. Imported parts are bound in neutral rig coordinates even if the current rig is sleeping or walking. Body reference remains the original internal procedural anchor; new visible body is under the same rig.
-
-## Validation
-- npm test: PASS, 15 tests, 0 failures (11 existing + 4 adapter cases).
-- npm run build: PASS, Vite 7.3.6, 21 modules, 1.13s. Nonfatal chunk warning: 653.99 kB JS / 172.36 kB gzip.
-- Browser production preview http://127.0.0.1:4173/: both procedural characters rendered without GLBs and autonomously walked toward desk/kitchen; Japanese UI present.
-- Development browser on 5173/5175 remained blank in this session, with no captured console errors; production preview succeeded. The development-browser issue was not conclusively diagnosed.
-- GLB success path verified with real GLTFLoader parsing an in-memory binary fixture, not a finished Blender character (none provided).
-
-## Limitations / Claude review focus
-Only six independent rigid parts (Body, Head, Wing_L/R, Leg_L/R) are supported to preserve current limb animation. Skinned armatures, embedded animation playback and compressed asset decoders are not supported. GLBs must be authored to documented neutral coordinates/dimensions; no automatic normalization or contact fitting. Review final Blender asset fit for VR, sleeping and sitting after delivery. Asset load errors are recorded on character.visualLoadError; no new UI added. Existing unrelated working-tree changes were preserved. Earlier review excluded GLTF conversion, but this latest explicit user request authorizes this bounded adapter.
+Limitations / Claude review: runtime still supplies the telescopic nozzle animation; only duplicated rail position corrections were removed. Review source primitive mappings after any future reorganization. No redesign_room.py or recolor_room.py execution.
 
 ---
 
-# Character silhouette redesign — 2026-09-09
+# 2026-09-12 — Printer gantry clearance correction
 
-## Final status
-DONE_WITH_NOTES
+Final status: DONE
 
-## Changes / files changed this request
-- `src/characters/model.js`: rebuilt character appearance from drawn outlines using custom inflated BufferGeometry, thin extruded shapes and a continuous hood rim. Preserved root/rig/head/limb pivots, returned rig keys, props and VR code.
-- `CODEX_REPORT.md`: this report, earlier reports retained below.
-- No changes this request to animation.js, config, tests, house, furniture, camera, UI, movement, actions or sleep mechanism. Pre-existing changes from earlier turns remain.
+What changed:
+- Cross rail now stays at a fixed elevated height, attached through the upper part of the print-head housing. Its world-space vertical range is approximately 2.848–3.375, above the shelf/windows and below the upper house beams.
+- Moved the cross-rail path forward by 0.15 world units. Both vertical-guide/support assemblies follow its depth motion, keeping the end blocks aligned.
+- Upper housing, fan and cable attachment retain their height. The nozzle/heater hangs below on a metal telescopic shaft and sleeve. Only this lower assembly follows the original vertical print path.
+- Preserved the exact nozzle-tip target, horizontal path, layer reveal, completion timing and parking/interruption behavior.
+- Room layout, furniture, characters, UI and source Blend/GLB were not modified.
 
-## Appearance
-- Piyokichi: wider dominant head, compact lobed body overlapping the head, planar black eyes and triangular beak, thin small wing silhouettes, one swept crest, simplified flat zigzag legs/feet and silhouette tail.
-- Chicken: broad round hood, recessed skin face inside a continuous white opening rim, flat three-section blunt fringe, horizontal line eyes, scalloped external red comb, short lobed white suit body and thin costume wings. Removed anatomical toes.
-- Head pivots remain 1.01 / .69. Arm and leg pivots, VR parent/size/position, all prop offsets and root transforms remain unchanged. Grounding and size-ratio tests still pass.
+Files changed: src/world/printer-motion.js; tests/printer-motion.test.js; CODEX_REPORT.md.
 
-## Validation
-- `npm test`: PASS, 11 tests, 0 failures, including grounding, original VR anchors, all real-model furniture arrivals, relative size, sleep orientation/containment for four approach yaws and return from sleep.
-- `npm run build`: PASS. Existing non-fatal warning for JS bundle exceeding 500 kB remains.
-- Browser: rendered actual imported models at identical scale in front, oblique and back views in a temporary review page. Corrected the initially visible applied-plate hood edge into a continuous curved rim and increased head/body overlap after inspecting it. Verified final three views and actual application rendering with original camera. Temporary review page removed after verification.
+Validation:
+- node --test tests/printer-motion.test.js: 2 passed.
+- npm test: 36 passed, 0 failed.
+- npm run build: passed (29 modules); existing bundle-size warning remains.
+- New actual-GLB test samples the complete 0–17 second cycle at 0.05-second intervals. Checks the cross-rail bounding box against static furniture/windows/walls and upper beams, upper-housing height, unchanged actual nozzle-tip position and support alignment. The tall external supply spool is excluded from the room-obstacle check.
+- Browser at http://127.0.0.1:5174/: selected piyokichi and printed through the existing UI. Inspected screenshots at clock 09:10, 09:22, 09:31 and 09:40 (early/middle/late printing and completion). Cross rail stays visibly above the cabinet and windows while the hanging nozzle works at the model; completed model and parked nozzle observed.
 
-## Self-review / limitations / Claude review focus
-- Front silhouette now reads as a human face in a white chicken hood and a big-headed compact chick; face, feather/wing outlines and zigzag feet are graphic rather than anatomical.
-- Compared with sheet: original hand-drawn irregularities are simplified; default chick uses neutral dot eyes rather than expressive chevrons. Comb is a rounded extruded strip and remains flatter across its width than the drawing's front-view dome. Head/body shading still reveals some separation in 3D despite silhouette overlap.
-- Review side/back hood curvature, swept crest and tail thickness, plus full-cycle prop fit with unchanged accessory anchors. Three-view review covers static appearance; existing tests cover transforms/behavior, not every animation's visual contact.
-
----
-
-# Character appearance and sleep refinement — 2026-09-09
-
-## Final status
-DONE_WITH_NOTES
-
-## Changes / files changed
-- `src/characters/model.js`: smaller piyokichi head, torso, wings, beak, tail and finer swept crest; rounder chicken hood, circular face opening, visible skin, fitted fringe, clearer red comb, rounder torso and finer bird feet.
-- `src/characters/animation.js`: sleep-only support height for piyokichi reduced from 1.14 to 1.065 to match its smaller head depth. Existing world-Z alignment, approach-yaw cancellation and pillow head anchor were already correct and retained.
-- `tests/character-model.test.js`: updated head-height expectation and strengthened relative-size thresholds (height <75%, width <80%).
-- `CODEX_REPORT.md`: this report; earlier reports preserved below.
-
-## Dimensions / preserved behavior
-- Visible standing height: chicken 1.505, piyokichi 1.12482 (74.7%); width: .88 / .62 (70.5%). Both soles remain y=.01.
-- Piyokichi head pivot .78 -> .69; torso center .41 -> .365; wing pivot .53 -> .45. Root, leg pivots and VR attachment positions unchanged.
-- No changes to house, furniture, camera, reel, build plate, simulation, UI or non-sleep animation branches.
-- Latest explicit user request authorizes smaller proportions and sleep correction beyond the earlier review's conservative size guidance. CURRENT_TASK.md and CLAUDE_REVIEW.md were read and not modified.
-
-## Tests / build
-- `npm test`: PASS, 11 tests, 0 failures. Includes real-model furniture arrival, grounding, size difference, sleep pillow alignment and bed containment across four approach yaws for both characters, and reset after sleep.
-- `npm run build`: PASS, Vite 7.3.6, 18 modules, 1.52s. Non-fatal >500 kB bundle warning (552.63 kB JS).
-- `npm run dev -- --port 5173`: local browser verification server.
-
-## Browser verification
-- Opened the actual app at http://127.0.0.1:5173/ with its unchanged default camera.
-- Observed clear size difference, white rounded chicken costume with skin/fringe face, and yellow chick with small body and swept crest while walking.
-- Issued bed command to chicken, observed sleep with head on pillow side and body along bed within its edges.
-- Moved chicken to sofa, selected piyokichi and issued bed command; observed the smaller chick sleeping in the same correct direction on the pillow side.
-
-## Limitations / Claude review focus
-- Character sheet translated into rounded 3D geometry; not an exact traced model. Default camera's rails partially occlude details, and close-up turntable inspection was not performed.
-- Review fringe/skin overlap and small-character accessory fit throughout non-sleep animations. Their existing logic and VR offsets were intentionally preserved.
-- Build bundle warning remains. Existing unrelated working-tree changes to review/manager/setup files were untouched.
+Known limitations / Claude review:
+- Telescoping nozzle is a visual mechanism, not a mechanical CAD or G-code simulation.
+- Runtime rig still depends on the current exported primitive names. Review mappings if the source geometry is reorganized.
+- Collision coverage is the cross rail against room objects; it intentionally permits contact among printer parts.
 
 ---
 
-# CODEX IMPLEMENTATION REPORT
+# 2026-09-12 — Printer nozzle motion only
 
-## GitHub Pages deployment task — 2026-09-09
+Final status: DONE
 
-### Final status
-BLOCKED — destination confirmed as https://github.com/niwanotorico/chikipiyo-life-web (empty public repository, default branch main). Origin is configured and local commit 50f77a7 contains the current application, tests and Pages workflow. `git push -u origin master:main` has been started but is waiting for Git Credential Manager authentication; no successful push or public deployment has been verified. Pages settings have not yet been changed. The in-app browser is signed out of GitHub.
+Changes:
+- Added a runtime rig for the existing five Hotend body primitives, three cross-rail primitives and feed cable. The source Blend and GLB are unchanged.
+- Nozzle follows a smooth visual serpentine path within the printed model footprint. Its tip follows the existing reveal plane at +0.045 world units; progress remains elapsed / 14 seconds.
+- Cross rail follows height and depth. Cable supply end stays anchored and the head end follows using weighted vertex offsets.
+- A 0.65-second approach and the final 1.6-second parking movement fit inside the existing 16-second action. Interruption returns smoothly in 0.8 seconds. Pausing freezes motion.
+- Existing print clipping/glow, other furniture, characters, UI and action behavior are unchanged.
 
-### Repository connection follow-up
-- Preserved the local master branch and existing baseline history; the push targets remote main without force.
-- Committed current application changes and tests alongside deployment configuration. Unrelated local changes to CLAUDE_REVIEW.md, manager-loop-v2.ps1 and the SETUP_BASELINE.ps1 deletion remain uncommitted and untouched.
-- Re-ran `npm.cmd test`: 11 passed. Re-ran `npm.cmd run build -- --base /chikipiyo-life-web/`: passed, same non-fatal chunk warning.
-- Expected public URL after successful deployment: https://niwanotorico.github.io/chikipiyo-life-web/ . This is not yet a verified live site.
+Files: src/world/printer-motion.js (new), src/world/latest-room.js (rig integration only), tests/printer-motion.test.js (new), CODEX_REPORT.md.
 
-### Changes / files changed
-- `.github/workflows/pages.yml`: default-branch-only deployment on main/master pushes or manual dispatch, Node 22, npm ci, tests, Pages-derived build base, dist artifact upload and deployment. Official action revisions are pinned. Deployment permissions are limited to the deploy job.
-- `README.md`: Pages setup, deployment trigger, phone controls and local subpath preview instructions.
-- `CODEX_REPORT.md`: this task report; previous implementation report retained below.
-- Application source, dependencies and existing local changes were preserved. CURRENT_TASK.md and CLAUDE_REVIEW.md were read and not modified; their APPROVED_WITH_NOTES review concerns the earlier character task. The latest user request authorizes Pages configuration.
+Validation:
+- npm test: 35 tests pass, 0 failures.
+- node --test tests/printer-motion.test.js: pass. Tests actual GLB parts, X/Z travel, tip clearance throughout layers, cross-rail synchronization, parking, exact cable restoration and interruption.
+- npm run build: success. Existing bundle-size warning remains.
+- Browser http://127.0.0.1:5174/: issued print command to piyokichi through the existing UI. Checked start and paused/resumed through in-app times 09:09, 09:21, 09:30 and 09:39. Screenshots show low initial layers, growing house with raised/moved nozzle, finished house, and restored idle nozzle/rail/cable after the actor moved to reading. No time override or test-only UI was used.
 
-### Tests / build commands and results
-- `npm.cmd test`: 11 passed, 0 failed.
-- `npm.cmd run build`: passed, Vite 7.3.6, 18 modules.
-- `npm.cmd run build -- --base /chikipiyo-life-web/`: passed.
-- `npm.cmd run preview -- --base /chikipiyo-life-web/ --port 4187 --strictPort`: started successfully; Node fetch verified HTML and both generated JS/CSS assets with HTTP 200 under the Pages subpath and correct asset content types. Preview process stopped afterward.
-- `git diff --check`: reported existing trailing blank lines in src/characters/animation.js, src/ui.js, src/world/furniture.js and src/world/house.js; these files were not changed in this task.
-
-### Limitations / Claude review focus
-- No live GitHub Actions run, public URL or physical smartphone verification yet. Destination repository and Pages Source = GitHub Actions must be configured before deployment.
-- Existing >500 kB JavaScript chunk warning remains (552.55 kB, gzip 144.39 kB); build succeeds. Existing mobile CSS and touch controls were preserved, not visually revalidated in this task.
-- Review workflow permissions, default branch gate, Pages base_path interpolation and initial Pages setup against the destination repository. Only dist is uploaded as the website artifact.
+Limitations / Claude review:
+- Intentionally a visual path, not G-code or collision-aware manufacturing simulation.
+- Rig identification uses primitive names in the current GLB; a differently structured future export needs mapping review (the tests assert the current part counts).
+- Review alternate-view carriage/cable appearance if changing the gantry geometry later.
 
 ---
 
-## Previous implementation report
+# Latest implementation — 2026-09-12: Blender room renewal
 
 ## Final status
 DONE_WITH_NOTES
 
 ## Scope and authority
-Implemented the user's latest request in the existing project. CURRENT_TASK.md and CLAUDE_REVIEW.md were read; review approval is APPROVED_WITH_NOTES. Their earlier character-only scope is superseded by the user's explicit request to also update the house and furniture layout. Neither document was edited. No new project or dependency was created.
-
-## Changes / files changed
-- src/world/house.js: substantial mint enclosure, large left yellow filament reel, horizontal X rails, right print head/nozzle, continuous filament tube, warm walls/windows, central rug. Supports remain outside the walk grid.
-- src/world/furniture.js: kitchen/dining left, sofa and VR low table centrally, desk/build plate right. Existing bed retained at front left. Furniture and interaction spots translated together; original relative offsets and facing are retained. Desk/build plate and VR table footprints expanded to cover their visual bounds. Build plate is part of the existing desk click target and retains its read action; no printing action added.
-- src/characters/config.js: names changed to ちきん/ぴよきち, separate appearance variants/colors; IDs, starting positions, personalities unchanged.
-- src/characters/model.js: white chicken costume with human face, dark straight fringe, horizontal eyes, red crown/rear comb; yellow chick with a single swept tuft, small beak; both have wings, tail and yellow bird feet. No piyomi.
-- src/ui.js: only the initial selected-name text now reads characterDefinitions name. UI layout and controls unchanged.
-- tests/character-model.test.js: actual-model anchor and action integration coverage, furniture raycast ownership.
-- CODEX_REPORT.md: this report.
-
-## Preservation / measurements
-- src/simulation/*, src/characters/animation.js, src/main.js, src/style.css and existing tests/life.test.js unchanged.
-- Root transform/start, head pivot y=1.01, body center y=.51 and radii [.32,.38,.27], arm/leg pivots, book/food/broom attachment offsets unchanged.
-- VR remains a head child at [0,.025,.34], same dimensions; no attachment offset change.
-- Standing foot minimum y=.01, equal to the original floor top. Original measured full height including comb was 1.505 (the review's 1.37 excluded the comb).
-- Furniture-relative spots and animation offsets preserved, including bed/sofa. All 49 furniture-to-furniture routes remain reachable. Both real character models can reach every furniture action from their original starting positions.
-- Expanded obstacle footprints are spatial data updates; pathfinding, autonomous selection, reservation and action state machines were not changed.
-
-## Commands / results
-Final `npm.cmd test` (Windows equivalent of npm test): 8 tests, 8 pass, 0 fail, duration 247 ms.
-Covers real model floor/VR anchors, all action animation transforms and visibility, 14 actual-model furniture commands, raycast IDs, mutual reachability, reservations, pause/resume.
-Final `npm.cmd run build` (npm run build): success, Vite 7.3.6, 18 modules transformed, 844 ms. JS 534.16 kB / gzip 137.56 kB. Non-fatal >500 kB chunk warning remains.
-`npm.cmd run dev -- --port 5173`: existing port occupied; verification server started at http://127.0.0.1:5174/.
-
-## Browser verification
-Rendered the updated scene in the browser. Observed both characters autonomously moving/acting and the clock advancing, including eating and sleeping status. Clicked the sofa directly in the 3D canvas and verified the sofa action popover, then issued the command. Verified VR selection and movement-command event, pause/resume status, and camera drag rotation. No UI layout changes introduced.
-
-## Differences / limitations
-- Reference is translated to simple rounded Three.js geometry, not photographic fidelity. Reel winding, filament, rails and head are static; lighting remains the existing renderer/light setup. Fine fabric, tools, plants and dense decor omitted for clarity and geometry cost.
-- Kept original camera and spacious floor plan, so framing is more elevated/open than the frontal key visual; rails can obscure parts of furniture at some angles.
-- Build plate is compact enough to fit beside the right desk and stay within the existing room; bed retained for sleeping functionality although absent in the key visual.
-- Character height differences are intentionally subtle to preserve existing animation/bed dimensions. Tuft and rear comb use overlapping smooth forms; no custom mesh or exact traced silhouette. Default chick expression uses the sheet's neutral dot eyes.
-- Tests establish reachability, transform/attachment contracts and action transitions, not pixel-perfect contact. Exhaustive close-up front/side/back checks of every animation pose, VR fit throughout its full cycle, zoom and right-button pan were not performed. Existing bed/sofa pose offsets are preserved rather than corrected or redesigned.
-
-## Claude review focus
-Review face/fringe and rear silhouette, full-cycle VR fit, bed/sofa contact, revised clearances near the left dining/bed area, and the build plate/desk shared footprint. Compare against the reference while keeping the existing action contracts. Unrelated pre-existing working-tree changes (review, manager scripts, deleted setup script) were left untouched.
-
-# 2026-09-09 Existing Blender → six-part GLB delivery
-
-Final status: DONE_WITH_NOTES
-
-## Scope and changes
-The latest user request supersedes the earlier procedural-model implementation scope: GLB assets and review renders only. No Web source, CURRENT_TASK.md, or CLAUDE_REVIEW.md was changed in this task. Existing working-tree edits were preserved. The original references/ここからチキンズ_2026_09.blend was opened read-only and never saved over. Source SHA256: 7DFE8BCBBFBA5D1D092792742DC56A6151B1BC5EBEC4906554A1BE0D0CEE3D94.
-
-Every visible mesh derives from chicken_main (+ .001/.002/.003) or piyokichi in that blend. No replacement character was generated. Connected source components were partitioned into rigid groups; source bones and animations were excluded. One subdivision level smooths the retained topology. provenance.json records the exact source/component-to-part mapping.
-
-Adjustments: chicken uniform scale .96, head width +17%, head down .045, lower face extended to close the hood gap, internal neck material white, original wings lowered 52 degrees. Piyokichi uniform scale 1.25, original wings reduced/lowered, beak reduced to 64% about its local center, original crest turned 48 degrees to read from front and side. Materials converted to simple self-contained rough PBR colors. Original fringe, eyes, combs, body lobes, feet, and tails retained.
-
-## Files changed/created
-- assets/characters/chicken.glb (781,156 bytes)
-- assets/characters/piyokichi.glb (690,220 bytes)
-- model-work/chicken_piyokichi_web.blend: working derivative; separate WEB_chicken / WEB_piyokichi collections, chicken visible initially. Original rig remains available in the untouched source blend.
-- model-work/renders/: eight 640 x 640 PNGs, front / three-quarter / side / back for each character, equal camera scale.
-- model-work/review.html: render gallery.
-- model-work/build_models.py, inspect_source.py, source-components.json, provenance.json, validate_glb.mjs, validation.json, build.log: reproducible derivation, component inventory, and validation records.
-- CODEX_REPORT.md: this appended report, previous reports preserved.
-
-## Web contract and measurements
-GLBs contain exactly Body, Head, Wing_L, Wing_R, Leg_L, Leg_R, with no skins or animation clips. +Y up, +Z front, global origin zero; both soles min Y=0.010000005. Blender +Z up / -Y front converts on export. Wing_L and Leg_L denote -X, matching the current loader.
-Head pivots: chicken (0,1.01,0), piyokichi (0,.69,0). Wings: chicken (+/-.30,.67,0), piyokichi (+/-.195,.45,0). Legs: chicken (+/-.14,.25,0), piyokichi (+/-.11,.25,0). Body pivot zero. Geometry offsets absorb grounding; no Web anchor edits.
-Chicken max Y=1.40310, width=.82188, depth=.69596; piyokichi max Y=1.11781, width=.63897, depth=.78541 (including beak and tail).
-
-## Checks and results
-- Blender 5.2 --factory-startup background source inspection and build_models.py: successful exports, all eight renders, derivative blend saved.
-- node model-work/validate_glb.mjs: PASS for both actual final GLBs using Three.js GLTFLoader and existing installCharacterVisual. Verified six required parts, no skins/clips, floor bounds, successful installation.
-- npm.cmd test: 15 passed, 0 failed.
-- npm.cmd run build after final exports: PASS; both GLBs included in dist. Existing >500 kB JavaScript chunk warning remains.
-- Visually inspected all eight final PNGs. Face/hood gap corrected; swept crest visible from front, side, and back.
-
-## Limitations and Claude review focus
-- Kept piyokichi's original >< expression, matching the sheet's large front drawing; this intentionally differs from the older review's suggested neutral dot eyes.
-- Source body/hip lobes and volumetric feet remain more sculpted than the flat sheet. Keeping existing geometry took priority over replacing the whole silhouette. The crest is diagonally oriented to remain readable in multiple views.
-- Rigid segmentation does not retain the source's deforming armature. Web animation/furniture/VR contact was not visually tested in the running Web scene, per the GLB-only scope. Loader and unit checks do not establish those contacts. Review wing swings, head turns, seated hip volume, bed and VR fit before any later integration adjustments.
-- The source meshes retain some sculpted surface irregularities; these are visible in rear lighting and were not redesigned.
-- Placing the assets in the existing configured folder makes them discoverable by the already-present Web loader/build without code edits. Nothing was deployed.
-
-# 2026-09-09 Sofa orientation and Pages release
-
-<!-- Furniture export report is appended below; prior release report retained. -->
-
-## Work Performed
-
-- Treated `assets/characters/chicken.glb` and `assets/characters/piyokichi.glb` as supplied, final assets. Their contents were not modified.
-- Changed only the sofa's `face` target from `Math.PI` to `0`. The sofa backrest is at local/world -Z and character fronts are +Z, so this makes both characters face toward +Z and keep their backs toward the backrest. The existing seat point `[.6, 0, 1.25]` is unchanged.
-- Added a regression test that exercises both character definitions while relaxing and asserts the sofa target rotation is zero.
-- Limited Vite's GLB import list to the two current assets, excluding local `*_old.glb` backups from the production bundle.
-- No responsive CSS change was needed: the existing mobile rules passed a 390×844 interactive check without horizontal overflow.
-
-## Files Changed
-
-- `src/world/furniture.js`
-- `src/main.js`
-- `tests/character-model.test.js`
-- Existing GLB integration files and the two supplied current GLBs are included in the release commit. Local `*_old.glb`, `model-work/`, and source `.blend` files are excluded.
-
-## Validation
-
-- `npm test`: PASS — 16 tests passed, 0 failed. This includes both characters' sofa-facing regression test.
-- `npm run build`: PASS.
-- `npm run build -- --base /chikipiyo-life-web/`: PASS. Only `chicken.glb` and `piyokichi.glb` were emitted.
-- Served that Pages-base build at `/chikipiyo-life-web/`: PASS. Both latest GLB visuals, controls, and furniture panel appeared correctly.
-- Interactive 390×844 check: 3D view visible; document/body width 375px with scroll width 375px; furniture action dialog, pause/resume, drag rotation, and zoom were exercised. No unintended horizontal scroll occurred.
-
-## Known Limitations
-
-- The intentional JavaScript bundle-size warning (>500 kB) remains unchanged.
-- Production deployment verification is recorded after GitHub Actions completes.
-
-## Final Status
-
-DONE
-
-# Piyomi resident and furniture anchors
-
-## Work Performed
-
-- Added `piyomi` as the third resident using the existing `piyormi` Blender meshes and the character sheet as references. The resulting rigid GLB is `assets/characters/piyomi.glb`; existing chicken and piyokichi GLBs were not changed.
-- Added the third definition, avatar, asset lookup, and UI card. Piyomi shares autonomous simulation and all existing furniture/action routes.
-- Kept the sofa facing direction and raised the relax pose from `rig.position.y=.35` to `.48` so all three bodies meet the cushion. The bed sleep anchor and corrected pillow orientation remain unchanged.
-- Updated visible labels to `トリ家族のおうち` and `ちきんとぴよこたちはきままにやっています`. Added the pink piyomi avatar styling.
-
-## Files Changed
-
-`src/characters/config.js`, `src/characters/gltf.js`, `src/main.js`, `src/characters/animation.js`, `src/ui.js`, `src/style.css`, `tests/character-gltf.test.js`, `tests/character-model.test.js`, and `assets/characters/piyomi.glb`.
-
-## Validation
-
-- `npm test`: PASS — 22 tests passed, 0 failed, including three-resident GLB, sofa cushion, and bed contact checks.
-- `npm run build`: PASS. Production output includes chicken, piyokichi, and piyomi GLBs.
-- Browser check at 127.0.0.1:5175: three resident cards and 3D characters visible; requested title and free-text visible; piyomi sofa action and bed action dialog exercised.
-- Piyomi GLB inspection: six rigid required parts, pink cheek material `#ffaac8`, and no armature/animation dependency.
-
-## Known Limitations
-
-The sofa and bed contact checks use geometry bounds and the existing action anchors; the browser camera view can partially occlude characters behind the room rails. Existing furniture, room, 3DP mechanism, camera, and the chicken/piyokichi GLBs were preserved.
-
-## Final Status
-
-DONE_WITH_NOTES
-
-# Furniture GLB export for Blender editing
+The current user request supersedes the older character-only CURRENT_TASK.md and APPROVED_WITH_NOTES review. Neither CURRENT_TASK.md nor CLAUDE_REVIEW.md was edited. Existing unrelated working-tree edits were preserved.
 
 ## Changes
-Exported current procedural furniture without modifying application code or character GLBs. Seven individual files use local installation origins; furniture-layout.glb preserves current room placement. All 69 meshes retain their geometry and PBR materials, with stable part names for editing. No deployment or commit was performed for this export.
+- Exported the current model-work/chikipiyo-envato-room.blend to assets/room/human-room.glb without saving the Blend. All house/furniture/gantry geometry retains Blender world transforms and materials. Resident meshes are excluded; existing chicken, piyokichi and piyomi GLBs remain unchanged.
+- Source SHA-256: 147d6a551cbcd164fc912e45ba8c473942eac71b94944fe13e5023ecb15b1afa. Export checks equality before/after; the test suite also verifies the current source against the manifest.
+- Did not execute redesign_room.py or recolor_room.py.
+- Replaced runtime humanLayout with interaction definitions derived from exported named-object bounds (Blender X,Z,-Y conversion). Human-room entry point is now a compatibility wrapper, with no old fixed layout.
+- Retained character selection → action selection, autonomous choices, reservations, pause, OrbitControls and event logs.
+- Sofa uses its new cushion position. Bed uses its current pillow axis and switches Blanket_idle / Blanket_in_use. Eating uses the actual right dining chair. VR hides the exported VR_headset when worn. Vacuum uses the Blender vacuum mesh and a short sweep beside its dock instead of the broom. 3DP reveals edp_house upward from its measured build height with a processing glow; gantry and cable remain in their authored positions.
+- Removed kitchen/fridge action definitions and menu items. Their Blender visuals remain static obstacles. Cleaning is now a reservable furniture action. Moved piyomi's starting position out of the new sofa footprint. Updated the UI's two-resident wording.
 
-## Files
-- scripts/export-furniture.mjs
-- assets/furniture/{bed,sofa,table,kitchen,fridge,vr,desk,furniture-layout}.glb
-- assets/furniture/layout.json and README.md
+## Files changed in this implementation
+- model-work/export_latest_room.py; model-work/inspect_latest.py
+- model-work/latest-objects.json; model-work/human-inspection.json; model-work/latest-export.log (generated inspection/export evidence)
+- assets/room/human-room.glb; assets/room/human-room-manifest.json
+- src/world/room-layout.js; src/world/latest-room.js; src/world/human-room.js
+- src/world/furniture.js (remove retired action entries)
+- src/main.js; src/characters/animation.js; src/characters/config.js
+- src/simulation/actions.js; src/simulation/life.js; src/ui.js
+- tests/human-room.test.js; tests/latest-room.test.js; tests/life.test.js
 - CODEX_REPORT.md
 
-## Validation
-- node scripts/export-furniture.mjs: all eight GLBs exported and reloaded; mesh counts and geometry bounds match the source.
-- Blender 5.2 factory-startup import of furniture-layout.glb: PASS, 69 meshes.
-- npm test: PASS, 16 tests.
-- npm run build: PASS; existing bundle-size warning remains.
+## Validation commands and results
+- Blender 5.2 --factory-startup --background --python model-work/inspect_human.py: success.
+- Blender 5.2 --factory-startup --background --python model-work/inspect_latest.py: success.
+- Blender 5.2 --factory-startup --background --python model-work/export_latest_room.py: success; source unchanged.
+- npm test: 34 passed, 0 failed. Covers source hash, GLB bounds and click ownership, all 3 residents × 7 current actions, reservations/pause, all start/interaction routes sampled against static obstacles, bed alignment, blanket/VR/vacuum/print restoration after interruption, existing character/VR asset contracts.
+- npm run build: success, 28 modules. Vite emits a bundle-size warning (JS approximately 663 kB); no build errors.
+- Browser at http://127.0.0.1:5174/: room and gantry rendered; character/action selection and logs worked; dining-chair eating, sofa sitting, sleeping/blanket and VR display observed. Initial browser console error/warning query returned []. A final variable-rename ReferenceError was detected, corrected, rebuilt, and verified by reloading: 3D rendering and autonomous behavior resumed with no new errors (the browser retains the earlier historical log).
+
+## Known limitations
+- Room GLB is approximately 29.4 MB, exported for fidelity without geometry/texture compression; first-load transfer is correspondingly large.
+- Web lighting remains the existing Three.js soft lighting, not a pixel-identical Blender render.
+- 3DP is a visual layer-reveal simulation, not physical extrusion or moving gantry kinematics. Vacuum sweeps a short clear area near its dock, not the entire room.
+- Contact-height offsets are authored for the existing character rigs; full body physics and dynamic character-to-character collision remain outside this implementation.
+- Existing procedural geometry tests remain as regression coverage; latest-room-specific tests separately exercise the actual production scene.
+
+## Claude should review
+- Actual chair/sofa/bed contact heights across all three character sizes from alternate camera angles.
+- Whether the local vacuum sweep and layer-reveal printing match the desired next level of behavior detail.
+- Asset compression can be considered separately without changing the Blender source.
+
+---
+
+# CODEX REPORT
+
+## Final status
+DONE_WITH_NOTES
+
+## Task and changes
+2026-09-11: Completed a separate Blender room redesign using 13 Envato assets. The actual share is \\192.168.1.132\Transfer\11_ (the supplied Transfer\11\_ did not exist).
+The latest user request supersedes the older character-only CURRENT_TASK/CLAUDE_REVIEW scope. Neither instruction file was modified.
+
+Preserved the existing house geometry by exporting createHouse directly, including walls, floor, printer enclosure, spool, rails and windows. Imported all three current character GLBs without modifying their meshes. Retained the refrigerator, dining table and VR table. Replaced the sofa, bed and desk, added stove, cupboards, coffee maker, toaster, bedside plant, desk chair, vacuum, dessert, camera and headphones. Unified furniture wood to vanilla and sofa upholstery to powder blue. Added a rounded kitchen counter and studio lighting. Original source files and Web implementation remain unchanged.
+
+## Files changed / generated
+- scripts/export-redesign-base.mjs: export existing house.
+- model-work/house-preserved.glb
+- model-work/envato/: local copies of supplied source assets for reproducibility.
+- model-work/inspect_envato.py, envato-inspection.json: source inspection.
+- model-work/redesign_room.py: reproducible Blender assembly and renders.
+- model-work/chikipiyo-envato-room.blend: completed editable scene.
+- model-work/room-overview.png, room-plan.png: rendered views.
+- model-work/redesign-manifest.json: selected sources and placement bounds.
+- model-work/validate_redesign.py, redesign-validation.json: saved-scene checks.
+- model-work/redesign-build.log
+- CODEX_REPORT.md
+
+## Tests/build commands and results
+- node scripts/export-redesign-base.mjs: PASS.
+- Blender 5.2 --factory-startup -b -t 8 --python model-work/redesign_room.py: PASS, scene saved and both images rendered.
+- Blender 5.2 --factory-startup -b -t 4 --python model-work/validate_redesign.py: PASS after reopening saved file; 13 imported assets inside room bounds, three character collections present, main aisle 0.7 units wide unobstructed by floor furniture.
+- npm.cmd test: PASS, 27/27.
+- npm.cmd run build: PASS; existing bundle-size warning (>500 kB).
+- Visually reviewed overview and overhead renders; corrected harsh wood colors, grey sofa, and removed an unsuitable washing-machine import in favor of a desk chair.
 
 ## Limitations / Claude review
-These are editing exports, not a furniture loader implementation. Edited GLBs do not automatically update the Web app. Desk includes the adjacent build plate; VR includes its table. Preserve installation origins, scale, and interaction heights when editing. The exporter overwrites its output filenames when rerun, so edited copies should be saved separately.
+This deliverable is a static Blender design. It is not wired into Web furniture loading or animation anchors. Existing Web tests verify the untouched application, not new furniture sitting/sleeping alignment. Web integration would require explicit follow-up work on furniture assets and interaction anchors.
+Review the new furniture proportions, main aisle, and desired seat/bed anchor positions before any later Web integration. Source furniture imported from glTF retains editable meshes; Blend appliances have evaluated geometry baked for stable import. The existing source Blend files remain available. No external publishing or source overwrite was performed.
 
-## Final Status
-DONE
+## Color-only revision — 2026-09-11
+Final status: DONE
+
+Changed only material base colors in the approved Blender scene:
+- Stove, coffee maker and toaster: purple/pink to mint, cream and darker sage details; retained warm wood/brown accents.
+- Bed: dark blue to soft yellow, light blue trim to mint, grey pillows to cream.
+- Vacuum: strong blues to mint and pale warm yellow.
+
+Files updated: model-work/chikipiyo-envato-room.blend, room-overview.png, room-plan.png, CODEX_REPORT.md.
+Files added: model-work/recolor_room.py, recolor-validation.json, recolor-build.log.
+Validation: Blender 5.2 --factory-startup -b -t 8 --python model-work/recolor_room.py completed; exact object-name, world-transform and mesh vertex-count comparison passed. No furniture was added, removed, moved or resized. Overview render visually reviewed. Web code unchanged; npm tests/build not repeated for this material-only Blender revision.
+Reproduction: run redesign_room.py followed by recolor_room.py to reproduce the final palette. The prior palette is retained by Blender's .blend1 backup. Claude should review the color balance only. Web integration remains outside this request.
+
+## 2026-09-12 Human完成版BlendのWeb反映
+
+### Status
+DONE_WITH_NOTES
+
+### What changed
+最新のユーザー依頼を優先し、既存タスク文書の旧キャラクター差し替え範囲ではなく、human完成版の部屋を反映した。CURRENT_TASK.md / CLAUDE_REVIEW.mdは変更していない。
+- chikipiyo-envato-room.blendを読み取り、キャラクター・カメラ・ライトを除いた部屋をassets/room/human-room.glbへ書き出した。家具、色、形状、サイズ、ビルドプレートのワールド変換を保持。元Blendは保存していない。
+- 書き出し前後およびテストでSHA-256一致を確認: 3626ac3994df27e0176fa894092af85d5c7962e9a4c760f7a21025602385cc7e。
+- redesign_room.py / recolor_room.pyは実行していない。
+- Webは完成版GLBを使用し、既存3体のキャラクターGLB・リグ・自律行動・予約・UIを維持。部屋側の静止キャラクターは二重表示しない。
+- 各家具にクリック用タグを付与し、世界座標を保ったままinteractionグループに格納。ビルドプレートは既存どおり机の読書操作に対応。
+- 横向きベッドの枕位置(-4.55, 2.63)、寝る向き90度、寝姿勢の高さを調整。ソファの着座アンカー(-.55, .20, .94)、接近位置(-1.95, 0, 1.5)を設定。
+- VRドックのヘッドセット非表示処理を名前変更に強いextrasタグに対応。
+
+### Files changed / added in this task
+- src/main.js
+- src/world/human-room.js (new)
+- src/world/furniture-gltf.js
+- src/characters/animation.js (anchor adjustments only)
+- assets/room/human-room.glb
+- assets/room/human-room-manifest.json (source hash and mesh bounds)
+- model-work/export_human_room.py (non-destructive repeatable export)
+- model-work/inspect_human.py, inspect_human_details.py; human-inspection.json, human-objects.json, human-preview.png; human-*.log (inspection/validation artifacts)
+- tests/human-room.test.js
+- CODEX_REPORT.md (this appended report)
+
+### Commands / results
+- Blender 5.2 --factory-startup -b --python model-work/export_human_room.py: PASS.
+- npm test: 30 tests, 30 pass, 0 fail. Log: model-work/human-test.log.
+- npm run build: PASS. Log: model-work/human-build.log.
+- New checks: unchanged source hash, no duplicate resident nodes, every interaction tagged, all 3 starts and all furniture spots mutually reachable, 3 residents' pillow alignment at four approach angles.
+- Browser http://127.0.0.1:5173/: displayed human room; observed three residents' autonomous movement, chicken/piyokichi sleeping on horizontal bed, piyomi relaxing on sofa, VR acting state and headset, furniture reservation rejection, build plate click opening desk action. Browser console warnings/errors: none at inspection.
+
+### Known limitations / Claude review focus
+- GLB is about 37.6 MB; geometry was not decimated. Initial load can be slower. Vite retains its >500 kB JS chunk advisory (build succeeds).
+- Blender Cycles and Web lighting/tone mapping differ; material colors are exported unchanged but rendered appearance is not pixel-identical.
+- Navigation retains the existing coarse rectangular footprints. This does not model every decorative prop or chair; sofa approaches from the side and the existing action transition places the rig on its seat.
+- Review exact seat/body contact and pillow height for all 3 GLB characters, especially close-up. Browser checks covered representative actions, not all 3 characters in every possible action combination.
+- Other pre-existing working-tree edits were retained.
+
+### Final verification addendum
+- Final npm test: 31 tests / 31 pass / 0 fail. Final npm run build: PASS.
+- Added full human GLB round-trip installation check: world bounds unchanged after interaction reparenting; all furniture has clickable meshes; multi-material parent extras inherited; tagged VR headset children hide/show while dock/controller meshes stay visible.
+- Final browser reload displayed the room and all three residents; clicking the build plate opened the desk action. Pause/resume confirmed. Local preview left running.

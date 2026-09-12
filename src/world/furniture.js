@@ -4,10 +4,9 @@ export const furnitureDefinitions=[
  {id:'bed',name:'ベッド',icon:'☾',action:'sleep',label:'寝る',position:[-3.7,0,2],spot:[-3.5,0,3.45],face:Math.PI,footprint:[2.3,2.5]},
  {id:'sofa',name:'ソファ',icon:'▱',action:'relax',label:'くつろぐ',position:[0,0,.2],spot:[.6,0,1.25],face:0,footprint:[2.7,1.35]},
  {id:'table',name:'テーブル',icon:'◷',action:'eat',label:'食べる',position:[-3,0,-.8],spot:[-3,0,.45],face:Math.PI,footprint:[1.9,1.4]},
- {id:'kitchen',name:'キッチン',icon:'♨',action:'cook',label:'料理する',position:[-2.7,0,-3.2],spot:[-3.05,0,-2],face:Math.PI,footprint:[2.8,1.25]},
- {id:'fridge',name:'冷蔵庫',icon:'▥',action:'snack',label:'おやつを探す',position:[-4.65,0,-3.1],spot:[-4.85,0,-1.9],face:Math.PI,footprint:[1,1.25]},
  {id:'vr',name:'VRヘッドセット',icon:'∞',action:'vr',label:'VRで遊ぶ',position:[0,0,2.7],spot:[-.7,0,1.65],face:0,footprint:[1.55,.85]},
- {id:'desk',name:'小さな作業机',icon:'▤',action:'read',label:'読書する',position:[3.1,0,-2.6],spot:[3.1,0,-1.45],face:Math.PI,footprint:[3.8,1.6]},
+ // 読書アクションは廃止。机は見た目と通行の障害物としてだけ残す。
+ {id:'desk',name:'小さな作業机',icon:'▤',position:[3.1,0,-2.6],spot:[3.1,0,-1.45],face:Math.PI,footprint:[3.8,1.6]},
 ];
 export function createFurniture(scene){return furnitureDefinitions.map(d=>{const g=new T.Group();g.position.set(...d.position);g.userData.furnitureId=d.id;scene.add(g);const wood=0xb99570,white=0xf7f3e8,mint=0x8ab6a2;
  if(d.id==='bed'){box(g,[2,.35,2.2],[0,.24,0],wood);box(g,[1.95,.28,2.12],[0,.52,0],white,.14);box(g,[2,.85,.15],[0,.55,-1.04],mint);box(g,[1.96,.18,1.38],[0,.7,.36],0xc2ccda);box(g,[1.3,.22,.48],[0,.75,-.67],white,.1);}

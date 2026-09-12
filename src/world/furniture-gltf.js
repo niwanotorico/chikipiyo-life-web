@@ -33,5 +33,7 @@ export async function loadFurnitureVisual(furniture,url,loader=new GLTFLoader())
 
 // The dock's headset is picked up by a resident; its table and controllers remain visible.
 export function setVrDockHeadsetVisible(furniture,visible){
- furniture?.group.getObjectByName('Cube286')?.traverse(o=>{o.visible=visible;});
+ furniture?.group.traverse(o=>{if(o.userData.vrDockHeadset||o.name==='Cube286')o.traverse(part=>{part.visible=visible;});});
 }
+
+
