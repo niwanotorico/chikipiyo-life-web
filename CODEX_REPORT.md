@@ -1,3 +1,34 @@
+# 2026-09-20 — Interactive pudding
+
+Final status: DONE_WITH_NOTES
+
+What changed:
+- Converted the supplied `pudding_vr_jiggle.blend` mesh into a 27.6 KB self-contained Web GLB. The exported asset preserves all 352 source vertices, the Custard/Caramel material split, and the `Squish`, `Wobble`, and `Wobble_Y` shape keys.
+- Placed the pudding on the current dining-table surface.
+- Added mouse and touch grabbing. It follows a camera-facing drag plane, reacts to movement acceleration through the same damped-spring constants as the Blender script, and springs back to its table position on release.
+- Kept OrbitControls and character dragging intact. Updated the existing help text to advertise the pudding interaction.
+- Loading failure is non-fatal: the rest of the dollhouse continues without the pudding.
+
+Files changed:
+- `assets/props/pudding.glb` (new)
+- `src/world/pudding.js` (new)
+- `src/main.js`
+- `src/ui.js`
+- `tests/pudding.test.js` (new)
+- `CODEX_REPORT.md`
+
+Validation:
+- `npm test`: PASS, 46 passed / 0 failed. New tests parse the production GLB, verify both materials and all three morph targets, exercise movement-triggered deformation, and verify return-to-table behavior.
+- `npm run build -- --base /chikipiyo-life-web/`: PASS. The existing JavaScript chunk-size advisory remains; the pudding asset is emitted separately at 27.6 KB.
+- Geometry checks place the neutral mesh above the measured table top. The test bounding box allows 0.1 m below the surface because Three.js conservatively expands bounds for the possible negative `Squish` morph even when its current influence is zero.
+
+Known limitations / review:
+- The pudding returns to its authored table spot rather than remaining wherever it is released. This prevents it from floating or being dropped through furniture without adding a full rigid-body system.
+- The browser automation surface could not reach the local Vite address (`ERR_BLOCKED_BY_CLIENT`), so final full-scene visual review should be done on the deployed Pages build. Asset parsing, scene bounds, interaction math, tests, and production build were verified locally.
+- `CURRENT_TASK.md` and `CLAUDE_REVIEW.md` describe an older character task and were intentionally left unchanged.
+
+---
+
 # 2026-09-12 — Apply human-authored printer corrections
 
 Final status: DONE
