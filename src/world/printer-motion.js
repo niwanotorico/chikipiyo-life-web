@@ -40,8 +40,9 @@ export function installPrinterMotion(furniture){
  const printBounds=new Box3();for(const mesh of printed)printBounds.union(new Box3().setFromObject(mesh));
  const center=printBounds.getCenter(new Vector3()),size=printBounds.getSize(new Vector3());
  const upper=head.children.filter(o=>['Mesh_60_1','Mesh_60_3','Mesh_60_4'].includes(o.name)).map(mesh=>({mesh,rest:mesh.position.clone()}));
- const heater=head.children.find(o=>o.name==='Mesh_60_2');
- const housing=head.children.find(o=>o.name==='Mesh_60_3');
+ const heater=head.children.find(o=>o.name==='Mesh_60_2')??meshes.find(o=>o.name==='Mesh_60_2');
+ const housing=head.children.find(o=>o.name==='Mesh_60_3')??meshes.find(o=>o.name==='Mesh_60_3');
+ if(!heater||!housing||!rail.children[0])throw new Error('Printer GLB is missing motion parts');
  const heaterTop=new Box3().setFromObject(heater).max.y;
  const housingBottom=new Box3().setFromObject(housing).min.y;
  const shaft=new Mesh(new CylinderGeometry(.065,.065,1,16),rail.children[0].material.clone());shaft.name='PrinterMotion_TelescopicShaft';

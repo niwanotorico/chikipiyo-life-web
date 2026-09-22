@@ -6,10 +6,12 @@ function centeredCopy(meshes){
  const center=bounds.getCenter(new Vector3());for(const mesh of copy.children)mesh.position.sub(center);
  return copy;
 }
-export function captureRoomAccessories(room){
- const assets={};room.updateMatrixWorld(true);
- for(const name of ['VR_headset','VR_handL','VR_handR','08_Coffee_|_Vert001']){
-  const source=room.getObjectByName(name);if(!source)throw new Error(`Missing room accessory: ${name}`);
+export function captureRoomAccessories(room,names=['VR_headset','VR_handL','VR_handR','08_Coffee_|_Vert001']){
+ const roots=Array.isArray(room)?room:[room];
+ const assets={};roots.forEach(root=>root.updateMatrixWorld(true));
+ const candidatesByName={VR_headset:['VR_headset'],VR_handL:['VR_handL'],VR_handR:['VR_handR'],'08_Coffee_|_Vert001':['08_Coffee_|_Vert001','08 Coffee | Vert.001']};
+ for(const name of names){const candidates=candidatesByName[name];
+  const source=roots.flatMap(root=>candidates.map(candidate=>root.getObjectByName(candidate))).find(Boolean);if(!source)throw new Error(`Missing room accessory: ${name}`);
   const meshes=[];source.traverse(o=>{if(o.isMesh){o.userData.roomAccessory=name;meshes.push(o);}});
   assets[name]=centeredCopy(meshes);
  }
@@ -66,7 +68,7 @@ function vacuumParts(mesh){
 }
 // ホースの付け根（本体の差込口）。待機中の部品もこの近くに畳んでおき、
 // 部屋のバウンディングボックスを広げない。
-const vacuumDock=new Vector3(4.27,.25,3.49);
+const vacuumDock=new Vector3(4.7047,.2814,3.3543);
 export function installVacuumMotion(furniture,scene){
  const source=furniture.group.getObjectByName('13_Vacuum_|_Cube001');if(!source)throw new Error('Vacuum source missing');
  source.updateWorldMatrix(true,false);const parts=vacuumParts(source);
@@ -81,7 +83,7 @@ export function installVacuumMotion(furniture,scene){
  // ホース差込口は本体中心から見てどちらを向いているか。ここをキャラ側へ向ける。
  const dockAngle=Math.atan2(vacuumDock.x-home.x,vacuumDock.z-home.z);
  const rig=new Group();rig.name='Vacuum_HoseAndNozzle';furniture.group.add(rig);
- const material=new MeshStandardMaterial({color:0x3c4544,roughness:.7});
+ const material=new MeshStandardMaterial({color:0xf5f2e9,roughness:.7});
  const rest=[vacuumDock.clone(),vacuumDock.clone().add(new Vector3(-.12,.08,.03)),vacuumDock.clone().add(new Vector3(-.20,.16,.06)),vacuumDock.clone().add(new Vector3(-.26,.22,.08))];
  const hose=new Mesh(new TubeGeometry(new CatmullRomCurve3(rest),24,.035,6,false),material);
  const wand=new Mesh(new CylinderGeometry(.025,.025,1,12),new MeshStandardMaterial({color:0x8c9b97,metalness:.55,roughness:.35}));
@@ -90,7 +92,10 @@ export function installVacuumMotion(furniture,scene){
  rig.add(hose,wand,parts.nozzle);rig.visible=false;
  rig.traverse(o=>{if(o.isMesh){o.castShadow=true;o.userData.furnitureId=furniture.id;}});
  const dockPipe=furniture.group.getObjectByName('13_Vacuum_|_Cube002');
- furniture.vacuumMotion={rig,carrier,chassis,home,dockAngle,source,...parts,hose,wand,dockPipe};
+ // Cube002 is the authored pipe. Cube052* are the canister, wheels and socket:
+ // keep those visible while replacing only the original pipe and floor head.
+ const authoredMovingParts=[dockPipe].filter(Boolean);
+ furniture.vacuumMotion={rig,carrier,chassis,home,dockAngle,source,...parts,hose,wand,dockPipe,authoredMovingParts};
 }
 // 本体はキャラの斜め後ろ、およそ1キャラ分（.85m前後）のところへ置く。
 const chassisBack=.45,chassisSide=.72;
@@ -100,7 +105,7 @@ export function updateVacuumMotion(furniture,candidate){
  furniture.group.position.set(0,0,0);
  const actor=candidate?.root?candidate:null;
  motion.rig.visible=!!actor;motion.source.geometry=actor?motion.body:motion.original;
- if(motion.dockPipe)motion.dockPipe.visible=!actor;
+ motion.authoredMovingParts?.forEach(o=>{o.visible=!actor;});
  if(!actor){motion.carrier.position.copy(motion.home);motion.carrier.rotation.y=0;motion.carrier.updateWorldMatrix(true,true);return;}
  actor.root.updateMatrixWorld(true);
  const yaw=actor.root.rotation.y;
@@ -115,18 +120,24 @@ export function updateVacuumMotion(furniture,candidate){
  motion.carrier.rotation.y=Math.atan2(toActor.x,toActor.z)-motion.dockAngle;
  motion.carrier.updateWorldMatrix(true,true);
  const dock=motion.carrier.localToWorld(vacuumDock.clone().sub(motion.home));
- const grip=actor.arms[1].localToWorld(new Vector3(.035,actor.variant==='chicken'?-.22:-.16,.035));
+ const grip=actor.arms[1].localToWorld(new Vector3(.10,actor.variant==='chicken'?-.22:-.16,.035));
  // ノズルは手元から前後へストロークさせる。ワンドは短く、ホースは本体からすぐ届く長さ。
  const swing=.14*Math.sin(actor.elapsed*2.4);
  const wandLength=.60,drop=Math.max(.05,grip.y-.065);
  const reach=Math.sqrt(Math.max(.01,wandLength**2-drop**2))+swing;
  const floor=grip.clone().addScaledVector(forward,reach);floor.y=.065;
- motion.nozzle.position.copy(floor);motion.nozzle.rotation.y=yaw;
+ motion.nozzle.position.copy(floor);motion.nozzle.rotation.y=yaw+Math.PI/2;
  const delta=grip.clone().sub(floor);motion.wand.position.copy(grip).add(floor).multiplyScalar(.5);motion.wand.scale.y=delta.length();motion.wand.quaternion.setFromUnitVectors(new Vector3(0,1,0),delta.normalize());
- // 本体からキャラの手元まで、肩を越えず、胴体の外側をまわして軽くたるませる。
- const bulge=right.clone().multiplyScalar(.18);
- const curve=new CatmullRomCurve3([dock,
-  dock.clone().lerp(grip,.35).add(bulge).add(new Vector3(0,-.07,0)),
-  dock.clone().lerp(grip,.72).addScaledVector(bulge,.5).add(new Vector3(0,-.03,0)),grip]);
+ // 本体から手元へ、胴体の外側を回る緩い弧にする。手前の逃がし点を残すため、
+ // 持ち手へ向かう直線が身体を横切らない。
+ // Route in the actor frame: keep the entire middle span outside the torso,
+ // including its radius and the hose thickness, rather than offsetting a chord.
+ const localGrip=actor.root.worldToLocal(grip.clone());
+ const clearance=actor.variant==='chicken'?.48:.38;
+ const escape=(z,y)=>actor.root.localToWorld(new Vector3(Math.max(clearance,localGrip.x+.09),y,z));
+ // The authored socket is vertical: leave upward before bending toward the hand.
+ const curve=new CatmullRomCurve3([dock,dock.clone().add(new Vector3(0,.075,0)),
+  escape(-.27,Math.max(.16,grip.y-.14)),escape(localGrip.z-.08,grip.y-.055),
+  grip.clone().addScaledVector(right,.085),grip],false,'centripetal');
  motion.hose.geometry.dispose();motion.hose.geometry=new TubeGeometry(curve,24,.035,6,false);
 }

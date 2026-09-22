@@ -10,6 +10,7 @@ import {roomFurniture,roomObstacles} from '../src/world/room-layout.js';
 import {loadLatestRoom,animateRoom} from '../src/world/latest-room.js';
 import {installRoomAccessories} from '../src/world/room-accessories.js';
 import {animateCharacter} from '../src/characters/animation.js';
+import {loadHumanActionProps} from './action-props-fixture.js';
 
 const setup=()=>{const cs=characterDefinitions.map(createCharacter),fs=roomFurniture.slice();fs.obstacles=roomObstacles;return {cs,sim:new LifeSimulation(cs,fs)};};
 test('drag releases the seat, freezes autonomy, rejects walls/furniture, and resumes from the drop',()=>{
@@ -34,7 +35,7 @@ test('autonomous vacuum chooses varying clear floor areas with room for the rigi
 test('coffee uses the same mesh/material and restores the table cup on drag interruption',async()=>{
  const raw=readFileSync(new URL('../assets/room/human-room.glb',import.meta.url));
  const gltf=await new GLTFLoader().parseAsync(raw.buffer.slice(raw.byteOffset,raw.byteOffset+raw.byteLength),'');
- const fs=await loadLatestRoom(new Scene(),'test',{loadAsync:async()=>gltf});
+ const scene=new Scene(),fs=await loadLatestRoom(scene,'test',{loadAsync:async()=>gltf});await loadHumanActionProps(scene,fs);
  const cs=characterDefinitions.map(createCharacter),c=cs[0],sim=new LifeSimulation(cs,fs);installRoomAccessories(c,fs);
  const table=fs.find(f=>f.id==='table'),cups=[];table.group.traverse(o=>{if(o.userData.roomAccessory==='08_Coffee_|_Vert001')cups.push(o)});
  assert(cups.length);const held=[];c.food.traverse(o=>{if(o.isMesh)held.push(o)});

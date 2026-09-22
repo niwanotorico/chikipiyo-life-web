@@ -9,6 +9,28 @@ import {loadCharacterVisual} from '../src/characters/gltf.js';
 import {animateCharacter} from '../src/characters/animation.js';
 
 // A real self-contained GLB, generated in memory (six rigid triangle parts).
+test('piyomi piano keeps shoulders on their own sides and restores both bindings',async()=>{
+ const c=createCharacter(characterDefinitions.find(d=>d.id==='piyomi'));
+ const bytes=fs.readFileSync(new URL('../assets/characters/piyomi.glb',import.meta.url));
+ const gltf=await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
+ await loadCharacterVisual(c,'test',{loadAsync:async()=>gltf});
+ const rest=c.arms.map(a=>a.position.clone());
+ const visuals=c.arms.map(a=>a.children.find(o=>o.name.startsWith('GLB_Wing')));
+ const bindings=visuals.map(v=>v.position.clone());
+ Object.assign(c,{action:'piano',phase:'acting',elapsed:0});
+ const shoulders=[];
+ for(const t of [0,.3,.7,1.2]){
+  c.elapsed=t;animateCharacter(c,t);
+  assert(c.arms[0].position.x<0&&c.arms[1].position.x>0);
+  shoulders.push(c.arms.map(a=>a.position.clone()));
+  assert(c.arms.every(a=>a.scale.equals(new Vector3(1,1,1))));
+ }
+ shoulders.forEach(pair=>pair.forEach((p,i)=>assert(p.equals(shoulders[0][i]))));
+ c.action='idle';animateCharacter(c,2);
+ c.arms.forEach((a,i)=>assert(a.position.equals(rest[i])));
+ visuals.forEach((v,i)=>assert(v.position.equals(bindings[i])));
+});
+
 function fixture(){
  const names=['Body','Head','Wing_L','Wing_R','Leg_L','Leg_R'];
  const json={asset:{version:'2.0'},scene:0,scenes:[{nodes:[0,1,2,3,4,5]}],nodes:names.map((name,i)=>({name,mesh:0,translation:[i*.1,.5,0]})),meshes:[{primitives:[{attributes:{POSITION:0}}]}],buffers:[{byteLength:36}],bufferViews:[{buffer:0,byteOffset:0,byteLength:36}],accessors:[{bufferView:0,componentType:5126,count:3,type:'VEC3',min:[0,0,0],max:[.1,.1,0]}]};

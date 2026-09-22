@@ -1,0 +1,149 @@
+[
+  {
+    "id": "bed",
+    "name": "ベッド",
+    "file": "bed.glb",
+    "worldPosition": [
+      -3.7,
+      0,
+      2
+    ],
+    "interactionSpot": [
+      -3.5,
+      0,
+      3.45
+    ],
+    "facingRadians": 3.141592653589793,
+    "footprint": [
+      2.3,
+      2.5
+    ],
+    "meshes": 5
+  },
+  {
+    "id": "sofa",
+    "name": "ソファ",
+    "file": "sofa.glb",
+    "worldPosition": [
+      0,
+      0,
+      0.2
+    ],
+    "interactionSpot": [
+      0.6,
+      0,
+      1.25
+    ],
+    "facingRadians": 0,
+    "footprint": [
+      2.7,
+      1.35
+    ],
+    "meshes": 7
+  },
+  {
+    "id": "table",
+    "name": "テーブル",
+    "file": "table.glb",
+    "worldPosition": [
+      -3,
+      0,
+      -0.8
+    ],
+    "interactionSpot": [
+      -3,
+      0,
+      0.45
+    ],
+    "facingRadians": 3.141592653589793,
+    "footprint": [
+      1.9,
+      1.4
+    ],
+    "meshes": 7
+  },
+  {
+    "id": "kitchen",
+    "name": "キッチン",
+    "file": "kitchen.glb",
+    "worldPosition": [
+      -2.7,
+      0,
+      -3.2
+    ],
+    "interactionSpot": [
+      -3.05,
+      0,
+      -2
+    ],
+    "facingRadians": 3.141592653589793,
+    "footprint": [
+      2.8,
+      1.25
+    ],
+    "meshes": 12
+  },
+  {
+    "id": "fridge",
+    "name": "冷蔵庫",
+    "file": "fridge.glb",
+    "worldPosition": [
+      -4.65,
+      0,
+      -3.1
+    ],
+    "interactionSpot": [
+      -4.85,
+      0,
+      -1.9
+    ],
+    "facingRadians": 3.141592653589793,
+    "footprint": [
+      1,
+      1.25
+    ],
+    "meshes": 3
+  },
+  {
+    "id": "vr",
+    "name": "VRヘッドセット",
+    "file": "vr.glb",
+    "worldPosition": [
+      0,
+      0,
+      2.7
+    ],
+    "interactionSpot": [
+      -0.7,
+      0,
+      1.65
+    ],
+    "facingRadians": 0,
+    "footprint": [
+      1.55,
+      0.85
+    ],
+    "meshes": 5
+  },
+  {
+    "id": "desk",
+    "name": "小さな作業机",
+    "file": "desk.glb",
+    "worldPosition": [
+      3.1,
+      0,
+      -2.6
+    ],
+    "interactionSpot": [
+      3.1,
+      0,
+      -1.45
+    ],
+    "facingRadians": 3.141592653589793,
+    "footprint": [
+      3.8,
+      1.6
+    ],
+    "meshes": 30
+  }
+]

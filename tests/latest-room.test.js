@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {Scene,Vector3} from 'three';
+import {Box3,Quaternion,Raycaster,Scene,Vector3} from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {loadLatestRoom,animateRoom} from '../src/world/latest-room.js';
 import {roomFurniture,roomObstacles} from '../src/world/room-layout.js';
@@ -12,8 +12,9 @@ import {LifeSimulation} from '../src/simulation/life.js';
 import {actions} from '../src/simulation/actions.js';
 import {findPath} from '../src/simulation/navigation.js';
 import {installRoomAccessories} from '../src/world/room-accessories.js';
+import {installModelingHeadphones} from '../src/world/action-props.js';
 import {loadCharacterVisual} from '../src/characters/gltf.js';
-import {Box3} from 'three';
+import {loadHumanActionProps} from './action-props-fixture.js';
 
 test('latest routes clear static furniture including dining chairs and kitchen',()=>{
  for(const start of [...characterDefinitions.map(c=>c.start),...roomFurniture.map(f=>f.spot)])for(const target of roomFurniture){
@@ -30,6 +31,11 @@ test('latest room actions arrive for every resident, reserve furniture, and paus
  const furniture=roomFurniture.slice();furniture.obstacles=roomObstacles;
  assert(!('cook' in actions));assert(!('snack' in actions));assert(!('read' in actions));
  for(const def of characterDefinitions)for(const target of furniture){
+  if(['model','piano'].includes(target.action)){
+   const c=createCharacter(def),sim=new LifeSimulation([c],furniture);
+   assert.equal(sim.command(c,target.id),target.action==='model'?def.id==='piyo':def.id==='piyomi',`${def.name} の専用アクション利用可否`);
+   continue;
+  }
   // 予約：席が分かれている家具（ソファ・テーブル）は同時に使えるが、それ以外はふさがる。
   const first=createCharacter(def),second=createCharacter(characterDefinitions.find(d=>d.id!==def.id));
   const booking=new LifeSimulation([first,second],furniture);
@@ -48,6 +54,52 @@ test('latest room actions arrive for every resident, reserve furniture, and paus
  }
 });
 
+test('ぴよきちはPC前でモデリングし、待機用と装着用ヘッドホンを切り替える',async()=>{
+ const bytes=readFileSync(new URL('../assets/room/human-room.glb',import.meta.url));
+ const gltf=await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
+ const scene=new Scene(),furniture=await loadLatestRoom(scene,'test',{loadAsync:async()=>gltf}),props=await loadHumanActionProps(scene,furniture);
+ const piyo=createCharacter(characterDefinitions.find(c=>c.id==='piyo')),chiki=createCharacter(characterDefinitions.find(c=>c.id==='chiki'));
+ scene.add(piyo.root,chiki.root);const worn=installModelingHeadphones(piyo,props.headphones);
+ const simulation=new LifeSimulation([piyo,chiki],furniture),desk=furniture.find(f=>f.id==='desk');
+ const chair=scene.getObjectByName('Cube001'),chairBounds=new Box3().setFromObject(chair),chairCenter=chairBounds.getCenter(new Vector3());
+ const seat=new Raycaster(new Vector3(chairCenter.x,10,chairCenter.z),new Vector3(0,-1,0),0,20).intersectObject(chair,true)[0];
+ assert(seat,'椅子座面の中央Raycastが当たる');assert(Math.abs(desk.standAnchor[1]-seat.point.y)<1e-6,'足元は座面上面に接地する');
+ assert.equal(simulation.command(chiki,'desk'),false,'ちきんはモデリングしない');
+ assert(simulation.command(piyo,'desk'));
+ for(let i=0;i<3000&&piyo.phase!=='acting';i++)simulation.update(1/60);
+ assert.equal(piyo.action,'model');assert(piyo.root.position.distanceTo(new Vector3(...desk.spot))<.06,'PC前まで移動する');
+ simulation.update(.2);animateCharacter(piyo,1);animateRoom(furniture,[piyo],1);piyo.root.updateWorldMatrix(true,true);
+ assert(piyo.rig.getWorldPosition(new Vector3()).distanceTo(new Vector3(...desk.standAnchor))<1e-6,'ぴよきちは床ではなく椅子座面に立つ');
+ assert.equal(props.headphones.visible,false,'待機用は隠す');assert.equal(worn.visible,true,'頭の装着用を表示する');assert.equal(worn.parent,piyo.head,'頭の回転へ追従する');
+ const laptopCenter=new Box3().setFromObject(scene.getObjectByName(desk.modelLaptopName)).getCenter(new Vector3()),forward=new Vector3(0,0,1).applyQuaternion(piyo.root.getWorldQuaternion(new Quaternion())).setY(0).normalize();
+ const toLaptop=laptopCenter.sub(piyo.rig.getWorldPosition(new Vector3())).setY(0).normalize();
+ assert(forward.dot(toLaptop)>.995,'くちばし正面（ローカル+Z）がPC画面中央を向く');
+ assert.deepEqual(worn.rotation.toArray().slice(0,3),[0,0,0],'装着側へ机上の回転を引き継がない');assert.equal(worn.scale.x,.52);
+ Object.assign(piyo,{action:'idle',target:null,phase:'acting'});animateCharacter(piyo,2);animateRoom(furniture,[piyo],2);
+ assert.equal(props.headphones.visible,true,'終了時に待機用を戻す');assert.equal(worn.visible,false,'終了時に装着用を隠す');
+});
+
+test('ぴよみだけが空き床でキーボードを演奏し、終了時に片付ける',async()=>{
+ const bytes=readFileSync(new URL('../assets/room/human-room.glb',import.meta.url));
+ const gltf=await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
+ const scene=new Scene(),furniture=await loadLatestRoom(scene,'test',{loadAsync:async()=>gltf}),props=await loadHumanActionProps(scene,furniture);
+ const piyomi=createCharacter(characterDefinitions.find(c=>c.id==='piyomi')),piyo=createCharacter(characterDefinitions.find(c=>c.id==='piyo'));
+ scene.add(piyomi.root,piyo.root);const sim=new LifeSimulation([piyomi,piyo],furniture),piano=furniture.find(f=>f.id==='piano');
+ assert.equal(props.musicKeyboard.visible,false,'通常時は非表示');assert.equal(sim.command(piyo,'piano'),false,'ぴよきちは演奏しない');assert(sim.command(piyomi,'piano'));
+ for(let i=0;i<3000&&piyomi.phase!=='acting';i++)sim.update(1/60);
+ assert.equal(piyomi.action,'piano');assert(piyomi.root.position.distanceTo(new Vector3(...piano.spot))<.06,'キーボード前へ移動する');
+ sim.update(.2);animateCharacter(piyomi,1);animateRoom(furniture,[piyomi],1);piyomi.root.updateWorldMatrix(true,true);
+ const keyboardBounds=new Box3().setFromObject(props.musicKeyboard),forward=new Vector3(0,0,1).applyQuaternion(piyomi.root.getWorldQuaternion(new Quaternion())).setY(0).normalize();
+ const toKeyboard=new Vector3(...piano.keyboardCenter).sub(piyomi.root.position).setY(0).normalize();
+ assert.equal(props.musicKeyboard.visible,true,'演奏中だけ表示');assert(forward.dot(toKeyboard)>.995,'鍵盤を正面に見る');assert(keyboardBounds.min.y<=.01&&keyboardBounds.min.y>=-.01,'キーボードが床へ接地する');
+ assert(piyomi.legs.every(leg=>leg.rotation.x<-.9),'低い演奏姿勢');assert(Math.abs(piyomi.arms[0].rotation.x-piyomi.arms[1].rotation.x)>.05,'左右の翼を交互に動かす');
+ const wingFront=Math.max(...piyomi.arms.map(arm=>new Box3().setFromObject(arm).max.z)),vertex=new Vector3();let bodyFrontAtKeyboardHeight=-Infinity;
+ piyomi.body.traverse(node=>{const positions=node.geometry?.attributes.position;if(!node.isMesh||!positions)return;for(let index=0;index<positions.count;index++){vertex.fromBufferAttribute(positions,index);node.localToWorld(vertex);if(vertex.y>=keyboardBounds.min.y&&vertex.y<=keyboardBounds.max.y)bodyFrontAtKeyboardHeight=Math.max(bodyFrontAtKeyboardHeight,vertex.z);}});
+ assert(bodyFrontAtKeyboardHeight<keyboardBounds.min.z,'鍵盤の高さで身体はめり込まない');assert(keyboardBounds.min.z-wingFront<.04,'通常姿勢の翼先が鍵盤へ自然に届く距離にある');
+ Object.assign(piyomi,{action:'idle',target:null,phase:'acting'});animateCharacter(piyomi,2);animateRoom(furniture,[piyomi],2);
+ assert.equal(props.musicKeyboard.visible,false,'終了時は非表示へ戻す');
+});
+
 test('a resident passes a standing neighbour without getting stuck',()=>{
  const furniture=roomFurniture.slice();furniture.obstacles=roomObstacles;
  const bed=furniture.find(f=>f.id==='bed');
@@ -63,7 +115,7 @@ test('a resident passes a standing neighbour without getting stuck',()=>{
 test('bed blankets, VR pickup, vacuum and printing restore after interruption',async()=>{
  const bytes=readFileSync(new URL('../assets/room/human-room.glb',import.meta.url));
  const gltf=await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
- const furniture=await loadLatestRoom(new Scene(),'test',{loadAsync:async()=>gltf});
+ const scene=new Scene(),furniture=await loadLatestRoom(scene,'test',{loadAsync:async()=>gltf});await loadHumanActionProps(scene,furniture);
  const parts=tag=>{const result=[];for(const f of furniture)f.group.traverse(o=>{if(o.isMesh&&o.userData.roomPart===tag)result.push(o);});return result;};
  const actors=furniture.map(f=>({target:f,phase:'acting',elapsed:7}));
  animateRoom(furniture,actors,7);
@@ -87,6 +139,10 @@ test('bed blankets, VR pickup, vacuum and printing restore after interruption',a
   hoses.push(dock.distanceTo(cleaner.arms[1].getWorldPosition(new Vector3())));}
  assert.equal(vacuum.group.position.length(),0);
  assert(motion.rig.visible);
+ for(const name of ['Cube052','Cube052_1','Cube052_2'])assert(vacuum.group.getObjectByName(name).visible,`${name}: canister must remain visible during cleaning`);
+ const socket=vacuum.group.getObjectByName('Cube052_1');
+ const hoseStart=motion.hose.geometry.parameters.path.getPoint(0);
+ assert(new Box3().setFromObject(socket).containsPoint(hoseStart),'hose starts inside the actual canister socket');
  // 本体はキャラの横か後ろ、1〜1.5キャラ分（.6〜1.1m）のところ。部屋の隅に置き去りにしない。
  const body=new Box3().setFromObject(motion.chassis).getCenter(new Vector3());
  const gap=Math.hypot(body.x-cleaner.root.position.x,body.z-cleaner.root.position.z);
@@ -105,7 +161,7 @@ test('bed blankets, VR pickup, vacuum and printing restore after interruption',a
 test('worn VR gear: each resident fits the latest Blender headset',async()=>{
  const bytes=readFileSync(new URL('../assets/room/human-room.glb',import.meta.url));
  const gltf=await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
- const furniture=await loadLatestRoom(new Scene(),'test',{loadAsync:async()=>gltf});
+ const scene=new Scene(),furniture=await loadLatestRoom(scene,'test',{loadAsync:async()=>gltf});await loadHumanActionProps(scene,furniture);
  for(const def of characterDefinitions){
   const c=createCharacter(def);installRoomAccessories(c,furniture);
   const worn=c.vr.children.find(o=>o.name==='Worn_Room_VR_headset');
@@ -194,9 +250,10 @@ test('3Dプリンター：小さい二人は赤い椅子の上、ちきんは床
   assert(y>.50&&y<=.61,`${id}: 座面の高さに立つ`);
   assert(findPath(characterDefinitions[0].start,printer.seats[id].spot,roomObstacles).length,`${id}: 椅子の前まで歩ける`);
  }
- const apart=Math.hypot(printer.seats.piyo.standAnchor[0]-printer.seats.piyomi.standAnchor[0],
-  printer.seats.piyo.standAnchor[2]-printer.seats.piyomi.standAnchor[2]);
- assert(apart>.4,`二人が重ならない: ${apart}`);
+ const pair=characterDefinitions.filter(d=>['piyo','piyomi'].includes(d.id)).map(createCharacter);
+ const sharedChair=new LifeSimulation(pair,roomFurniture);
+ assert(sharedChair.command(pair[0],'printer'));
+ assert.equal(sharedChair.command(pair[1],'printer'),false,'one resident at a time on the printer chair');
  // 実際に歩いて到着したあと、足もとが椅子の座面に乗る（ちきんは床のまま）。
  const furniture=roomFurniture.slice();furniture.obstacles=roomObstacles;
  for(const def of characterDefinitions){

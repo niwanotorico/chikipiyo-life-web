@@ -9,7 +9,7 @@ export class LifeSimulation{
  getTarget(c,id){return resolveInteraction(this.furniture.find(f=>f.id===id),c);}
  available(c,target){return target&&!this.characters.some(o=>o!==c&&o.target?.reservationKey===target.reservationKey);}
  command(c,id){
-  let target=this.getTarget(c,id);if(c.dragging||!this.available(c,target)||!actions[target.action])return false;
+  let target=this.getTarget(c,id),action=actions[target?.action];if(c.dragging||!this.available(c,target)||!action||action.characters&&!action.characters.includes(c.id))return false;
   if(id==='vacuum'){
    let spot=null;
    for(let i=0;i<80;i++){const x=-4.5+Math.random()*9,z=-3.3+Math.random()*6.6;
@@ -21,7 +21,7 @@ export class LifeSimulation{
   this.onEvent(c.name+'が'+target.name+'へ向かいます');return true;
  }
  choose(c){
-  const candidates=this.furniture.filter(f=>actions[f.action]&&this.available(c,this.getTarget(c,f.id))).sort(()=>Math.random()-.5);
+  const candidates=this.furniture.filter(f=>{const action=actions[f.action];return action&&(!action.characters||action.characters.includes(c.id))&&this.available(c,this.getTarget(c,f.id));}).sort(()=>Math.random()-.5);
   for(const target of candidates)if(this.command(c,target.id))return;
   Object.assign(c,{target:null,action:'idle',phase:'acting',remaining:2,elapsed:0});
  }

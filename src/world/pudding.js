@@ -1,21 +1,42 @@
-import {Group,Plane,Quaternion,Vector3} from 'three';
+import {Group,Plane,Quaternion,Raycaster,Vector3} from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
 const REQUIRED_SHAPES=['Squish','Wobble','Wobble_Y'];
+const puddingPlateName='14_Dessert_|_Circle002';
+const puddingBodyMeshName='Pudding_LowPoly';
+const plateContactInset=.003;
 
 export async function loadPudding(scene,url,table,loader=new GLTFLoader()){
  try{
   const gltf=await loader.loadAsync(url),root=new Group(),meshes=[];
+  let bodyMesh=null;
   root.name='Interactive_Pudding';root.add(gltf.scene);
   gltf.scene.traverse(object=>{
    if(!object.isMesh)return;
    if(!REQUIRED_SHAPES.every(name=>object.morphTargetDictionary?.[name]!==undefined))throw new Error('Pudding GLB is missing jiggle shape keys');
    object.castShadow=true;object.receiveShadow=true;object.userData.interactivePudding=true;meshes.push(object);
+   if(object.name===puddingBodyMeshName)object.material.name==='Custard'&&(bodyMesh=object);
   });
   if(!meshes.length)throw new Error('Pudding GLB has no meshes');
-  const home=new Vector3(table.position[0],table.max[1]+.005,table.position[2]);
-  root.position.copy(home);root.rotation.y=-.18;root.scale.setScalar(2.6);scene.add(root);
+  if(!bodyMesh)throw new Error('Pudding GLB is missing its visible custard body mesh');
+  const anchor=table.puddingAnchor??[table.position[0],table.position[2]];
+  root.position.set(anchor[0],0,anchor[1]);root.rotation.y=-.18;root.scale.setScalar(2.3);scene.add(root);
+  const plate=table.group?.getObjectByName(puddingPlateName);
+  if(plate){
+   plate.updateWorldMatrix(true,false);
+   const ray=new Raycaster(new Vector3(anchor[0],10,anchor[1]),new Vector3(0,-1,0),0,20);
+   const hit=ray.intersectObject(plate,true)[0];
+   if(!hit)throw new Error('Pudding plate center has no raycast surface');
+   root.updateWorldMatrix(true,true);
+   bodyMesh.geometry.computeBoundingBox();
+   const bodyCenter=bodyMesh.geometry.boundingBox.getCenter(new Vector3());
+   bodyMesh.localToWorld(bodyCenter);
+   const bodyHit=new Raycaster(new Vector3(bodyCenter.x,-10,bodyCenter.z),new Vector3(0,1,0),0,20).intersectObject(bodyMesh,true)[0];
+   if(!bodyHit)throw new Error('Pudding custard body has no bottom surface at its center');
+   root.position.y+=hit.point.y-plateContactInset-bodyHit.point.y;
+  }else root.position.y=table.max[1]+.005;
+  const home=root.position.clone();
   return {
    root,meshes,home,dragging:false,returning:false,
    dragPlane:new Plane(),dragPoint:new Vector3(),grabOffset:new Vector3(),

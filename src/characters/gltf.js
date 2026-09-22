@@ -1,5 +1,6 @@
 import {Group,Matrix4} from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {updateCharacterExpression} from './expressions.js';
 
 export const characterAssetPaths={chicken:'../assets/characters/chicken.glb',chick:'../assets/characters/piyokichi.glb',piyomi:'../assets/characters/piyomi.glb'};
 const partNames=['Body','Head','Wing_L','Wing_R','Leg_L','Leg_R'];
@@ -37,6 +38,14 @@ export function installCharacterVisual(c,scene){
  });
  fallback.forEach(o=>{o.visible=false;});
  c.visualSource='glb';
+ if(c.variant==='piyomi'){
+  c.expressionMeshes={normal:[],happy:[],sleep:[]};
+  parts[1].traverse(o=>{
+   const match=/^eye_(normal|happy|sleep)$/.exec(o.name);
+   if(match)c.expressionMeshes[match[1]].push(o);
+  });
+  updateCharacterExpression(c);
+ }
 }
 
 export async function loadCharacterVisual(c,url,loader=new GLTFLoader()){
