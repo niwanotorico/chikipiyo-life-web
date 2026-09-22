@@ -1022,3 +1022,14 @@ Final status: DONE_WITH_NOTES
 - Pending publish checks: commit, push to `main`, GitHub Pages deployment, and public URL verification.
 
 ---
+# 2026-09-23 — Fix Pages CI without committing human.blend
+
+Final status: DONE_WITH_NOTES
+
+- Updated `tests/human-room.test.js` so the local authoring `.blend` is hashed only when present. In CI, the test falls back to the committed `human-room-manifest.json` and `human-room.glb`, checking the manifest source flag/hash format, valid GLB metadata, mesh bounds, no resident nodes, and furniture tags.
+- No `model-work/` files or human.blend were added. Production GLBs and runtime behavior are unchanged.
+- `npm test`: 57 passed, 0 failed.
+- `npm run build`: passed; existing Vite warning for chunks over 500 kB remains.
+- Pending publish checks: commit, push to `main`, Pages Actions success, and public URL verification.
+
+---
