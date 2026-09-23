@@ -2,6 +2,7 @@ import {Box3,Group,Vector3} from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {captureRoomAccessories,installVacuumMotion} from './room-accessories.js';
 import {installBurgerMotion,installPotatoMotion} from './burger-motion.js';
+import {applyOpaqueTransmissionTargets} from './transmission.js';
 
 const propNames=['vacuum','headphones','music-keyboard','burger','potato-single','vr-gear'];
 
@@ -16,13 +17,17 @@ function centeredAssetCopy(root){
  const center=bounds.getCenter(new Vector3());copy.children.forEach(mesh=>mesh.position.sub(center));return copy;
 }
 
+export const modelingHeadphonesFit={scale:.64,tilt:-.58,position:[0,-.024,-.02]};
+
 // The source GLB stays in its human-authored waiting position. The worn copy
 // keeps those meshes/materials but is recentered at the character head pivot.
 export function installModelingHeadphones(character,source){
  const worn=centeredAssetCopy(source);worn.name='Worn_Modeling_Headphones';
  // Headphone local X is the ear-to-ear axis, Y is up, and Z faces forward.
- // These values fit the piyokichi head without inheriting the desk pose.
- worn.rotation.set(0,0,0);worn.scale.setScalar(.52);worn.position.set(0,.12,-.015);worn.visible=false;
+ // ぴよきちの頭の実メッシュに当てて決めた装着位置：バンドはトサカの後ろで後頭部に沿い、
+ // イヤーカップは頭の横（耳の位置）に触れる。机の待機姿勢の回転は引き継がない。
+ const fit=modelingHeadphonesFit;
+ worn.rotation.set(fit.tilt,0,0);worn.scale.setScalar(fit.scale);worn.position.set(...fit.position);worn.visible=false;
  character.head.add(worn);character.modelingHeadphones=worn;return worn;
 }
 
@@ -31,7 +36,7 @@ export function installModelingHeadphones(character,source){
 export async function loadActionProps(scene,furniture,urls,loader=new GLTFLoader()){
  const entries=await Promise.all(propNames.map(async name=>[name,(await loader.loadAsync(urls[name])).scene]));
  const props=Object.fromEntries(entries);
- for(const root of Object.values(props))setShadows(root);
+ for(const [name,root] of Object.entries(props)){setShadows(root);applyOpaqueTransmissionTargets(root,name);}
 
  const vacuum=furniture.find(item=>item.id==='vacuum');
  props.vacuum.traverse(object=>{if(object.isMesh)object.userData.furnitureId='vacuum';});

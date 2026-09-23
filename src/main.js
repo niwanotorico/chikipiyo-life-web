@@ -9,6 +9,7 @@ import {createCharacter} from './characters/model.js';
 import {characterAssetPaths,loadCharacterVisual} from './characters/gltf.js';
 import {installRoomAccessories} from './world/room-accessories.js';
 import {installModelingHeadphones,loadActionProps} from './world/action-props.js';
+import {prewarmModelingScene} from './world/modeling-screen.js';
 import {animatePudding,beginPuddingDrag,loadPudding,movePudding,ownsPudding,releasePudding} from './world/pudding.js';
 import puddingUrl from '../assets/props/pudding.glb?url';
 import vacuumUrl from '../assets/props/vacuum.glb?url';
@@ -34,6 +35,8 @@ let ui;const simulation=new LifeSimulation(characters,furniture,message=>ui?.eve
 const host=document.querySelector('#canvas-host');let renderer;
 try{renderer=new T.WebGLRenderer({antialias:true});}catch(error){host.innerHTML='<p class="webgl-error">3D表示を開始できませんでした。ブラウザのハードウェアアクセラレーションを有効にして再読み込みしてください。</p>';throw error;}
 renderer.localClippingEnabled=true;renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;host.appendChild(renderer.domElement);
+// モデリング用の画面・ホログラムのシェーダーを先にコンパイルしておく（初回表示のカクつき防止）。
+prewarmModelingScene(renderer,scene,camera,furniture.find(f=>f.id==='desk'));
 controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.target.set(0,.5,0);controls.minDistance=9;controls.maxDistance=32;controls.maxPolarAngle=Math.PI*.47;controls.minPolarAngle=.15;controls.update();
 const resize=()=>{const {width,height}=host.getBoundingClientRect();renderer.setSize(width,height);camera.aspect=width/height;camera.updateProjectionMatrix();};new ResizeObserver(resize).observe(host);resize();
 const raycaster=new T.Raycaster(),pointer=new T.Vector2(),floorPlane=new T.Plane(new T.Vector3(0,1,0),0),floorPoint=new T.Vector3();

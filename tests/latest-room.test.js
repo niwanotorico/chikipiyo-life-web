@@ -12,7 +12,7 @@ import {LifeSimulation} from '../src/simulation/life.js';
 import {actions} from '../src/simulation/actions.js';
 import {findPath} from '../src/simulation/navigation.js';
 import {installRoomAccessories} from '../src/world/room-accessories.js';
-import {installModelingHeadphones} from '../src/world/action-props.js';
+import {installModelingHeadphones,modelingHeadphonesFit} from '../src/world/action-props.js';
 import {loadCharacterVisual} from '../src/characters/gltf.js';
 import {loadHumanActionProps} from './action-props-fixture.js';
 
@@ -68,13 +68,15 @@ test('ぴよきちはPC前でモデリングし、待機用と装着用ヘッド
  assert(simulation.command(piyo,'desk'));
  for(let i=0;i<3000&&piyo.phase!=='acting';i++)simulation.update(1/60);
  assert.equal(piyo.action,'model');assert(piyo.root.position.distanceTo(new Vector3(...desk.spot))<.06,'PC前まで移動する');
- simulation.update(.2);animateCharacter(piyo,1);animateRoom(furniture,[piyo],1);piyo.root.updateWorldMatrix(true,true);
+ // 跳び乗り（0〜.85秒）とヘッドホン装着が終わった作業中の姿勢で確認する。
+ for(let i=0;i<180;i++)simulation.update(1/60);animateCharacter(piyo,3);animateRoom(furniture,[piyo],3);piyo.root.updateWorldMatrix(true,true);
  assert(piyo.rig.getWorldPosition(new Vector3()).distanceTo(new Vector3(...desk.standAnchor))<1e-6,'ぴよきちは床ではなく椅子座面に立つ');
  assert.equal(props.headphones.visible,false,'待機用は隠す');assert.equal(worn.visible,true,'頭の装着用を表示する');assert.equal(worn.parent,piyo.head,'頭の回転へ追従する');
  const laptopCenter=new Box3().setFromObject(scene.getObjectByName(desk.modelLaptopName)).getCenter(new Vector3()),forward=new Vector3(0,0,1).applyQuaternion(piyo.root.getWorldQuaternion(new Quaternion())).setY(0).normalize();
  const toLaptop=laptopCenter.sub(piyo.rig.getWorldPosition(new Vector3())).setY(0).normalize();
  assert(forward.dot(toLaptop)>.995,'くちばし正面（ローカル+Z）がPC画面中央を向く');
- assert.deepEqual(worn.rotation.toArray().slice(0,3),[0,0,0],'装着側へ机上の回転を引き継がない');assert.equal(worn.scale.x,.52);
+ // 装着側は机の待機姿勢ではなく、後頭部に沿わせた専用の傾き・大きさ・位置を使う。
+ assert.deepEqual(worn.rotation.toArray().slice(0,3),[modelingHeadphonesFit.tilt,0,0],'装着側へ机上の回転を引き継がない');assert.equal(worn.scale.x,modelingHeadphonesFit.scale);assert.deepEqual(worn.position.toArray(),modelingHeadphonesFit.position);
  Object.assign(piyo,{action:'idle',target:null,phase:'acting'});animateCharacter(piyo,2);animateRoom(furniture,[piyo],2);
  assert.equal(props.headphones.visible,true,'終了時に待機用を戻す');assert.equal(worn.visible,false,'終了時に装着用を隠す');
 });

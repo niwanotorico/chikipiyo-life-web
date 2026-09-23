@@ -4,9 +4,13 @@ import {roomFurniture,roomObstacles} from './room-layout.js';
 import {installPrinterMotion,updatePrinterMotion} from './printer-motion.js';
 import {captureRoomAccessories,updateVacuumMotion} from './room-accessories.js';
 import {updateBurgerMotion,updatePotatoMotion} from './burger-motion.js';
+import {installModelingHologram,installModelingScreen,updateModelingHologram,updateModelingScreen} from './modeling-screen.js';
+import {hopOffDuration,modelingBeats} from '../characters/modeling-timeline.js';
+import {applyOpaqueTransmissionTargets} from './transmission.js';
 
-export async function loadLatestRoom(scene,url,loader=new GLTFLoader()){
+export async function loadLatestRoom(scene,url,loader=new GLTFLoader(),{createCanvas}={}){
  const {scene:room}=await loader.loadAsync(url);
+ applyOpaqueTransmissionTargets(room,'room');
  const furniture=roomFurniture.map(d=>{
   const group=new Group();group.name=`Interaction_${d.id}`;scene.add(group);
   return {...d,group,visualSource:'latest-blend'};
@@ -18,9 +22,18 @@ export async function loadLatestRoom(scene,url,loader=new GLTFLoader()){
   const seatHit=new Raycaster(new Vector3(chairCenter.x,10,chairCenter.z),new Vector3(0,-1,0),0,20).intersectObject(chair,true)[0];
   if(!seatHit)throw new Error('Modeling chair seat surface missing');
   const laptopCenter=new Box3().setFromObject(laptop).getCenter(new Vector3()),face=Math.atan2(laptopCenter.x-seatHit.point.x,laptopCenter.z-seatHit.point.z);
-  // Walk to the open side, then place the rig on the measured seat surface.
-  desk.spot=[seatHit.point.x,0,chairBounds.max.z+.55];desk.face=face;
+  // 椅子の背もたれ越しではなく、椅子の横（本人の右＝通路側）から座面へ跳び乗る。
+  desk.spot=[chairBounds.min.x-.38,0,seatHit.point.z];desk.face=face;
   desk.standAnchor=[seatHit.point.x+Math.sin(face)*.08,seatHit.point.y,seatHit.point.z+Math.cos(face)*.08];
+  // 翼の先を置く面：立ち位置から PC へ向かって下向きRaycastし、最初に当たるノートPC本体の天面。
+  const fwd=new Vector3(Math.sin(face),0,Math.cos(face)),down=new Raycaster(new Vector3(),new Vector3(0,-1,0),0,20);
+  for(let d=.05;d<1;d+=.005){
+   down.ray.origin.set(desk.standAnchor[0]+fwd.x*d,5,desk.standAnchor[2]+fwd.z*d);
+   const hit=down.intersectObject(laptop,true)[0];
+   if(hit){desk.typing={front:d,surfaceY:hit.point.y};break;}
+  }
+  installModelingScreen(desk,laptop,[seatHit.point.x,seatHit.point.y,seatHit.point.z],{createCanvas});
+  installModelingHologram(desk,laptop,[seatHit.point.x,seatHit.point.y,seatHit.point.z]);
  }
  furniture.coffeeAccessories=captureRoomAccessories(room,['08_Coffee_|_Vert001']);
  const meshes=[];
@@ -45,11 +58,17 @@ export function animateRoom(furniture,characters,time){
  const piyomiEating=characters.find(c=>c.id==='piyomi'&&c.phase==='acting'&&c.action==='eat'&&c.target?.id==='table');
  if(furniture.actionProps?.burger)updateBurgerMotion(furniture.actionProps.burger,piyomiEating);
  if(furniture.actionProps?.potatoSingle)updatePotatoMotion(furniture.actionProps.potatoSingle,piyomiEating);
- if(furniture.actionProps?.headphones)furniture.actionProps.headphones.visible=!characters.some(c=>c.id==='piyo'&&c.phase==='acting'&&c.action==='model');
+ if(furniture.actionProps?.headphones)furniture.actionProps.headphones.visible=!characters.some(c=>c.id==='piyo'&&c.phase==='acting'&&c.action==='model'&&c.elapsed>=1.0&&!(c.remaining<hopOffDuration));
  if(furniture.actionProps?.musicKeyboard)furniture.actionProps.musicKeyboard.visible=characters.some(c=>c.id==='piyomi'&&c.action==='piano');
  for(const f of furniture){
   const actor=characters.find(c=>c.target?.id===f.id&&c.phase==='acting');
   if(f.id==='printer')updatePrinterMotion(f,actor,time);
+  // PCは跳び乗って着地したところで点く
+  if(f.id==='desk'){
+   const worker=actor?.action==='model'&&actor.elapsed>=modelingBeats.hopOn[1]*.9?actor:null;
+   updateModelingScreen(f.modelingScreen,worker,time);
+   updateModelingHologram(f.modelingHologram,worker,time,Math.max(0,time-(f.lastRoomTime??time)));f.lastRoomTime=time;
+  }
   if(f.id==='vr'&&f.dockGear)f.dockGear.traverse(o=>{if(o.isMesh)o.visible=!actor;});
   f.group.traverse(o=>{
    if(!o.isMesh)return;

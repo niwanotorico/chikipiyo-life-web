@@ -63,3 +63,42 @@ test('human GLB installation preserves world bounds, multi-material click tags a
  assert(vr.group.children.filter(o=>!o.userData.vrDockHeadset).every(o=>o.visible));
  setVrDockHeadsetVisible(vr,true);assert(headsets.every(o=>o.visible));
 });
+
+test('台帳に載せた透過素材だけを不透明にし、透過の描き直しパスをなくす（実アセット）',async()=>{
+ const {loadLatestRoom}=await import('../src/world/latest-room.js');
+ const {loadHumanActionProps}=await import('./action-props-fixture.js');
+ const {opaqueTransmissionTargets}=await import('../src/world/transmission.js');
+ const bytes=readFileSync(new URL('../assets/room/human-room.glb',import.meta.url));
+ const gltf=await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
+ const warnings=[],warn=console.warn;console.warn=m=>warnings.push(String(m));
+ try{
+  const scene=new Scene(),furniture=await loadLatestRoom(scene,'test',{loadAsync:async()=>gltf});await loadHumanActionProps(scene,furniture);
+  const left=[],opaque=[];scene.traverse(o=>{if(o.isMesh)for(const m of [].concat(o.material)){if(m.transmission>0)left.push(o.name);if(m.userData.opaqueFrom)opaque.push(o.name);}});
+  assert.deepEqual(left,[],'シーンに透過素材が残らない');
+  for(const t of opaqueTransmissionTargets)assert(opaque.includes(t.mesh),`台帳の対象が不透明化された: ${t.mesh}`);
+  assert.deepEqual(warnings.filter(w=>w.includes('[transmission]')),[],'台帳と実アセットが一致している');
+ }finally{console.warn=warn;}
+});
+
+test('台帳にない透過素材（ガラス・同じ名前の別メッシュ・値が変わった素材）は変更しない',async()=>{
+ const {Mesh,BoxGeometry,MeshPhysicalMaterial,Group}=await import('three');
+ const {applyOpaqueTransmissionTargets}=await import('../src/world/transmission.js');
+ const target={asset:'test',mesh:'Page',parent:'book',material:'white',transmission:.24,color:'ffffff'};
+ const white=new MeshPhysicalMaterial({color:0xffffff,transmission:.24});white.name='white';
+ const glass=new MeshPhysicalMaterial({transmission:.9});glass.name='glass';
+ const changed=new MeshPhysicalMaterial({color:0xffffff,transmission:.3});changed.name='white';
+ const root=new Group(),book=new Group();book.name='book';root.add(book);
+ const add=(parent,name,m)=>{const mesh=new Mesh(new BoxGeometry(),m);mesh.name=name;parent.add(mesh);return mesh;};
+ const page=add(book,'Page',white),sameMaterialOther=add(root,'Curtain',white),window_=add(root,'Window',glass);
+ const otherBook=new Group();otherBook.name='book2';root.add(otherBook);const tweaked=add(otherBook,'Page',changed);
+ const warnings=[];const report=applyOpaqueTransmissionTargets(root,'test',{targets:[target],warn:m=>warnings.push(m)});
+ assert.equal(page.material.transmission,0,'台帳の対象は不透明');
+ assert.notEqual(page.material,white,'元の素材は書き換えずコピーを使う');assert.equal(white.transmission,.24);
+ assert.equal(sameMaterialOther.material,white,'同じ素材を使う台帳外のメッシュは透過のまま');
+ assert.equal(window_.material.transmission,.9,'ガラスは変更しない');
+ assert.equal(tweaked.material.transmission,.3,'親が違う・値が違うものは変更しない');
+ assert.equal(report.applied.length,1);assert.equal(report.unlisted.length,3);
+ assert(warnings.some(w=>w.includes('台帳にない透過素材')),'台帳外の透過素材を知らせる');
+ const missing=[];applyOpaqueTransmissionTargets(new Group(),'test',{targets:[target],warn:m=>missing.push(m)});
+ assert(missing.some(w=>w.includes('見つからない')),'アセットが変わったら知らせる');
+});
