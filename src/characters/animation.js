@@ -1,5 +1,6 @@
 import {Quaternion,Vector3} from 'three';
 import {updateCharacterExpression} from './expressions.js';
+import {animateMeal} from './meal.js';
 import {modelingBeat,modelingBeats,span,smooth,trackpadStroke,hopOffDuration} from './modeling-timeline.js';
 const sleepRotation=new Quaternion().setFromAxisAngle(new Vector3(1,0,0),-Math.PI/2);
 // ちきんのコーヒーカップ。翼の先（腕ローカル）でカップを握り、肩から見た向きだけを動かす。
@@ -14,11 +15,11 @@ export function animateCharacter(c,time){const t=c.elapsed,walking=c.phase==='wa
  updateCharacterExpression(c);
  c.arms.forEach(arm=>{
   arm.userData.restPosition??=arm.position.clone();
-  arm.position.copy(arm.userData.restPosition);
+  arm.position.copy(arm.userData.restPosition);arm.scale.set(1,1,1);
   const visual=arm.children.find(o=>o.name.startsWith('GLB_Wing'));
-  if(visual){visual.userData.restPosition??=visual.position.clone();visual.position.copy(visual.userData.restPosition);}
+  if(visual){visual.userData.restPosition??=visual.position.clone();visual.position.copy(visual.userData.restPosition);visual.userData.restScale??=visual.scale.clone();visual.scale.copy(visual.userData.restScale);}
  });
- c.rig.position.set(0,0,0);c.rig.rotation.set(0,0,0);c.rig.scale.set(1,1,1);c.head.rotation.set(0,0,0);c.arms.forEach(p=>p.rotation.set(0,0,0));c.legs.forEach(p=>p.rotation.set(0,0,0));c.food.visible=false;c.vr.visible=a==='vr';c.broom.visible=false;c.vrControllers?.forEach(o=>o.visible=a==='vr');c.modelingHeadphones&&(c.modelingHeadphones.visible=a==='model'&&c.id==='piyo');
+ c.rig.position.set(0,0,0);c.rig.rotation.set(0,0,0);c.rig.scale.set(1,1,1);c.head.scale.set(1,1,1);c.head.rotation.set(0,0,0);c.arms.forEach(p=>p.rotation.set(0,0,0));c.legs.forEach(p=>p.rotation.set(0,0,0));c.food.visible=false;c.vr.visible=a==='vr';c.broom.visible=false;c.vrControllers?.forEach(o=>o.visible=a==='vr');c.modelingHeadphones&&(c.modelingHeadphones.visible=a==='model'&&c.id==='piyo');
  c.rig.position.y=Math.sin(time*2.3)*.012;
  if(walking){c.rig.position.y=Math.abs(Math.sin(t*8))*.065;c.legs.forEach((p,i)=>p.rotation.x=Math.sin(t*8+i*Math.PI)*.48);c.arms.forEach((p,i)=>p.rotation.x=-Math.sin(t*8+i*Math.PI)*.35);}
  if(a==='sleep'&&c.target){
@@ -63,16 +64,8 @@ export function animateCharacter(c,time){const t=c.elapsed,walking=c.phase==='wa
   c.arms[1].rotation.x=-.7+Math.sin(t*3)*.15;c.arms[0].rotation.x=-.35;
   c.head.rotation.x=(c.target?.headTilt??.16)+Math.sin(t*1.3)*.04;
  }
-if(a==='eat'&&c.id==='piyomi'&&c.target?.id==='table'){
-  // Keep the existing seated eating loop. The table prop layer carries only
-  // the single fry; the authored burger set remains fixed on its plate.
-  const bite=Math.max(0,Math.sin(t*1.55))**2;
-  c.rig.rotation.x=.10+.045*bite;
-  c.arms[0].rotation.x=-.48-.18*bite;
-  c.arms[1].rotation.x=-.62-.24*bite;
-  c.head.rotation.x=.14+.12*bite+Math.sin(t*3.2)*.025;
-  c.head.rotation.y=Math.sin(t*1.1)*.08;
- }
+ // ぴよみのハンバーガー：椅子へぴょん → いただきます → 両翼で持ってかぶりつく → ごちそうさま（meal.js）
+ if(a==='eat'&&c.id==='piyomi'&&c.target?.id==='table')animateMeal(c,t,time);
  if(a==='model'&&c.id==='piyo')animateModeling(c,t,time);
  if(a==='piano'&&c.id==='piyomi'){
   // A low floor-playing pose: folded legs, a small rhythmic nod, and alternating wing taps.
@@ -130,12 +123,15 @@ export function wingTip(arm,source){
 }
 
 // 翼の先がワールドの target に触れるように腕を回す。届かない分／余る分は肩を少しだけ前後させる。
-export function reachWing(c,arm,target){
+// slide：肩を target の方へずらせる最大量。stretch：届かないときに翼を少しだけ大きくしてよい倍率（1＝しない）。
+export function reachWing(c,arm,target,{slide=.07,stretch=1}={}){
  const tip=wingTip(arm,c.visualSource);if(!tip)return;
  c.rig.updateWorldMatrix(true,false);
  const local=c.rig.worldToLocal(mTmp.copy(target)).sub(arm.position),dist=local.length(),len=tip.length();
  local.normalize();
- arm.position.addScaledVector(local,Math.max(-.07,Math.min(.07,dist-len)));
+ const shift=Math.max(-slide,Math.min(slide,dist-len));
+ arm.position.addScaledVector(local,shift);
+ arm.scale.setScalar(Math.min(stretch,Math.max(1,(dist-shift)/len)));
  arm.quaternion.setFromUnitVectors(mTmp2.copy(tip).normalize(),local);
 }
 

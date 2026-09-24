@@ -4,7 +4,9 @@ import {captureRoomAccessories,installVacuumMotion} from './room-accessories.js'
 import {installBurgerMotion,installPotatoMotion} from './burger-motion.js';
 import {applyOpaqueTransmissionTargets} from './transmission.js';
 
-const propNames=['vacuum','headphones','music-keyboard','burger','potato-single','vr-gear'];
+const propNames=['vacuum','headphones','music-keyboard','burger','burger_bite01','burger_bite02','potato-single','vr-gear'];
+// 食べかけバーガーは無くても動く（古い確認ページ用）。無ければまるごとのまま最後にぱくっと食べる。
+const optionalProps=new Set(['burger_bite01','burger_bite02']);
 
 function setShadows(root){root.traverse(object=>{if(object.isMesh){object.castShadow=true;object.receiveShadow=true;}});}
 
@@ -34,7 +36,8 @@ export function installModelingHeadphones(character,source){
 // These GLBs retain their Blender world transforms, so adding them to the
 // scene restores their approved waiting positions without moving room meshes.
 export async function loadActionProps(scene,furniture,urls,loader=new GLTFLoader()){
- const entries=await Promise.all(propNames.map(async name=>[name,(await loader.loadAsync(urls[name])).scene]));
+ const names=propNames.filter(name=>urls[name]||!optionalProps.has(name));
+ const entries=await Promise.all(names.map(async name=>[name,(await loader.loadAsync(urls[name])).scene]));
  const props=Object.fromEntries(entries);
  for(const [name,root] of Object.entries(props)){setShadows(root);applyOpaqueTransmissionTargets(root,name);}
 
@@ -53,7 +56,10 @@ export async function loadActionProps(scene,furniture,urls,loader=new GLTFLoader
  // burger.glb already contains its serving plate (14_Dessert_|_Circle001).
  // Keep the authored table placement and toggle the complete set as one prop.
  props.burger.visible=false;props.burger.name='Piyomi_Burger_Set';scene.add(props.burger);
- installBurgerMotion(props.burger);
+ // ぴよみが翼を伸ばす先（バーガーとつまむポテトのワールド位置）をテーブルに持たせる。
+ const table=furniture.find(item=>item.id==='table');
+ // 食べかけ（bite01 / bite02）はお皿のセットの中へ移し、段階に合わせて差し替える。
+ const plate=installBurgerMotion(props.burger,[props.burger_bite01,props.burger_bite02]);if(table)table.meal=plate;
  props.potatoSingle=props['potato-single'];props.potatoSingle.visible=false;props.potatoSingle.name='Piyomi_Held_Potato';scene.add(props.potatoSingle);
  installPotatoMotion(props.potatoSingle);
 

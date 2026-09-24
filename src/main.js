@@ -16,6 +16,8 @@ import vacuumUrl from '../assets/props/vacuum.glb?url';
 import headphonesUrl from '../assets/props/headphones.glb?url';
 import musicKeyboardUrl from '../assets/props/music-keyboard.glb?url';
 import burgerUrl from '../assets/props/burger.glb?url';
+import burgerBite01Url from '../assets/props/burger_bite01.glb?url';
+import burgerBite02Url from '../assets/props/burger_bite02.glb?url';
 import potatoSingleUrl from '../assets/props/potato-single.glb?url';
 import vrGearUrl from '../assets/props/vr-gear.glb?url';
 const characterAssets=import.meta.glob('../assets/characters/{chicken,piyokichi,piyomi}.glb',{eager:true,query:'?url',import:'default'});
@@ -28,7 +30,7 @@ const camera=new T.PerspectiveCamera(36,1,.1,100);let controls;function resetCam
 scene.add(new T.HemisphereLight(0xfffaf1,0x8dafa4,2.5));const sun=new T.DirectionalLight(0xffe7c6,3.2);sun.position.set(-3,12,7);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-9,right:9,top:9,bottom:-9,near:.1,far:35});sun.shadow.normalBias=.035;sun.shadow.bias=-.0001;scene.add(sun);
 const ground=new T.Mesh(new T.PlaneGeometry(200,200),new T.MeshStandardMaterial({color:0xeaf0e9,roughness:1}));ground.rotation.x=-Math.PI/2;ground.position.y=-.48;ground.receiveShadow=true;scene.add(ground);
 const furniture=await loadLatestRoom(scene,roomUrl);
-const actionProps=await loadActionProps(scene,furniture,{vacuum:vacuumUrl,headphones:headphonesUrl,'music-keyboard':musicKeyboardUrl,burger:burgerUrl,'potato-single':potatoSingleUrl,'vr-gear':vrGearUrl});
+const actionProps=await loadActionProps(scene,furniture,{vacuum:vacuumUrl,headphones:headphonesUrl,'music-keyboard':musicKeyboardUrl,burger:burgerUrl,burger_bite01:burgerBite01Url,burger_bite02:burgerBite02Url,'potato-single':potatoSingleUrl,'vr-gear':vrGearUrl});
 const characters=characterDefinitions.map(createCharacter);characters.forEach(c=>{scene.add(c.root);c.visualReady=loadCharacterVisual(c,characterAssets[characterAssetPaths[c.variant]]);c.vrVisualReady=c.visualReady.then(()=>{installRoomAccessories(c,furniture);if(c.id==='piyo')installModelingHeadphones(c,actionProps.headphones);});});
 const pudding=await loadPudding(scene,puddingUrl,furniture.find(f=>f.id==='table'));
 let ui;const simulation=new LifeSimulation(characters,furniture,message=>ui?.event(message));ui=createUI(characters,furniture,simulation,resetCamera);

@@ -34,7 +34,8 @@ const backChair=bounds(['Cube.003']);
 roomFurniture.find(f=>f.id==='table').seats={
  chiki:{spot:[table.min[0]-.52,0,-.65],face:Math.PI/2,seatAnchor:null,activityLabel:'コーヒーをひとくち',label:'コーヒーを飲む'},
  piyo:{spot:[diningChair.max[0]+.52,0,diningChair.position[2]],seatAnchor:[diningChair.position[0],.53,diningChair.position[2]],face:-Math.PI/2,activityLabel:'プリンをもぐもぐ',label:'プリンを食べる'},
- piyomi:{spot:[backChair.position[0],0,backChair.min[2]-.26],seatAnchor:[backChair.position[0],.53,backChair.position[2]],face:0,activityLabel:'ハンバーガーをもぐもぐ',label:'ハンバーガーを食べる'},
+ // 椅子の背もたれ越しではなく、横（通路側）からぴょんと座面へ乗る。
+ piyomi:{spot:[backChair.max[0]+.34,0,backChair.position[2]-.17],seatAnchor:[backChair.position[0],.53,backChair.position[2]],face:0,activityLabel:'ハンバーガーをもぐもぐ',label:'ハンバーガーを食べる'},
 };
 // 3Dプリンター：ぴよきち・ぴよみは赤い椅子（Cube.002）の上に立って造形物を覗き込み、
 // ちきんは椅子に届かないので横から見守る。全員ビルドプレートの方を向く。
