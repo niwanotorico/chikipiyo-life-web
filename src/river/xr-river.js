@@ -1,10 +1,8 @@
 import * as T from 'three';
-import {createXRSession,mountXRButton} from '../xr/xr-session.js';
-import {createXRInput} from '../xr/xr-input.js';
-import {createLocomotion} from '../xr/xr-locomotion.js';
+import {mountWorldXR} from '../xr/xr-world.js';
 import {heightAt,WATER_Y} from './terrain.js';
 
-// 渓流を VR で歩くための「つなぎ」。WebXR の共通部品（src/xr）に、渓流の地形ルールを渡すだけ。
+// 渓流を VR で歩くための「つなぎ」。WebXR の共通部品（src/xr/xr-world.js）に、渓流の地形ルールを渡すだけ。
 // このファイルは WebXR 対応ブラウザでだけ動的 import される（PC・スマホの通常表示には読み込まれない）。
 
 export const WADE_DEPTH=.35;                    // 浅瀬はくるぶし〜すねまで入れる。深い淵ではこの深さに“浮く”
@@ -26,44 +24,30 @@ export function xrStartPose(spot){
 }
 
 export function mountRiverXR({renderer,scene,camera,controls,rt,water,sun,sunDir,fishing,spot,profile={},onExit}){
- renderer.xr.enabled=true;
- const rig=new T.Group();rig.name='XRRig';scene.add(rig);rig.add(camera); // 通常時は原点のまま＝既存の見た目は変わらない
- const input=createXRInput(renderer,rig);
- const loco=createLocomotion({rig,camera,input,ground:riverFloor,walkable,canStand,parent:scene});
- const saved={};const sunHome={pos:sun.position.clone(),target:sun.target.position.clone()};
- const raycaster=new T.Raycaster();
-
- // トリガー：ウキを指して「合わせ」。当たればブルッと振動
- input.on('selectstart',hand=>{raycaster.setFromXRController(hand.ray);if(fishing.trySetHook(raycaster))hand.pulse(.9,140);});
-
- const xr=createXRSession(renderer,{
-  framebufferScale:profile.xrScale||1,
+ const sunHome={pos:sun.position.clone(),target:sun.target.position.clone()};
+ const saved={};const head=new T.Vector3();
+ const xr=mountWorldXR({renderer,scene,camera,controls,profile,onExit,near:.06,
+  world:{ground:riverFloor,walkable,canStand,startPose:()=>xrStartPose(spot)},
   onStart(){
-   saved.pos=camera.position.clone();saved.quat=camera.quaternion.clone();saved.target=controls.target.clone();saved.near=camera.near;saved.samples=rt.samples;
-   controls.enabled=false;
-   camera.near=.06;camera.updateProjectionMatrix();water.material.uniforms.uNear.value=camera.near;
+   // 水の屈折は near を使って深度を戻すので、カメラと揃える。VR では MSAA を軽くする
+   water.material.uniforms.uNear.value=camera.near;
+   saved.samples=rt.samples;
    if(profile.xrSamples!=null&&rt.samples!==profile.xrSamples){rt.samples=profile.xrSamples;rt.dispose();}
-   const p=xrStartPose(spot);rig.position.set(p.x,p.y,p.z);rig.rotation.set(0,p.yaw,0);camera.position.set(0,1.6,0);camera.quaternion.identity();
-   loco.reset();document.body.classList.add('xr-active');button.active();
   },
   onEnd(){
-   rig.position.set(0,0,0);rig.rotation.set(0,0,0);rig.updateMatrixWorld(true);
-   camera.position.copy(saved.pos);camera.quaternion.copy(saved.quat);camera.near=saved.near;camera.updateProjectionMatrix();water.material.uniforms.uNear.value=camera.near;
+   water.material.uniforms.uNear.value=camera.near;
    if(rt.samples!==saved.samples){rt.samples=saved.samples;rt.dispose();}
-   controls.target.copy(saved.target);controls.enabled=true;controls.update();
    sun.position.copy(sunHome.pos);sun.target.position.copy(sunHome.target);
-   loco.reset();document.body.classList.remove('xr-active');button.idle();onExit&&onExit();
+  },
+  onUpdate({locomotion}){
+   // 太陽の影は自分のまわり（±62m）に付いてくる。8m 単位で動かしてチラつきを抑える
+   head.copy(locomotion.headWorld());
+   const tx=Math.round(head.x/8)*8,tz=Math.round(head.z/8)*8;
+   if(sun.target.position.x!==tx||sun.target.position.z!==tz){sun.target.position.set(tx,0,tz);sun.position.copy(sun.target.position).addScaledVector(sunDir,140);}
   },
  });
- const button=mountXRButton(document.body,{onEnter:()=>xr.enter('vr'),onExit:()=>xr.exit()});
-
- const head=new T.Vector3();
- function update(dt){
-  input.update();loco.update(dt);
-  // 太陽の影は自分のまわり（±62m）に付いてくる。8m 単位で動かしてチラつきを抑える
-  loco.headWorld();head.copy(loco.headWorld());
-  const tx=Math.round(head.x/8)*8,tz=Math.round(head.z/8)*8;
-  if(sun.target.position.x!==tx||sun.target.position.z!==tz){sun.target.position.set(tx,0,tz);sun.position.copy(sun.target.position).addScaledVector(sunDir,140);}
- }
- return {rig,input,locomotion:loco,session:xr,button,update,get active(){return xr.active;}};
+ // トリガー：ウキを指して「合わせ」。当たればブルッと振動
+ const raycaster=new T.Raycaster();
+ xr.input.on('selectstart',hand=>{raycaster.setFromXRController(hand.ray);if(fishing.trySetHook(raycaster))hand.pulse(.9,140);});
+ return xr;
 }

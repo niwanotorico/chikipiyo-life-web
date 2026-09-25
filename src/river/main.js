@@ -11,15 +11,16 @@ import {createFish} from './fish.js';
 import {createFishing,fishingSpot} from './fishing.js';
 import {createRiverAudio} from './river-audio.js';
 import {createRiverSfx} from './river-sfx.js';
+import {whenXRSupported,xrProfile as sharedXRProfile} from '../xr/xr-session.js';
 
 mountSiteNav(document.body,'river',{position:'beforeend',variant:'floating'});
 const params=new URLSearchParams(location.search);
 // 画質：スマホ・Quest（ブラウザ内の Quest も含む）は軽量設定。?quality=high / low で上書きできる
-const quest=/OculusBrowser|Quest|Pico/i.test(navigator.userAgent);
+const baseXR=sharedXRProfile(params),quest=baseXR.quest;
 const touch=matchMedia('(pointer:coarse)').matches||innerWidth<760;
 const quality=params.get('quality');
 const mobile=quality==='high'?false:quality==='low'?true:(touch||quest);
-const xrProfile={xrScale:+(params.get('xrscale')||(quest?.9:1)),xrSamples:params.has('msaa')?+params.get('msaa'):(quest?2:4)};
+const xrProfile={...baseXR,xrSamples:params.has('msaa')?+params.get('msaa'):(quest?2:4)};
 const app=document.getElementById('app');
 const renderer=new T.WebGLRenderer({antialias:false,powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(devicePixelRatio,mobile?1.5:2));
@@ -96,8 +97,8 @@ function constrain(){
 
 // WebXR：対応ブラウザ（Meta Quest など）でだけ VR 用コードを読み込み「VRで入る」ボタンを出す。?xr で強制表示
 let xr=null;
-if(navigator.xr&&navigator.xr.isSessionSupported)navigator.xr.isSessionSupported('immersive-vr').catch(()=>false).then(ok=>{
- if(!ok&&!params.has('xr'))return;
+whenXRSupported(params).then(ok=>{
+ if(!ok)return;
  return import('./xr-river.js').then(m=>{xr=m.mountRiverXR({renderer,scene,camera,controls,rt,water,sun,sunDir,fishing,spot,profile:xrProfile,onExit:resize});window.__river.xr=xr;});
 }).catch(e=>console.warn('[river-xr]',e));
 

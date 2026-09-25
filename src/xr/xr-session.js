@@ -36,7 +36,21 @@ export function createXRSession(renderer,{onStart,onEnd,framebufferScale=1,fovea
 }
 
 // ページに浮かべる「VRで入る」ボタン。対応環境でだけ呼ぶ
+// ボタンの見た目（どのワールドでも同じ）。ページの CSS で .xr-enter の位置だけ上書きしてよい
+const BUTTON_CSS=`.xr-enter{position:fixed;z-index:21;left:16px;bottom:16px;padding:12px 20px;border:0;border-radius:999px;background:rgba(255,255,255,.86);backdrop-filter:blur(8px);color:#24403a;font:700 15px/1 "Noto Sans JP",sans-serif;letter-spacing:.06em;box-shadow:0 4px 18px rgba(20,50,40,.2);cursor:pointer}
+.xr-enter::before{content:"🥽 "}
+.xr-enter:hover{background:#fff}
+.xr-enter[data-state="starting"]{opacity:.7;cursor:wait}
+.xr-enter.xr-error{background:#ffe1dc;color:#9a3526}
+@media (max-width:520px){.xr-enter{left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px))}}`;
+function injectButtonCSS(){
+ if(document.getElementById('xr-enter-style'))return;
+ const st=document.createElement('style');st.id='xr-enter-style';st.textContent=BUTTON_CSS;
+ document.head.prepend(st); // 先頭に入れて、ページ側の CSS で上書きできるようにする
+}
+
 export function mountXRButton(parent,{label='VRで入る',exitLabel='VRを終了',onEnter,onExit,className='xr-enter'}={}){
+ injectButtonCSS();
  const el=document.createElement('button');el.type='button';el.className=className;
  const set=(state,text)=>{el.dataset.state=state;el.textContent=text;el.disabled=state==='starting';};
  set('idle',label);
@@ -48,4 +62,19 @@ export function mountXRButton(parent,{label='VRで入る',exitLabel='VRを終了
  });
  parent.appendChild(el);
  return {el,idle:()=>set('idle',label),active:()=>set('active',exitLabel)};
+}
+
+// 対応ブラウザ（Meta Quest など）でだけ true。?xr を付けると非対応でも true（ボタン確認・エミュレーター用）。
+// ページ側はこれが true の時だけ VR 用コードを import する（PC・スマホの通常表示には読み込まれない）。
+export async function whenXRSupported(params=new URLSearchParams(globalThis.location?.search||''),nav=globalThis.navigator){
+ let ok=false;
+ try{ok=!!(nav&&nav.xr&&nav.xr.isSessionSupported&&await nav.xr.isSessionSupported('immersive-vr'));}catch{ok=false;}
+ return ok||params.has('xr');
+}
+
+// VR の画質設定。Quest（ブラウザ内の Quest も含む）は少し軽く。?xrscale で上書き
+export const isStandaloneHeadset=(ua=globalThis.navigator?.userAgent||'')=>/OculusBrowser|Quest|Pico/i.test(ua);
+export function xrProfile(params=new URLSearchParams(globalThis.location?.search||''),ua){
+ const quest=isStandaloneHeadset(ua);
+ return {quest,xrScale:+(params.get('xrscale')||(quest?.9:1))};
 }

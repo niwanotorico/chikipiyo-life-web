@@ -19,10 +19,4 @@ body>.site-nav{position:fixed;z-index:20;top:16px;right:16px}
  body>.site-nav{top:auto;right:auto;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));width:min(300px,calc(100% - 32px))}
 }
 
-/* WebXR：対応ブラウザ（Meta Quest など）でだけ表示される「VRで入る」 */
-.xr-enter{position:fixed;z-index:21;left:16px;bottom:16px;padding:12px 20px;border:0;border-radius:999px;background:rgba(255,255,255,.86);backdrop-filter:blur(8px);color:#24403a;font:700 15px/1 "Noto Sans JP",sans-serif;letter-spacing:.06em;box-shadow:0 4px 18px rgba(20,50,40,.2);cursor:pointer}
-.xr-enter::before{content:"🥽 "}
-.xr-enter:hover{background:#fff}
-.xr-enter[data-state="starting"]{opacity:.7;cursor:wait}
-.xr-enter.xr-error{background:#ffe1dc;color:#9a3526}
-@media (max-width:520px){.xr-enter{left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px))}}
+/* 「VRで入る」ボタンの見た目は src/xr/xr-session.js（全ワールド共通）。位置を変える時だけここで .xr-enter を上書き */
