@@ -24,7 +24,7 @@ function castPoint(from,dir){
 // caughtYaw は釣れた魚を吊るす向き（体の正面から右＝川側へ。顔の真正面を避けた斜め前）。
 const LAYOUT=[
  {id:'piyo',z:Z0-2.6,off:.55,aim:-.62,rod:1.8,sit:false,turn:.55,elev:.66,butt:.1,reach:.85,joyFwd:.15,joyOut:.55,caughtYaw:-1.05},
- {id:'chiki',z:Z0,off:1.05,aim:-.36,rod:2.5,sit:true,turn:.55,elev:.6,butt:.14,reach:.85,liftMax:0,drop:.95,joyFwd:.6,joyOut:.12,caughtYaw:-1.1},
+ {id:'chiki',z:Z0,off:1.05,aim:-.36,rod:2.5,sit:true,seatDrop:.063,legRest:-1.42,legSwing:.07,headPitch:.5,turn:.55,elev:.6,butt:.14,reach:.85,liftMax:0,drop:.95,joyFwd:.6,joyOut:.12,caughtYaw:-1.1},
  {id:'piyomi',z:Z0+2.4,off:.6,aim:-.16,rod:1.8,sit:false,turn:.35,elev:.7,butt:.1,reach:.95,drop:.65,caughtYaw:-1.15,twistMax:.55},
 ];
 export function fishingSpot(){
@@ -141,7 +141,7 @@ function measureWings(c,wings){
 const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
 const lerp=T.MathUtils.lerp;
 
-export function createFishing({scene,fish,camera,dom,shared,onScore}){
+export function createFishing({scene,fish,camera,dom,shared,onScore,onEvent}){
  const spot=fishingSpot(),fx=makeEffects();scene.add(fx.group);
  const R=rng(21),anglers=[];
  const rockMat=new T.MeshStandardMaterial({vertexColors:true,roughness:.95,envMapIntensity:.45});patchSurface(rockMat,'rock',shared);
@@ -207,7 +207,8 @@ export function createFishing({scene,fish,camera,dom,shared,onScore}){
   c.rig.position.set(0,0,0);c.rig.rotation.set(0,0,0);c.head.rotation.set(0,0,0);
   c.vr.visible=false;c.broom.visible=false;c.food.visible=false;c.vrControllers?.forEach(o=>o.visible=false);if(c.modelingHeadphones)c.modelingHeadphones.visible=false;
   c.legs.forEach(l=>l.rotation.set(0,0,0));
-  if(a.sit){c.rig.position.y=a.seatY-.12;c.legs.forEach((l,i)=>l.rotation.x=-1.25+Math.sin(time*1.4+i*2)*.12);c.rig.rotation.x=-.08;}
+  // 座り：お尻が岩の上面に軽く乗る高さまで下げ（seatDrop）、そのぶん足を前へ少し上げて岩にめり込まないようにする
+  if(a.sit){c.rig.position.y=a.seatY-.12-(a.seatDrop??0);c.legs.forEach((l,i)=>l.rotation.x=(a.legRest??-1.25)+Math.sin(time*1.4+i*2)*(a.legSwing??.12));c.rig.rotation.x=-.08;}
   else c.rig.position.y=Math.sin(time*2.1+a.z)*.01;
   let elev=a.elev0,bend=.05,hop=0;
   switch(a.state){
@@ -247,7 +248,8 @@ export function createFishing({scene,fish,camera,dom,shared,onScore}){
   c.root.rotation.y=a.faceYaw+a.twist;
   const headYaw=T.MathUtils.clamp(rel-a.twist,a.state==='cast'?-.1:-.65,.72); // 竿のある右側へは回しすぎない（振りかぶり中は正面）
   const headWY=a.pos.y+c.rig.position.y+c.head.position.y;
-  const pitch=T.MathUtils.clamp(Math.atan2(headWY-a.look3.y,Math.hypot(a.look3.x-a.pos.x,a.look3.z-a.pos.z)),-.45,.55);
+  // headPitch：見下ろす角度の効き具合（ちきんは 0.5 ＝ 視線の方向は保ったまま、あごを引きすぎない）
+  const pitch=T.MathUtils.clamp(Math.atan2(headWY-a.look3.y,Math.hypot(a.look3.x-a.pos.x,a.look3.z-a.pos.z))*(a.headPitch??1),-.45,.55);
   // 竿は世界の中で同じ向きを保つ（胴体をひねった分だけ逆に戻す）。釣れたら魚を川側の斜め前へ
   const yawGoal=a.state==='lift'||a.state==='caught'||(a.state==='release'&&a.t<.4)?a.caughtYaw:a.rodYaw;
   a.rodYawNow+=(yawGoal-a.rodYawNow)*Math.min(1,dt*3);
@@ -276,7 +278,7 @@ export function createFishing({scene,fish,camera,dom,shared,onScore}){
      if(t<.62)a.floatPos.set(tip.x,tip.y-.35+Math.min(t,.5)*.4,tip.z);
      else{if(!a.flying){a.flying=true;a.from.copy(a.floatPos);}
       const k=Math.min((t-.62)/.75,1);a.floatPos.lerpVectors(a.from,a.target,k);a.floatPos.y=lerp(a.from.y,WATER_Y,k)+Math.sin(k*Math.PI)*1.6;
-      if(k>=1){a.flying=false;fx.splash(a.target,10,.5);fx.ripple(a.target,.6);a.floatPos.copy(a.target);set(a,'wait');a.fish=null;a.waitFor=1.5+R()*3;}}
+      if(k>=1){a.flying=false;fx.splash(a.target,10,.5);fx.ripple(a.target,.6);onEvent?.('land',a,a.target);a.floatPos.copy(a.target);set(a,'wait');a.fish=null;a.waitFor=1.5+R()*3;}}
      break;}
     case 'wait':case 'nibble':case 'bite':{
      const sink=a.state==='bite'?-.14-Math.min(t,.3)*.2:a.state==='nibble'&&Math.sin(t*14)>.6?-.035:0;
@@ -302,7 +304,7 @@ export function createFishing({scene,fish,camera,dom,shared,onScore}){
      a.floatPos.lerpVectors(a.fightFrom,shore,ease(k));a.floatPos.x+=Math.sin(t*5)*.35*(1-k);a.floatPos.z+=Math.cos(t*3.7)*.3*(1-k);a.floatPos.y=WATER_Y+.02;
      if(a.fish){const fp=a.fish.root.position;fp.set(a.floatPos.x,WATER_Y-.12,a.floatPos.z);a.fish.root.rotation.set(0,Math.atan2(-(tip.x-fp.x),-(tip.z-fp.z))+Math.sin(t*14)*.5,0);a.fish.tail.rotation.y=Math.sin(t*30)*.6;}
      if(Math.random()<dt*9)fx.splash(a.floatPos,4,.5);if(Math.random()<dt*3)fx.ripple(a.floatPos,.4);
-     if(k>=1){set(a,'lift');fx.splash(a.floatPos,26,.9);fx.ripple(a.floatPos,.8);a.from.copy(a.floatPos);}
+     if(k>=1){set(a,'lift');fx.splash(a.floatPos,26,.9);fx.ripple(a.floatPos,.8);onEvent?.('lift',a,a.floatPos);a.from.copy(a.floatPos);}
      break;}
     case 'lift':case 'caught':{
      const k=a.state==='lift'?Math.min(t/.7,1):1;
@@ -316,7 +318,7 @@ export function createFishing({scene,fish,camera,dom,shared,onScore}){
      const k=Math.min(t/.8,1),drop=tmp.copy(a.pos).addScaledVector(a.dir,2.4);drop.y=WATER_Y;
      if(a.fish){const fr=a.fish.root;fr.position.lerpVectors(a.from,drop,k);fr.position.y+=Math.sin(k*Math.PI)*.8-.28*(1-k);fr.rotation.x+=dt*8;}
      a.floatPos.set(tip.x,tip.y-.35,tip.z);
-     if(k>=1){if(a.fish){fx.splash(drop,14,.6);fx.ripple(drop,.6);a.fish.root.position.copy(drop).y=-.3;fish.release(a.fish,{dart:true});a.fish=null;}set(a,'ready');a.delay=1+R()*2.5;}
+     if(k>=1){if(a.fish){fx.splash(drop,14,.6);fx.ripple(drop,.6);onEvent?.('release',a,drop);a.fish.root.position.copy(drop).y=-.3;fish.release(a.fish,{dart:true});a.fish=null;}set(a,'ready');a.delay=1+R()*2.5;}
      break;}
     case 'miss':{a.floatPos.y=WATER_Y+.02+Math.max(0,.1-t*.2);if(t>1.6)set(a,'retrieve');break;}
     case 'retrieve':{
@@ -340,8 +342,14 @@ export function createFishing({scene,fish,camera,dom,shared,onScore}){
  dom.addEventListener('pointerup',e=>{
   if(!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>8)return;const r=dom.getBoundingClientRect();
   ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ndc,camera);
-  for(const a of anglers){if((a.state==='bite'||a.state==='nibble')&&ray.intersectObject(a.float.userData.hit,false).length){if(a.state==='nibble'){set(a,'bite');}a.tapped=true;}}
+  trySetHook(ray);
  });
+ // 画面タップ・VRコントローラーの両方から使う「合わせ」判定（当たったら true）
+ function trySetHook(rc){
+  let hit=false;
+  for(const a of anglers){if((a.state==='bite'||a.state==='nibble')&&rc.intersectObject(a.float.userData.hit,false).length){if(a.state==='nibble'){set(a,'bite');}a.tapped=true;hit=true;}}
+  return hit;
+ }
 
- return {anglers,update,spot};
+ return {anglers,update,spot,trySetHook};
 }

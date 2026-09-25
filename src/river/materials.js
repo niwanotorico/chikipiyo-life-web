@@ -70,3 +70,35 @@ transformed.x+=(sin(uTime*1.3+ph)+.4*sin(uTime*3.1+ph*2.))*sw;
 transformed.z+=cos(uTime*1.05+ph*1.3)*sw*.7;}`);
  };
 }
+
+// Instanced trees/bushes: the same gentle sway plus a soft world-space "leaf" mottling,
+// so the low-poly clumps read as foliage instead of smooth blobs (no textures, no extra draws).
+export function patchFoliage(mat,shared,{amp=.016,base=1.6}={}){
+ mat.customProgramCacheKey=()=>'river-foliage';
+ mat.onBeforeCompile=sh=>{
+  sh.uniforms.uTime=shared.uTime;
+  sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nuniform float uTime;varying vec3 vFW;')
+   .replace('#include <begin_vertex>',`#include <begin_vertex>
+{float sw=max(transformed.y-${base.toFixed(2)},0.)*${amp.toFixed(3)};vec3 ip=vec3(0);
+#ifdef USE_INSTANCING
+ip=instanceMatrix[3].xyz;
+#endif
+float ph=ip.x*.37+ip.z*.23;
+transformed.x+=(sin(uTime*1.3+ph)+.4*sin(uTime*3.1+ph*2.))*sw;
+transformed.z+=cos(uTime*1.05+ph*1.3)*sw*.7;}`)
+   .replace('#include <worldpos_vertex>',`#include <worldpos_vertex>
+{vec4 q=vec4(transformed,1.);
+#ifdef USE_INSTANCING
+q=instanceMatrix*q;
+#endif
+vFW=(modelMatrix*q).xyz;}`);
+  sh.fragmentShader=sh.fragmentShader.replace('#include <common>',`#include <common>
+varying vec3 vFW;
+${noiseGLSL}`)
+   .replace('#include <color_fragment>',`#include <color_fragment>
+{vec3 w=vFW*6.5;float a=vnoise(w.xz+w.y*.7),b=vnoise(w.zy*1.3+w.x*.5+4.1);
+float leaf=smoothstep(.3,.7,a*.55+b*.45);             // small leaf clusters with darker gaps
+float big=vnoise(vFW.xz*.9+vFW.y*.6);                  // broader light/dark patches
+diffuseColor.rgb*=(.73+.42*leaf)*(.9+.2*big);}`);
+ };
+}
