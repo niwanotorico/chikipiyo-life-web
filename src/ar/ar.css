@@ -1,0 +1,20 @@
+/* スマホ AR「ドールハウス召喚」— VR の .xr-enter とは別。3D画面の下、視点リセット ⌂ の左に並ぶ */
+.ar-summon{pointer-events:auto;flex-shrink:0;white-space:nowrap;margin-left:auto;margin-right:10px;height:43px;padding:0 18px;border:1px solid #fff;border-radius:25px;background:#ffffffd9;backdrop-filter:blur(8px);color:#3f5a4c;font:700 13px/1 "Noto Sans JP",sans-serif;letter-spacing:.06em;box-shadow:0 4px 14px #35504120;cursor:pointer}
+.ar-summon::before{content:"📦 "}
+.ar-summon:hover{background:#fff}
+.ar-summon.floating{position:fixed;right:16px;bottom:16px;z-index:21}
+body.ar-open{overflow:hidden}
+.ar-sheet{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:16px;background:#23372d66;backdrop-filter:blur(4px)}
+.ar-card{position:relative;width:min(560px,100%);max-height:calc(100dvh - 32px);display:flex;flex-direction:column;gap:12px;background:#fcfcf9;border:1px solid #dfe6dc;border-radius:22px;padding:22px 20px 18px;box-shadow:0 24px 80px #23372d40;overflow:auto}
+.ar-close{position:absolute;right:10px;top:8px;border:0;background:none;font-size:24px;color:#8c9b83;width:40px;height:40px}
+.ar-head small{font-size:10px;letter-spacing:.18em;color:#849888;font-weight:600}
+.ar-head strong{display:block;font-size:19px;margin:6px 0 6px;letter-spacing:.05em;color:#374e43}
+.ar-head p{margin:0;font-size:12px;line-height:1.7;color:#6f8273}
+.ar-stage{position:relative;height:min(52vh,380px);min-height:240px;border-radius:16px;background:radial-gradient(circle at 50% 40%,#f7f8f2,#e3ebe0);overflow:hidden}
+.ar-stage model-viewer{width:100%;height:100%;--poster-color:transparent}
+.ar-loading{position:absolute;inset:0;display:grid;place-items:center;margin:0;font-size:12px;color:#7b8b7d}
+.ar-stage.ready .ar-loading{display:none}
+.ar-go{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);border:0;border-radius:999px;padding:13px 22px;background:#6a8960;color:#fff;font:700 14px/1 "Noto Sans JP",sans-serif;letter-spacing:.06em;box-shadow:0 6px 18px #35504140;white-space:nowrap}
+.ar-go::before{content:"📱 "}
+.ar-note{margin:0;font-size:11px;line-height:1.7;color:#8a6a3a;background:#fbf3e3;border-radius:10px;padding:8px 12px}
+@media(max-width:740px){.ar-summon{padding:0 13px;font-size:12px;margin-left:8px;margin-right:8px}}

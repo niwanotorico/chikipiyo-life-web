@@ -27,6 +27,7 @@ import {LifeSimulation} from './simulation/life.js';
 import {createUI} from './ui.js';
 import {mountSiteNav} from './nav/site-nav.js';
 import {whenXRSupported,xrProfile} from './xr/xr-session.js';
+import {mountARButton} from './ar/ar-dollhouse.js';
 const scene=new T.Scene();scene.background=new T.Color(0xeaf0e9);scene.fog=new T.Fog(0xeaf0e9,24,60);
 const camera=new T.PerspectiveCamera(36,1,.1,100);let controls;function resetCamera(){camera.position.set(13,12,17);controls?.target.set(0,.5,0);controls?.update();}resetCamera();
 scene.add(new T.HemisphereLight(0xfffaf1,0x8dafa4,2.5));const sun=new T.DirectionalLight(0xffe7c6,3.2);sun.position.set(-3,12,7);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-9,right:9,top:9,bottom:-9,near:.1,far:35});sun.shadow.normalBias=.035;sun.shadow.bias=-.0001;scene.add(sun);
@@ -35,7 +36,7 @@ const furniture=await loadLatestRoom(scene,roomUrl);
 const actionProps=await loadActionProps(scene,furniture,{vacuum:vacuumUrl,headphones:headphonesUrl,'music-keyboard':musicKeyboardUrl,burger:burgerUrl,burger_bite01:burgerBite01Url,burger_bite02:burgerBite02Url,'potato-single':potatoSingleUrl,'vr-gear':vrGearUrl});
 const characters=characterDefinitions.map(createCharacter);characters.forEach(c=>{scene.add(c.root);c.visualReady=loadCharacterVisual(c,characterAssets[characterAssetPaths[c.variant]]);c.vrVisualReady=c.visualReady.then(()=>{installRoomAccessories(c,furniture);if(c.id==='piyo')installModelingHeadphones(c,actionProps.headphones);});});
 const pudding=await loadPudding(scene,puddingUrl,furniture.find(f=>f.id==='table'));
-let ui;const simulation=new LifeSimulation(characters,furniture,message=>ui?.event(message));ui=createUI(characters,furniture,simulation,resetCamera);mountSiteNav(document.querySelector('header .brand'),'house');
+let ui;const simulation=new LifeSimulation(characters,furniture,message=>ui?.event(message));ui=createUI(characters,furniture,simulation,resetCamera);mountSiteNav(document.querySelector('header .brand'),'house');mountARButton(document.querySelector('.scene-bottom'));
 const host=document.querySelector('#canvas-host');let renderer;
 try{renderer=new T.WebGLRenderer({antialias:true});}catch(error){host.innerHTML='<p class="webgl-error">3D表示を開始できませんでした。ブラウザのハードウェアアクセラレーションを有効にして再読み込みしてください。</p>';throw error;}
 renderer.localClippingEnabled=true;renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;host.appendChild(renderer.domElement);
