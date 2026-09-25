@@ -1,0 +1,36 @@
+/* ちきぴよ暮らし 共通ナビ（場所の切りかえ） */
+.site-nav{
+ --nav-ink:#374e43;--nav-soft:#6f8273;--nav-line:#dfe7dc;--nav-track:#eef3ea;--nav-active:#fff;--nav-accent:#f5d275;
+ font-family:'Noto Sans JP',system-ui,sans-serif;
+}
+.site-nav__list{
+ list-style:none;margin:0;padding:4px;display:grid;grid-template-columns:repeat(var(--site-nav-count,2),minmax(0,1fr));gap:4px;
+ background:var(--nav-track);border:1px solid var(--nav-line);border-radius:999px;
+}
+.site-nav__link{
+ position:relative;display:flex;align-items:center;justify-content:center;gap:7px;min-height:36px;padding:0 16px;border-radius:999px;
+ text-decoration:none;color:var(--nav-soft);font-size:13px;font-weight:600;letter-spacing:.04em;white-space:nowrap;
+ transition:background .2s,color .2s,box-shadow .2s;-webkit-tap-highlight-color:transparent;
+}
+.site-nav__link:hover{background:rgba(255,255,255,.65);color:var(--nav-ink)}
+.site-nav__link:focus-visible{outline:3px solid #d39b45;outline-offset:2px}
+.site-nav__link[aria-current="page"]{background:var(--nav-active);color:var(--nav-ink);box-shadow:0 2px 8px rgba(55,78,67,.13);cursor:default}
+/* いまいる場所：やわらかい黄色のしるし */
+.site-nav__link[aria-current="page"]::after{content:"";position:absolute;left:50%;bottom:4px;width:14px;height:3px;margin-left:-7px;border-radius:3px;background:var(--nav-accent)}
+.site-nav__icon{font-size:15px;line-height:1;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.site-nav__label--short{display:none}
+
+/* 3D の上に浮かべるとき */
+.site-nav--floating .site-nav__list{background:rgba(255,255,255,.62);border-color:rgba(255,255,255,.85);box-shadow:0 4px 18px rgba(20,50,40,.14);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.site-nav--floating .site-nav__link{color:#56685c}
+.site-nav--floating .site-nav__link:hover{background:rgba(255,255,255,.7)}
+
+@media (max-width:740px){
+ .site-nav__link{min-height:34px;padding:0 10px;font-size:12px;gap:5px}
+ .site-nav__icon{font-size:14px}
+}
+@media (max-width:340px){
+ .site-nav__label--full{display:none}
+ .site-nav__label--short{display:inline}
+}
+@media (prefers-reduced-motion:reduce){.site-nav__link{transition:none}}

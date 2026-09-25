@@ -1,0 +1,20 @@
+html,body{margin:0;height:100%;overflow:hidden;background:#b4cbc9;font-family:"Noto Sans JP","Hiragino Sans","Yu Gothic",sans-serif}
+#app{position:fixed;inset:0}
+#app canvas{display:block;width:100%;height:100%;touch-action:none}
+.river-card{position:fixed;left:16px;top:16px;padding:10px 14px;border-radius:14px;background:rgba(255,255,255,.72);backdrop-filter:blur(8px);color:#24403a;box-shadow:0 4px 18px rgba(20,50,40,.15);pointer-events:none}
+.river-card b{display:block;font-size:17px;letter-spacing:.06em}
+.river-card small{font-size:12px;opacity:.75}
+.river-loading{position:fixed;inset:0;display:grid;place-items:center;background:#b4cbc9;color:#24403a;font-size:15px;transition:opacity .6s}
+body.ready .river-loading{opacity:0;pointer-events:none}
+.river-score{list-style:none;margin:8px 0 0;padding:0;display:flex;gap:10px;font-size:13px}
+.river-score li{background:rgba(255,255,255,.6);border-radius:10px;padding:2px 8px}
+.river-score span{font-weight:700;color:#e8563a}
+.river-score li.pop{animation:pop .5s}
+@keyframes pop{40%{transform:scale(1.25)}}
+@media (max-width:520px){.river-card{left:10px;top:10px;right:10px}.river-score{flex-wrap:wrap}}
+
+/* 共通ナビ（src/nav）：3D の上に浮かべる。周りの余白はクリック・ドラッグを通す */
+body>.site-nav{position:fixed;z-index:20;top:16px;right:16px}
+@media (max-width:520px){
+ body>.site-nav{top:auto;right:auto;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));width:min(300px,calc(100% - 32px))}
+}
