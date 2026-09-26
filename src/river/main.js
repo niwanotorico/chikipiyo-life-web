@@ -11,9 +11,14 @@ import {createFish} from './fish.js';
 import {createFishing,fishingSpot} from './fishing.js';
 import {createRiverAudio} from './river-audio.js';
 import {createRiverSfx} from './river-sfx.js';
+import {createMasterVolume,mountVolumeControl} from './river-volume.js';
+import {createSeasonSystem,forcedSeason,parseDateParam} from './seasons.js';
+import {createRiverFall} from './river-fall.js';
 import {whenXRSupported,xrProfile as sharedXRProfile} from '../xr/xr-session.js';
 
-mountSiteNav(document.body,'river',{position:'beforeend',variant:'floating'});
+// 右上（スマホは下中央）のナビ類をひとまとめにする入れ物：[🔊 音量][場所のナビ]。音量ボタンはあとで先頭に入る
+const topbar=document.createElement('div');topbar.className='river-topbar';document.body.appendChild(topbar);
+mountSiteNav(topbar,'river',{position:'beforeend',variant:'floating'});
 const params=new URLSearchParams(location.search);
 // 画質：スマホ・Quest（ブラウザ内の Quest も含む）は軽量設定。?quality=high / low で上書きできる
 const baseXR=sharedXRProfile(params),quest=baseXR.quest;
@@ -47,7 +52,8 @@ const focus=new T.Vector3(riverCenter(66),0,66);
 const sun=new T.DirectionalLight(sunCol,3.1);sun.position.copy(focus).addScaledVector(sunDir,140);sun.target.position.copy(focus);
 sun.castShadow=true;sun.shadow.mapSize.setScalar(mobile?2048:4096);
 Object.assign(sun.shadow.camera,{left:-62,right:62,top:62,bottom:-62,near:10,far:320});sun.shadow.bias=-.0003;sun.shadow.normalBias=.06;
-scene.add(sun,sun.target,new T.HemisphereLight(0xd6e8ff,0x3a4a26,.3));
+const hemi=new T.HemisphereLight(0xd6e8ff,0x3a4a26,.3);
+scene.add(sun,sun.target,hemi);
 
 // world
 const spot=fishingSpot();
@@ -63,9 +69,12 @@ const controls=new OrbitControls(camera,renderer.domElement);
 controls.target.copy(spot.camera.target);controls.enableDamping=true;controls.dampingFactor=.07;
 controls.maxPolarAngle=Math.PI*.495;controls.minDistance=2.5;controls.maxDistance=70;controls.screenSpacePanning=false;controls.update();
 // 川のせせらぎ（assets/audio/river-stream.* がある時だけ。最初の操作で鳴り始める）
-const riverAudio=createRiverAudio({camera,scene,mobile});
-// 釣りの効果音（着水・釣り上げ・リリース）。せせらぎと同じ耳（AudioListener）を使う
-const sfx=createRiverSfx({camera,scene,mobile,listener:riverAudio?riverAudio.listener:null});
+// 音はすべてこの 1 つの耳（AudioListener）を通る。出口にマスター音量（river-volume.js）を挟み、ナビの左の 🔊 で調整・保存
+const listener=new T.AudioListener();camera.add(listener);
+const volume=createMasterVolume(listener);mountVolumeControl(volume,topbar,{prepend:true});
+const riverAudio=createRiverAudio({camera,scene,listener,mobile});
+// 釣りの効果音（着水・釣り上げ・リリース）。せせらぎと同じ耳を使う＝同じマスター音量
+const sfx=createRiverSfx({camera,scene,mobile,listener});
 
 // two pass render: opaque world -> target, then (blit + refractive water) to screen
 const depthTexture=new T.DepthTexture(1,1);
@@ -78,6 +87,14 @@ const blit=new T.Mesh(new T.PlaneGeometry(2,2),new T.ShaderMaterial({
  // gl_FragCoord で読む：VR（左右の目が並んだ 1 枚のターゲット）でも通常画面でも同じ位置を取れる
  fragmentShader:'uniform sampler2D tMap;uniform vec2 uScreen;varying vec2 vUv;void main(){gl_FragColor=texture2D(tMap,gl_FragCoord.xy/uScreen);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}'}));
 blit.frustumCulled=false;blit.renderOrder=-1;screenScene.add(blit,water);
+
+// 四季：季節は「選ぶ」ものではなく、この渓流に流れている時間。現実の日付から毎日少しずつ移り変わる（seasons.js の YEAR）。
+// 同じ渓流のまま、見た目の数値（shared.season の uniform・光・水の色）と舞うものだけが変わる。scene 自体が変わるので VR でも同じ。
+// 撮影・確認用：?season=spring|summer|autumn|winter（その季節で固定）、?date=10-25（その日の渓流）、?debug=1（開発者用の季節パネル）
+const fall=createRiverFall({shared,sun,sunDir,mobile});scene.add(fall.mesh);
+const season=createSeasonSystem({shared,scene,renderer,sun,hemi,sky,water,fall,initial:forcedSeason(params.get('season'))});
+{const d=!forcedSeason(params.get('season'))&&parseDateParam(params.get('date'));if(d)season.setDate(d,{instant:true});}
+if(params.has('debug')&&params.get('debug')!=='0')import('./season-debug.js').then(m=>m.mountSeasonDebug(season)).catch(e=>console.warn('[season-debug]',e));
 
 // ちきんとぴよこたちの釣り
 const counts=document.querySelectorAll('[data-count]');
@@ -108,6 +125,7 @@ function frame(dt){
  fish.update(dt,shared.uTime.value);fishing.update(dt,shared.uTime.value);
  if(renderer.xr.isPresenting&&xr)xr.update(dt);else{controls.update();constrain();}
  vegetation.userData.update(camera.getWorldPosition(eye));
+ season.update(dt);fall.update(dt,eye);
  if(riverAudio)riverAudio.update(dt);
  // 描画先：通常は画面（null）、VR 中は WebXR のフレームバッファ。中間ターゲットの大きさをそれに合わせる
  const out=renderer.getRenderTarget();
@@ -116,5 +134,5 @@ function frame(dt){
  renderer.setRenderTarget(out);renderer.render(screenScene,camera);
  document.body.classList.add('ready');
 }
-window.__river={scene,camera,controls,fish,fishing,renderer,frame,water,vegetation,xr,riverAudio,sfx};
+window.__river={scene,camera,controls,fish,fishing,renderer,frame,water,vegetation,xr,riverAudio,sfx,season,fall,shared,volume};
 if(!params.has('still'))renderer.setAnimationLoop(()=>frame(Math.min(clock.getDelta(),.05)));

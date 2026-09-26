@@ -13,12 +13,13 @@ const FILES=import.meta.glob('../../assets/audio/river-stream.{ogg,m4a,mp3,wav}'
 //  - 流れの速い瀬の近くは少し大きく、淵は静かに
 //  - 川から離れても無音にならないよう、定位しない薄いベッドを 1 本だけ重ねる
 //  - VR でもカメラ（＝頭）に AudioListener を付けているので、頭の向きで左右・距離が変わる
-export function createRiverAudio({camera,scene,mobile=false,volume=.5,files=FILES}={}){
+export function createRiverAudio({camera,scene,listener=null,mobile=false,volume=.5,files=FILES}={}){
  const probe=typeof document!=='undefined'?document.createElement('audio'):null;
  const url=pickAudioFile(files,m=>!!(probe&&probe.canPlayType(m)));
  if(!url)return null;
 
- const listener=new T.AudioListener();camera.add(listener);
+ // 耳（AudioListener）は main.js で 1 つだけ作って渡す（マスター音量もそこに付く）。単体で使うときは自分で作る
+ if(!listener){listener=new T.AudioListener();camera.add(listener);}
  const ctx=listener.context,N=mobile?4:6,SPACING=16,half=Math.floor(N/2);
  const group=new T.Group();group.name='RiverAudio';scene.add(group);
  const bed=new T.Audio(listener);

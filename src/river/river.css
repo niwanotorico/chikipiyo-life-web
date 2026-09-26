@@ -13,10 +13,14 @@ body.ready .river-loading{opacity:0;pointer-events:none}
 @keyframes pop{40%{transform:scale(1.25)}}
 @media (max-width:520px){.river-card{left:10px;top:10px;right:10px}.river-score{flex-wrap:wrap}}
 
-/* 共通ナビ（src/nav）：3D の上に浮かべる。周りの余白はクリック・ドラッグを通す */
-body>.site-nav{position:fixed;z-index:20;top:16px;right:16px}
+/* 右上のナビ類：[🔊 音量][場所のナビ] をひとまとめに浮かべる（スマホは下中央）。周りの余白はクリック・ドラッグを通す */
+.river-topbar{position:fixed;z-index:20;top:16px;right:16px;display:flex;align-items:center;gap:6px}
+.river-topbar>.site-nav{flex:0 1 auto;min-width:0}
+/* タブレット幅：左上のカードと横に並びきらないので、カードの下の右側へ */
+@media (min-width:521px) and (max-width:880px){.river-topbar{top:124px}}
 @media (max-width:520px){
- body>.site-nav{top:auto;right:auto;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));width:min(300px,calc(100% - 32px))}
+ .river-topbar{top:auto;right:auto;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));width:min(352px,calc(100% - 20px))}
+ .river-topbar>.site-nav{flex:1 1 auto}
 }
 
 /* WebXR：対応ブラウザ（Meta Quest など）でだけ表示される「VRで入る」 */
@@ -26,3 +30,36 @@ body>.site-nav{position:fixed;z-index:20;top:16px;right:16px}
 .xr-enter[data-state="starting"]{opacity:.7;cursor:wait}
 .xr-enter.xr-error{background:#ffe1dc;color:#9a3526}
 @media (max-width:520px){.xr-enter{left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px))}}
+
+/* 開発者用の季節パネル（?debug=1 のときだけ出る）。季節の固定と、日付スライダーで移り変わりの確認 */
+.season-picker{position:fixed;z-index:21;right:16px;bottom:16px;display:flex;flex-direction:column;gap:6px;padding:6px 8px;border-radius:18px;background:rgba(255,255,255,.78);backdrop-filter:blur(8px);box-shadow:0 4px 18px rgba(20,50,40,.15);color:#24403a;font:700 12px/1 "Noto Sans JP",sans-serif}
+.season-row{display:flex;gap:3px}
+.season-picker button{display:flex;align-items:center;gap:4px;border:0;border-radius:999px;padding:7px 10px;background:transparent;color:#24403a;font:inherit;font-size:13px;cursor:pointer;transition:background .2s}
+.season-picker button:hover{background:rgba(255,255,255,.7)}
+.season-picker button[aria-pressed="true"]{background:#fff;box-shadow:0 1px 6px rgba(20,50,40,.18)}
+.season-picker span{font-size:15px}
+.season-date{display:flex;align-items:center;gap:8px;padding:0 4px 2px}
+.season-date input{flex:1;accent-color:#e8563a}
+.season-date output{min-width:118px;font-weight:600;opacity:.8}
+@media (max-width:520px){
+ .season-picker{right:10px;left:10px;bottom:auto;top:128px}
+ .season-picker button{padding:6px 7px;font-size:12px}
+}
+
+/* 音量（PC・スマホ共通）：場所のナビの左の丸いボタン。押すとナビのすぐ下（スマホはナビの上）にスライダーが開く。
+   丸いボタンは開く／閉じるだけ。パネルはスライダーと％だけ（ミュートは 0%） */
+.river-volume{display:flex}
+.volume-toggle{width:46px;height:46px;flex:none;border:1px solid rgba(255,255,255,.85);border-radius:50%;background:rgba(255,255,255,.62);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 4px 18px rgba(20,50,40,.14);font-size:17px;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0;transition:background .2s;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;-webkit-tap-highlight-color:transparent}
+.volume-toggle:hover,.river-volume.is-open .volume-toggle{background:#fff}
+.volume-toggle:focus-visible{outline:3px solid #d39b45;outline-offset:2px}
+.volume-panel{position:absolute;top:calc(100% + 8px);right:0;display:flex;align-items:center;gap:10px;height:42px;padding:0 14px 0 16px;border-radius:999px;background:rgba(255,255,255,.88);backdrop-filter:blur(8px);box-shadow:0 4px 18px rgba(20,50,40,.15);color:#24403a;font:700 12px/1 "Noto Sans JP",sans-serif}
+.volume-panel[hidden]{display:none}
+.volume-panel input{width:150px;accent-color:#e8563a;touch-action:none}
+.volume-panel output{min-width:34px;text-align:right;font-variant-numeric:tabular-nums}
+@media (max-width:520px){
+ .volume-toggle{width:44px;height:44px;font-size:15px}
+ .volume-panel{top:auto;bottom:calc(100% + 8px);left:0;right:0;justify-content:center}
+ .volume-panel input{flex:1;width:auto;min-width:0}
+ /* スマホで音量を開いている間だけ、同じ場所（ナビの上）にある「VRで入る」を隠す */
+ body.volume-open .xr-enter{visibility:hidden}
+}

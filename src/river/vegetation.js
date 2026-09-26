@@ -2,7 +2,7 @@ import * as T from 'three';
 import {mergeGeometries,mergeVertices} from 'three/addons/utils/BufferGeometryUtils.js';
 import {fbm3,noise,rng,smooth} from './noise.js';
 import {heightAt,bankDistance,riverCenter} from './terrain.js';
-import {patchWind,patchFoliage} from './materials.js';
+import {patchWind,patchFoliage,foliageDepthMaterial} from './materials.js';
 
 // ─────────────────────────────────────────────────────────────
 // 渓流の植生：セミスタイライズの木（絵本っぽいけれど自然）。
@@ -25,12 +25,18 @@ const LEAF={ // [陰, 中間, 日向]
 };
 const tone=(pal,t)=>(t=Math.min(Math.max(t,0),1))<.5?mix3(pal[0],pal[1],t*2):mix3(pal[1],pal[2],(t-.5)*2);
 
-function keepAttrs(g,col,normals){
+// leaf：0＝幹・枝、>0＝葉房ごとの乱数（季節の色分け・冬の落葉に使う。同じ葉房は同じ値）
+function keepAttrs(g,col,normals,leaf=0,center=null){
  g.setAttribute('color',new T.Float32BufferAttribute(col,3));
  if(normals)g.setAttribute('normal',new T.Float32BufferAttribute(normals,3));
  for(const k of Object.keys(g.attributes))if(k!=='position'&&k!=='normal'&&k!=='color')g.deleteAttribute(k);
+ const n=g.attributes.position.count,cen=new Float32Array(n*3);
+ if(center)for(let i=0;i<n;i++)cen.set([center.x,center.y,center.z],i*3);
+ g.setAttribute('aLeaf',new T.Float32BufferAttribute(new Float32Array(n).fill(leaf),1));
+ g.setAttribute('aCenter',new T.Float32BufferAttribute(cen,3)); // 葉房の中心（冬に葉房を“小枝のかたまり”へ縮める）
  return g;
 }
+const leafId=seed=>{const v=Math.sin(seed*12.9898+1.7)*43758.5453;return .02+.98*(v-Math.floor(v));};
 
 // 幹・枝：中心線に沿ったチューブ。根元は3つの根張りで広げる
 function limb(pts,r0,r1,{radial=6,flare=0,seed=0,moss=0}={}){
@@ -55,26 +61,31 @@ function limb(pts,r0,r1,{radial=6,flare=0,seed=0,moss=0}={}){
 }
 
 // 葉房：ノイズで崩した低ポリ球。法線は「樹冠中心からの向き」と混ぜて柔らかくまとめる
-function clump(c,r,{detail=1,seed=0,pal,center,span,squash=.94,shade=1}){
+//  - 底は平たく、上はふっくら（積雲のような形）。枝の向き（dir）へ少し伸ばして、真ん丸の「葉っぱ玉」に見えないようにする
+//  - 陰影は樹冠全体の向きを強めに使う（葉房ごとに丸く光らず、ひとつの茂みとして明暗がつく。秋に色が変わってもカラーボールになりにくい）
+function clump(c,r,{detail=1,seed=0,pal,center,span,squash=.94,shade=1,dir=null,stretch=1}){
  let g=new T.IcosahedronGeometry(1,detail);g.deleteAttribute('normal');g.deleteAttribute('uv');g=mergeVertices(g);
  const p=g.attributes.position,nor=new Float32Array(p.count*3),col=[],v=new T.Vector3(),w=new T.Vector3(),o=new T.Vector3();
+ const ya=dir?Math.atan2(dir.z,dir.x):0,cy=Math.cos(ya),sy=Math.sin(ya);
  for(let i=0;i<p.count;i++){
   v.fromBufferAttribute(p,i);
-  const k=1+.34*fbm3(v.x*2.3+seed*3.1,v.y*2.3,v.z*2.3+seed,2);
-  w.set(v.x*k*r,(v.y<0?v.y*.74:v.y)*k*r*squash,v.z*k*r).add(c);p.setXYZ(i,w.x,w.y,w.z);
+  const k=1+.4*fbm3(v.x*2.1+seed*3.1,v.y*2.1,v.z*2.1+seed,2)+.1*fbm3(v.x*5.3-seed,v.y*5.3+seed*1.7,v.z*5.3,1);
+  // 枝の向きの軸に沿って stretch 倍、縦は少しつぶす
+  const lx=v.x*cy+v.z*sy,lz=-v.x*sy+v.z*cy,sx=lx*stretch,vx=sx*cy-lz*sy,vz=sx*sy+lz*cy;
+  w.set(vx*k*r,(v.y<0?v.y*.6:v.y)*k*r*squash*(dir?.9:1),vz*k*r).add(c);p.setXYZ(i,w.x,w.y,w.z);
   o.subVectors(w,center).divide(span);const dn=o.length();
-  o.normalize().multiplyScalar(.5).addScaledVector(v,.5).normalize();nor.set([o.x,o.y,o.z],i*3);
+  o.normalize().multiplyScalar(.68).addScaledVector(v,.32).normalize();nor.set([o.x,o.y,o.z],i*3);
   const hy=T.MathUtils.clamp((w.y-center.y)/span.y*.5+.5,0,1);
   const t=.12+.5*hy+.28*Math.max(v.y,0)+.12*fbm3(w.x*1.3,w.y*1.3,w.z*1.3,2);
   const ao=(.55+.45*smooth(dn*1.1))*(.72+.28*(v.y*.5+.5))*shade,cc=tone(pal,t);
   col.push(cc[0]*ao,cc[1]*ao,cc[2]*ao);
  }
- return keepAttrs(g,col,nor);
+ return keepAttrs(g,col,nor,leafId(seed),c);
 }
 function canopy(specs,{detail,pal,seed,shadeVar=.18,R}){
  const box=new T.Box3();for(const s of specs)box.expandByPoint(s.c);
  const center=box.getCenter(new T.Vector3()),span=box.getSize(new T.Vector3()).multiplyScalar(.5).addScalar(.9);
- return specs.map((s,i)=>clump(s.c,s.r,{detail,seed:seed*13+i,pal:s.pal||pal,center,span,shade:1-shadeVar*.5+R()*shadeVar}));
+ return specs.map((s,i)=>clump(s.c,s.r,{detail:s.detail??detail,seed:seed*13+i,pal:s.pal||pal,center,span,dir:s.dir,stretch:s.stretch||1,shade:1-shadeVar*.5+R()*shadeVar}));
 }
 
 // ── 広葉樹（丸い / 縦長 / 川へ張り出す / 若木）
@@ -97,15 +108,25 @@ function broadleaf(shape,seed,lod){
   const mid=start.clone().addScaledVector(dir,L*.45).add(lift.set(0,L*S.up*.35,0));
   const tip=start.clone().addScaledVector(dir,L).add(lift.set((R()-.5)*.2,L*S.up,(R()-.5)*.2));
   const br=Math.max(.035,S.r*.55*(1-t*.35));
-  if(hi)parts.push(limb([start,mid,tip],br,br*.3,{radial:4,seed:seed+b}));
-  const r=lerp(S.cr[0],S.cr[1],R());specs.push({c:tip.clone().add(lift.set(0,r*.2,0)),r,key:true});
-  for(let s=0;s<S.sat;s++){const sa=a+(R()-.5)*2.2,sr=r*(.55+R()*.25);
-   specs.push({c:tip.clone().add(lift.set(Math.cos(sa)*r*.85,(R()-.3)*r*.7,Math.sin(sa)*r*.85)),r:sr,key:false});}
+  // 枝は根元から少し垂れてから先で持ち上がる（まっすぐな棒に見えないように）
+  mid.y-=L*.06*(1+R());
+  if(hi){
+   parts.push(limb([start,mid,tip],br,br*.3,{radial:4,seed:seed+b}));
+   // 枝先の小枝：夏は葉房の中に隠れ、冬に葉が落ちると「枝ぶり」として見える
+   const tw=a+(b%2?.7:-.7),ts=start.clone().lerp(tip,.72);
+   const te=ts.clone().add(lift.set(Math.cos(tw)*L*.38,L*.22+R()*.2,Math.sin(tw)*L*.38));
+   parts.push(limb([ts,ts.clone().lerp(te,.5).add(lift.set(0,.05,0)),te],br*.4,br*.14,{radial:3,seed:seed+b*7}));
+  }
+  const r=lerp(S.cr[0],S.cr[1],R());specs.push({c:tip.clone().add(lift.set(0,r*.2,0)),r,key:true,dir,stretch:1.18+R()*.2});
+  for(let s=0;s<S.sat;s++){const sa=a+(R()-.5)*2.2,sr=r*(.45+R()*.35);
+   specs.push({c:tip.clone().add(lift.set(Math.cos(sa)*r*.85,(R()-.3)*r*.7,Math.sin(sa)*r*.85)),r:sr,key:false,dir});}
+  // 枝の途中にも小さめの葉房（1 本おき）：枝先の玉だけが目立たず、枝に沿って葉がまとまって見える
+  if(b%2===0)specs.push({c:start.clone().lerp(tip,.55).add(lift.set(0,r*.25,0)),r:r*(.4+R()*.12),key:false,dir,stretch:1.3});
  }
  for(let i=0;i<S.top;i++){const a=R()*6.28,d=R()*.55;
   specs.push({c:top.clone().add(lift.set(Math.cos(a)*d,.35+R()*.55,Math.sin(a)*d)),r:lerp(S.cr[0],S.cr[1],R())*1.02,key:true});}
  const box=new T.Box3();for(const s of specs)box.expandByPoint(s.c);const cc=box.getCenter(new T.Vector3()),hs=box.getSize(new T.Vector3()).multiplyScalar(.5);
- for(let i=0;i<S.fill;i++)specs.push({c:cc.clone().add(lift.set((R()-.5)*hs.x*.9,(R()-.5)*hs.y*.7,(R()-.5)*hs.z*.9)),r:lerp(S.cr[0],S.cr[1],R())*1.12,key:true});
+ for(let i=0;i<(hi?Math.max(0,S.fill-1):S.fill);i++)specs.push({c:cc.clone().add(lift.set((R()-.5)*hs.x*.9,(R()-.5)*hs.y*.7,(R()-.5)*hs.z*.9)),r:lerp(S.cr[0],S.cr[1],R())*1.12,key:true});
  // 遠景は小さな葉房を省き、残りを少し膨らませてシルエットを保つ
  for(const s of specs)if(R()<.22)s.pal=R()<.5?LEAF.fresh:LEAF.deep;
  const use=hi?specs:specs.filter(s=>s.key).map(s=>({...s,r:s.r*1.18})),pal=LEAF[S.pal];
@@ -137,7 +158,7 @@ function tier(y,r,h,spk,rot,hi,R,axisY){
  const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();
  const nm=g.attributes.normal,v=new T.Vector3(),o=new T.Vector3();
  for(let i=0;i<nm.count;i++){v.fromBufferAttribute(nm,i);o.set(pos[i*3],(pos[i*3+1]-axisY)*.35+.25,pos[i*3+2]).normalize();v.lerp(o,.55).normalize();nm.setXYZ(i,v.x,v.y,v.z);}
- return keepAttrs(g,col);
+ return keepAttrs(g,col,null,leafId(y*13.1+rot*7.7));
 }
 function conifer(shape,seed,lod){
  const S=CONIFER[shape],R=rng(seed*631+7),hi=lod===0,H=S.H*(.88+R()*.24);
@@ -185,12 +206,12 @@ function grassTuft(){
 }
 
 // 近景/遠景の 2 段 LOD。インスタンスの行列と色を保持し、カメラ位置で振り分け直す
-function lodPair(name,hiGeo,loGeo,mat,items){
+function lodPair(name,hiGeo,loGeo,mat,items,depthMat=null){
  const n=items.length,M=new Float32Array(n*16),C=new Float32Array(n*3),X=new Float32Array(n*2),near=new Uint8Array(n);
  items.forEach((it,i)=>{M.set(it.m.elements,i*16);C.set(it.c,i*3);X[i*2]=it.x;X[i*2+1]=it.z;});
  const mk=(geo,suffix)=>{const im=new T.InstancedMesh(geo,mat,Math.max(n,1));im.name=name+suffix;
   im.instanceMatrix.setUsage(T.DynamicDrawUsage);im.instanceColor=new T.InstancedBufferAttribute(new Float32Array(Math.max(n,1)*3),3);im.instanceColor.setUsage(T.DynamicDrawUsage);
-  im.castShadow=true;im.receiveShadow=true;im.count=0;return im;};
+  im.castShadow=true;im.receiveShadow=true;im.count=0;if(depthMat)im.customDepthMaterial=depthMat;return im;};
  const hi=mk(hiGeo,'-near'),lo=mk(loGeo,'-far');
  function assign(cx,cz,rIn,rOut){
   let a=0,b=0;const ri=rIn*rIn,ro=rOut*rOut;
@@ -213,7 +234,10 @@ export function createVegetation(shared,{mobile=false,clear=[],focus=null,viewer
  const blocked=(x,z,pad=0)=>clear.some(c=>Math.hypot(x-c.x,z-c.z)<c.r+pad);
  const fx=focus?focus.x:riverCenter(66),fz=focus?focus.z:66;
  const group=new T.Group();group.name='RiverVegetation';const R=rng(99);
+ // 葉：落葉樹（広葉樹・若木・低木）と常緑の針葉樹でマテリアルを分ける（同じシェーダー、uniform だけ違う）
  const leafMat=new T.MeshStandardMaterial({vertexColors:true,roughness:.86,metalness:0});patchFoliage(leafMat,shared,{amp:.016,base:1.6});
+ const needleMat=new T.MeshStandardMaterial({vertexColors:true,roughness:.86,metalness:0});patchFoliage(needleMat,shared,{amp:.016,base:1.6,evergreen:true});
+ const leafDepth=foliageDepthMaterial(shared),needleDepth=foliageDepthMaterial(shared,{evergreen:true});
  const grassMat=new T.MeshStandardMaterial({vertexColors:true,roughness:.9,metalness:0,side:T.DoubleSide});patchWind(grassMat,shared,{amp:.12,base:.05,key:'grass'});
  const m=new T.Matrix4(),q=new T.Quaternion(),ql=new T.Quaternion(),s=new T.Vector3(),p=new T.Vector3(),c=new T.Color(),Y=new T.Vector3(0,1,0),Z=new T.Vector3(0,0,1);
  const slope=(x,z)=>Math.abs(heightAt(x+1,z)-heightAt(x-1,z))/2+Math.abs(heightAt(x,z+1)-heightAt(x,z-1))/2;
@@ -247,7 +271,8 @@ export function createVegetation(shared,{mobile=false,clear=[],focus=null,viewer
   }
   items.forEach((list,vi)=>{
    const seed=({round:1,tall:4,spread:6,sapling:8,cedar:3,fir:9,bush:11})[kind]+vi*17;
-   const pair=lodPair(`${kind}${vi}`,treeGeometry(kind,seed,0),treeGeometry(kind,seed,1),leafMat,list);
+   const ever=!!CONIFER[kind];
+   const pair=lodPair(`${kind}${vi}`,treeGeometry(kind,seed,0),treeGeometry(kind,seed,1),ever?needleMat:leafMat,list,ever?needleDepth:leafDepth);
    group.add(pair.hi,pair.lo);lods.push(pair);
   });
  }
