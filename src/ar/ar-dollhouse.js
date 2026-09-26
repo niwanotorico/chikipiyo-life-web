@@ -1,11 +1,25 @@
 import './ar.css';
 import dollhouseUrl from '../../assets/ar/chikipiyo-dollhouse.glb?url';
 import {DOLLHOUSE_WIDTH,MODEL_VIEWER_SOURCES,modelViewerAttributes} from './dollhouse-config.js';
+// 動くAR（3人の日常＋プリン、マット調整済みのアニメ付き USDZ）。iPhone の Quick Look だけが対応（Android の Scene Viewer は静止版のまま）
+import animUsdzUrl from '../../assets/ar/chikipiyo-dollhouse-anim.usdz?url';
+import animPosterUrl from '../../assets/ar/chikipiyo-dollhouse-anim-poster.jpg?url';
 
 // スマホの AR「ドールハウス召喚」。VR（src/xr・xr-house）とは完全に別の入口。
 // 押すとプレビュー画面を開き、<model-viewer> の AR ボタンで
 //   Android → Scene Viewer / iPhone → Quick Look
 // に渡して、現実の床や机の上に幅40cmのハウスを置く。3D の家本体（main.js の描画）には触れない。
+
+// iPhone / iPad の Safari（AR Quick Look）なら <a rel="ar"> が使える
+export function supportsQuickLook(doc=globalThis.document){
+ try{const a=doc.createElement('a');return !!(a.relList&&a.relList.supports&&a.relList.supports('ar'));}catch{return false;}
+}
+// 「動くARで置く」：<a rel="ar"> の中は img 1枚だけ（Quick Look の決まり）。文字は上に重ねて、タップは画像へ通す
+function animBlock(){
+ return supportsQuickLook()
+  ?`<div class="ar-anim"><a rel="ar" href="${animUsdzUrl}"><img src="${animPosterUrl}" width="640" height="448" alt="動くドールハウス（3人の日常）"></a><span class="ar-anim-label" aria-hidden="true">🎬 動くARで置く<small>3人の日常・30秒でくり返し（約12MB）</small></span></div>`
+  :`<p class="ar-anim-hint">🎬 3人が動く「動くAR」は、iPhone の Safari で見られます。</p>`;
+}
 
 let viewerReady=null;
 function loadModelViewer(){
@@ -30,6 +44,7 @@ function openSheet(){
   <button class="ar-close" type="button" aria-label="閉じる">×</button>
   <div class="ar-head"><small>AR DOLLHOUSE</small><strong>おうちを、あなたの部屋へ。</strong><p>床や机の上に、幅およそ${Math.round(DOLLHOUSE_WIDTH*100)}cmのハウスを置けます。置いたあとは指で回転・拡大縮小できます。</p></div>
   <div class="ar-stage"><p class="ar-loading">ドールハウスを準備中…</p></div>
+  ${animBlock()}
   <p class="ar-note" hidden></p>
  </div>`;
  document.body.appendChild(sheet);document.body.classList.add('ar-open');

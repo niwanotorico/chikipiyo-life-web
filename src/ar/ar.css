@@ -16,5 +16,11 @@ body.ar-open{overflow:hidden}
 .ar-stage.ready .ar-loading{display:none}
 .ar-go{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);border:0;border-radius:999px;padding:13px 22px;background:#6a8960;color:#fff;font:700 14px/1 "Noto Sans JP",sans-serif;letter-spacing:.06em;box-shadow:0 6px 18px #35504140;white-space:nowrap}
 .ar-go::before{content:"📱 "}
+.ar-anim{position:relative;border-radius:14px;overflow:hidden;box-shadow:0 4px 14px #35504122}
+.ar-anim a{display:block}
+.ar-anim img{display:block;width:100%;height:92px;object-fit:cover;object-position:50% 58%}
+.ar-anim-label{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:0 18px;background:linear-gradient(90deg,#fcfcf9f2 0%,#fcfcf9d9 48%,#fcfcf900 78%);color:#3f5a4c;font-weight:700;font-size:15px;letter-spacing:.05em;pointer-events:none}
+.ar-anim-label small{display:block;margin-top:5px;font-size:11px;font-weight:500;color:#6f8273;letter-spacing:.02em}
+.ar-anim-hint{margin:0;font-size:11px;color:#6f8273;text-align:center}
 .ar-note{margin:0;font-size:11px;line-height:1.7;color:#8a6a3a;background:#fbf3e3;border-radius:10px;padding:8px 12px}
 @media(max-width:740px){.ar-summon{padding:0 13px;font-size:12px;margin-left:8px;margin-right:8px}}
