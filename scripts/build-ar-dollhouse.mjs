@@ -2,9 +2,11 @@
 //   node scripts/build-ar-dollhouse.mjs
 // 入力：assets/room/human-room.glb ＋ assets/characters/*.glb（通常表示・VR と同じ元データ）
 // 出力：assets/ar/chikipiyo-dollhouse.glb
-//  1. 部屋とキャラクター（開始位置に立った姿）を、アプリと同じ組み立て方で並べる
+//  1. 部屋・VR機器（vr-gear.glb）・キャラクターを、アプリと同じ組み立て方で並べる。
+//     3人は STATIC_SCENE の場面（ソファでくつろぐ／3Dプリンターをのぞく／VR中）のポーズにする（アプリと同じ生活シミュレーション）
 //  2. 寝ている時用の布団など通常は見えない物を除外、透過素材は不透明に（AR ビューアの互換性のため）
-//  3. 三角形を間引いて軽くする（meshoptimizer）。テクスチャは無いので UV も捨てる
+//  3. 三角形を間引いて軽くする（meshoptimizer）。テクスチャは無いので UV も捨てる。
+//     近くで見られやすい部品（AR_CLOSEUP_PARTS：ソファ・VR機器）だけ間引きを弱める
 //  4. 幅 DOLLHOUSE_WIDTH（40cm）に縮め、床の中心を原点に置く（Scene Viewer / Quick Look は実寸で置くため）
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 import {dirname} from 'node:path';
@@ -16,7 +18,12 @@ import {MeshoptSimplifier} from 'meshoptimizer';
 import {characterDefinitions} from '../src/characters/config.js';
 import {createCharacter} from '../src/characters/model.js';
 import {characterAssetPaths,installCharacterVisual} from '../src/characters/gltf.js';
-import {DOLLHOUSE_WIDTH,DOLLHOUSE_FILE,DOLLHOUSE_EXCLUDE_PARTS} from '../src/ar/dollhouse-config.js';
+import {animateCharacter} from '../src/characters/animation.js';
+import {LifeSimulation} from '../src/simulation/life.js';
+import {roomFurniture,roomObstacles} from '../src/world/room-layout.js';
+import {captureRoomAccessories,installRoomAccessories} from '../src/world/room-accessories.js';
+import {DOLLHOUSE_WIDTH,DOLLHOUSE_FILE,DOLLHOUSE_EXCLUDE_PARTS,STATIC_SCENE,closeupRatio} from '../src/ar/dollhouse-config.js';
+import {seededRandom} from '../src/ar/dollhouse-anim-config.js';
 
 const root=new URL('../',import.meta.url);
 const read=p=>{const b=readFileSync(new URL(p,root));return b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength);};
@@ -34,14 +41,49 @@ const drop=[];room.traverse(o=>{if(DOLLHOUSE_EXCLUDE_PARTS.includes(o.userData.r
 drop.forEach(o=>o.removeFromParent());
 house.add(room);
 
-// 1b) キャラクター：アプリと同じ createCharacter ＋ installCharacterVisual（開始位置・立ち姿）
+// 1a) VR機器：アプリと同じ vr-gear.glb（Blender の置き場所のまま＝ソファ前の VR 台の上）
+const vrGear=(await loader.parseAsync(read('assets/props/vr-gear.glb'),'')).scene;vrGear.name='VR_dock_gear';
+vrGear.traverse(o=>{if(o.isMesh){o.userData.furnitureId='vr';o.userData.arProp='vr-gear';}});
+house.add(vrGear);
+// ゴーグル・コントローラーを「身に着ける」ための複製（アプリの loadActionProps / installRoomAccessories と同じ）
+const accessories={...captureRoomAccessories(room,['08_Coffee_|_Vert001']),...captureRoomAccessories(vrGear,['VR_headset','VR_handL','VR_handR'])};
+for(const name of ['VR_headset','VR_handL','VR_handR'])accessories[name].traverse(o=>{if(o.isMesh)o.userData.arProp='vr-gear';});
+
+// 1b) キャラクター：アプリと同じ createCharacter ＋ installCharacterVisual ＋ installRoomAccessories
+const characters=[];
 for(const def of characterDefinitions){
  const c=createCharacter(def);
  const gltf=await loader.parseAsync(read(characterAssetPaths[c.variant].replace('../','')),'');
- installCharacterVisual(c,gltf.scene);
- // ひとやすみ中と同じ見た目：食べ物・VRゴーグル・ほうきは持たない（animation.js の待機時と同じ）
- c.food.visible=false;c.vr.visible=false;c.broom.visible=false;
- c.root.name=`Character_${def.id}`;house.add(c.root);
+ installCharacterVisual(c,gltf.scene);installRoomAccessories(c,{accessories});
+ c.root.name=`Character_${def.id}`;house.add(c.root);characters.push(c);
+}
+
+// 1c) 場面：生活シミュレーションで各自を STATIC_SCENE の家具へ行かせ、全員が着いて落ち着いたところで止める
+{
+ const random=Math.random;Math.random=seededRandom(STATIC_SCENE.seed);
+ const furniture=roomFurniture.slice();furniture.obstacles=roomObstacles;
+ const sim=new LifeSimulation(characters,furniture);
+ const pending=new Set(characters);
+ sim.choose=c=>{
+  if(pending.has(c)){pending.delete(c);const id=STATIC_SCENE.actions[c.id];if(id&&!sim.command(c,id))throw new Error(`${c.id} cannot go to ${id}`);if(id)return;}
+  Object.assign(c,{phase:'acting',remaining:1e9});            // 着いたらその行動を続ける（勝手に次へ行かない）
+ };
+ characters.forEach(c=>{c.remaining=0;});
+ const dt=1/30;let arrived=null;
+ for(let i=0;i<30*90;i++){
+  sim.update(dt);
+  for(const c of characters)if(c.phase==='acting'&&c.remaining<1e8)c.remaining=1e9;   // 行動の時間切れで帰らない
+  const ok=characters.every(c=>c.phase==='acting'&&c.target&&c.action===c.target.action);
+  if(ok&&arrived==null)arrived=sim.time;
+  if(arrived!=null&&sim.time>=arrived+STATIC_SCENE.settle)break;
+ }
+ if(arrived==null)throw new Error('static scene: residents did not arrive');
+ for(const c of characters)animateCharacter(c,sim.time);
+ // 身に着けたら台の上からは消す（アプリの animateRoom と同じ）
+ const inVR=characters.some(c=>c.action==='vr'&&c.phase==='acting');
+ for(const name of ['VR_headset','VR_handL','VR_handR'])vrGear.getObjectByName(name).visible=!inVR;
+ Math.random=random;
+ console.log('scene: '+characters.map(c=>`${c.id}=${c.action}`).join(', ')+` (settled ${sim.time.toFixed(1)}s)`);
 }
 house.updateMatrixWorld(true);
 
@@ -71,7 +113,8 @@ for(const mesh of meshes){
  g=mergeVertices(g,1e-5);
  const tris=g.index.count/3;before+=tris;
  if(tris>200&&!hadGroups){
-  const ratio=tris>60000?.04:tris>20000?.08:tris>6000?.15:tris>1500?.25:.45;
+  const fid=(()=>{for(let p=mesh;p;p=p.parent)if(p.userData?.furnitureId)return p.userData.furnitureId;return null;})();
+  const ratio=closeupRatio({furnitureId:fid,prop:mesh.userData.arProp})??(tris>60000?.04:tris>20000?.08:tris>6000?.15:tris>1500?.25:.45);
   const idx=new Uint32Array(g.index.array),pos=new Float32Array(g.attributes.position.array);
   const [out]=MeshoptSimplifier.simplify(idx,pos,3,Math.max(36,Math.floor(tris*ratio)*3),SIMPLIFY_ERROR,[]);
   if(out.length>=36||out.length>=idx.length*.5){

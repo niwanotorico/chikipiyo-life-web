@@ -58,7 +58,7 @@ export function mountXRButton(parent,{label='VRで入る',exitLabel='VRを終了
   if(el.dataset.state==='active'){onExit&&onExit();return;}
   set('starting','準備中…');
   try{await onEnter();set('active',exitLabel);}
-  catch(e){console.warn('[xr]',e);set('idle',label);el.title=String(e&&e.message||e);el.classList.add('xr-error');setTimeout(()=>el.classList.remove('xr-error'),2400);}
+  catch(e){console.warn('[xr]',e);set('idle','VRを開始できませんでした');el.title=String(e&&e.message||e);el.classList.add('xr-error');setTimeout(()=>{el.classList.remove('xr-error');if(el.dataset.state==='idle')el.textContent=label;},2400);}
  });
  parent.appendChild(el);
  return {el,idle:()=>set('idle',label),active:()=>set('active',exitLabel)};
@@ -66,7 +66,10 @@ export function mountXRButton(parent,{label='VRで入る',exitLabel='VRを終了
 
 // 対応ブラウザ（Meta Quest など）でだけ true。?xr を付けると非対応でも true（ボタン確認・エミュレーター用）。
 // ページ側はこれが true の時だけ VR 用コードを import する（PC・スマホの通常表示には読み込まれない）。
-export async function whenXRSupported(params=new URLSearchParams(globalThis.location?.search||''),nav=globalThis.navigator){
+// trustHeadset:true のページでは、Quest / Oculus Browser / Pico なら事前判定を待たずに true（実機で isSessionSupported が不安定なため）。
+// 実際に使えるかはボタンを押した時の requestSession で判定し、失敗したらボタンにエラーを出す。
+export async function whenXRSupported(params=new URLSearchParams(globalThis.location?.search||''),nav=globalThis.navigator,{trustHeadset=false}={}){
+ if(trustHeadset&&isStandaloneHeadset(nav?.userAgent||''))return true;
  let ok=false;
  try{ok=!!(nav&&nav.xr&&nav.xr.isSessionSupported&&await nav.xr.isSessionSupported('immersive-vr'));}catch{ok=false;}
  return ok||params.has('xr');

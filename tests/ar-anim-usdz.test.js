@@ -80,12 +80,19 @@ test('matte material rules',()=>{
  const pudding=matteMaterial({h:35/360,s:.6,l:.7,roughness:.4},'pudding');assert.equal(pudding.roughness,MATTE.pudding.roughness);
 });
 
-test('AR close-up parts: sofa is rebuilt from the source room with gentler simplification',async()=>{
+test('AR close-up parts: sofa and VR gear keep more detail (shared with the static AR)',async()=>{
  const {AR_CLOSEUP_PARTS}=await import('../src/ar/dollhouse-anim-config.js');
  const {roomFurniture}=await import('../src/world/room-layout.js');
  const ids=new Set(roomFurniture.map(f=>f.id));
- assert.ok(AR_CLOSEUP_PARTS.some(p=>p.id==='sofa'));
- for(const p of AR_CLOSEUP_PARTS){assert.ok(ids.has(p.furnitureId),p.id);assert.ok(p.ratio>0&&p.ratio<=1,p.id);}
+ assert.ok(AR_CLOSEUP_PARTS.some(p=>p.id==='sofa'));assert.ok(AR_CLOSEUP_PARTS.some(p=>p.prop==='vr-gear'));
+ for(const p of AR_CLOSEUP_PARTS){assert.ok(p.furnitureId?ids.has(p.furnitureId):existsSync(new URL(`../assets/props/${p.prop}.glb`,import.meta.url)),p.id);assert.ok(p.ratio>0&&p.ratio<=1,p.id);}
+});
+
+test('animated AR shows the VR gear on the table',()=>{
+ const u=usda();
+ assert.match(u,/def Xform "VR_dock_gear"/);
+ const gear=u.slice(u.indexOf('def Xform "VR_dock_gear"'));
+ for(const n of ['VR_headset','VR_handL','VR_handR'])assert.ok(gear.includes(`"${n}"`),n);
 });
 
 test('number trimming keeps geometry lines valid and leaves other lines alone',async()=>{

@@ -6,6 +6,26 @@ export const DOLLHOUSE_FILE='assets/ar/chikipiyo-dollhouse.glb';
 // 空・背景色・霧・地面（y=-.48 の大きな板）は main.js 側で作っているので、元々 GLB には入っていない。
 export const DOLLHOUSE_EXCLUDE_PARTS=['Blanket_in_use'];
 
+// ── AR 近接品質の優先部品リスト（静止AR・動くARで共通）──
+// ARでは箱庭にかなり近づいて見られるので、近くで見たくなる部品だけ間引きを弱める（それ以外は今の軽量化のまま）。
+// 方針：全体は軽くし、実機で近づいて破綻が見えた部品だけここに足して救済する。
+//   furnitureId … 部屋の家具（room-layout と同じID）。軽量化前の human-room.glb から ratio で間引き直す
+//   prop        … 部屋とは別ファイルの小物（assets/props/<prop>.glb）
+//   ratio       … 残す三角形の割合（1＝間引かない）
+// 2026-09-27 ソファ 60%（動くARで実機確認）、VR機器 60%（ゴーグル・コントローラーの形が分かる）。
+// 候補：キャラの顔まわり・プリン・テーブルの小物・3Dプリンター周辺（破綻が見つかったら追加）。
+export const AR_CLOSEUP_PARTS=[
+ {id:'sofa',label:'ソファ',furnitureId:'sofa',ratio:.6},
+ {id:'vr-gear',label:'VR機器（ゴーグル・コントローラー）',prop:'vr-gear',ratio:.6},
+];
+export const closeupRatio=({furnitureId=null,prop=null},parts=AR_CLOSEUP_PARTS)=>
+ parts.find(p=>(furnitureId&&p.furnitureId===furnitureId)||(prop&&p.prop===prop))?.ratio??null;
+
+// ── 静止ARの場面：一枚のドールハウス写真として「ここで暮らしている」感じにする ──
+// アプリと同じ生活シミュレーションで各自をその家具へ行かせ、着いてしばらくしたポーズで止める。
+// ちきん＝ソファでくつろぐ／ぴよきち＝3Dプリンターの椅子に乗って造形物をのぞく／ぴよみ＝VR中（ゴーグル＋コントローラー）。
+export const STATIC_SCENE={actions:{chiki:'sofa',piyo:'printer',piyomi:'vr'},settle:1.6,seed:20260927};
+
 // <model-viewer>（Google）の three.js 同梱版。アプリ本体の three（0.180）とは別物なので npm には入れず、
 // 「ARで召喚」を押した時だけ読み込む（PC・スマホ・VR の通常表示には一切影響しない）。上から順に試す
 export const MODEL_VIEWER_VERSION='4.1.0';

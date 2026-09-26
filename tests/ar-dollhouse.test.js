@@ -45,3 +45,14 @@ test('model-viewer attributes: Scene Viewer + Quick Look, floor placement, pinch
  assert.ok('ar' in a&&'camera-controls' in a);
  assert.ok(MODEL_VIEWER_SOURCES.length>=2&&MODEL_VIEWER_SOURCES.every(u=>u.startsWith('https://')&&u.endsWith('model-viewer.min.js')));
 });
+
+test('static AR scene: everyday poses, piyomi wears the VR headset, sofa keeps close-up detail',async()=>{
+ const scene=await load();
+ const piyomi=scene.getObjectByName('Character_piyomi');assert.ok(piyomi);
+ let worn=false;piyomi.traverse(o=>{if(o.name==='Worn_Room_VR_headset')worn=true;});assert.ok(worn,'piyomi wears the headset');
+ const chiki=scene.getObjectByName('Character_chiki'),sofa=scene.getObjectByName('Plane006');
+ const cb=new T.Box3().setFromObject(chiki).getCenter(new T.Vector3()),sb=new T.Box3().setFromObject(sofa);
+ assert.ok(sb.expandByScalar(.01).containsPoint(new T.Vector3(cb.x,sb.min.y+.001,cb.z)),'chiki is on the sofa');
+ let sofaTris=0;sofa.traverse(o=>{if(o.isMesh)sofaTris+=o.geometry.index?o.geometry.index.count/3:o.geometry.attributes.position.count/3;});
+ assert.ok(sofaTris>=3000,'sofa triangles '+sofaTris);
+});

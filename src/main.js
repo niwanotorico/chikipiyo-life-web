@@ -27,7 +27,7 @@ import {LifeSimulation} from './simulation/life.js';
 import {createUI} from './ui.js';
 import {mountSiteNav} from './nav/site-nav.js';
 import {whenXRSupported,xrProfile} from './xr/xr-session.js';
-import {mountARButton} from './ar/ar-dollhouse.js';
+import {mountARButton,dockXRButton} from './ar/ar-dollhouse.js';
 const scene=new T.Scene();scene.background=new T.Color(0xeaf0e9);scene.fog=new T.Fog(0xeaf0e9,24,60);
 const camera=new T.PerspectiveCamera(36,1,.1,100);let controls;function resetCamera(){camera.position.set(13,12,17);controls?.target.set(0,.5,0);controls?.update();}resetCamera();
 scene.add(new T.HemisphereLight(0xfffaf1,0x8dafa4,2.5));const sun=new T.DirectionalLight(0xffe7c6,3.2);sun.position.set(-3,12,7);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-9,right:9,top:9,bottom:-9,near:.1,far:35});sun.shadow.normalBias=.035;sun.shadow.bias=-.0001;scene.add(sun);
@@ -102,6 +102,6 @@ renderer.domElement.addEventListener('pointerup',e=>{
 // WebXR：対応ブラウザ（Meta Quest など）でだけ VR 用コードを読み込み「VRで入る」ボタンを出す。?xr で強制表示。
 // 家・家具・キャラクター・シミュレーションは通常表示と共通。VR 中はカメラをリグに載せ替えて歩けるようにするだけ。
 let xr=null;
-whenXRSupported().then(ok=>ok&&import('./world/xr-house.js')).then(m=>{if(m)xr=m.mountHouseXR({renderer,scene,camera,controls,profile:xrProfile(),onExit:resize});}).catch(e=>console.warn('[house-xr]',e));
+whenXRSupported(undefined,undefined,{trustHeadset:true}).then(ok=>ok&&import('./world/xr-house.js')).then(m=>{if(m){xr=m.mountHouseXR({renderer,scene,camera,controls,profile:xrProfile(),onExit:resize});dockXRButton(xr.button.el);}}).catch(e=>console.warn('[house-xr]',e));
 const clock=new T.Clock();let uiElapsed=0;renderer.setAnimationLoop(()=>{const dt=Math.min(clock.getDelta(),.05);simulation.update(dt);characters.forEach(c=>animateCharacter(c,simulation.time));animateRoom(furniture,characters,simulation.time);animatePudding(pudding,dt);if(xr?.active)xr.update(dt);else controls.update();renderer.render(scene,camera);uiElapsed+=dt;if(uiElapsed>.2){ui.update();uiElapsed=0;}});
 window.__house={scene,camera,controls,renderer,characters,furniture,simulation,get xr(){return xr;}};

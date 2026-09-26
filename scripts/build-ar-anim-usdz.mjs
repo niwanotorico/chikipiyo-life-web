@@ -50,7 +50,7 @@ console.log(`characters triangles ${tb} -> ${ta}`);
 const room=(await loader.parseAsync(read('assets/room/human-room.glb'),'')).scene;
 const furnitureOf=o=>{for(let p=o;p;p=p.parent)if(p.userData?.furnitureId)return p.userData.furnitureId;return null;};
 const closeupLog=[];
-for(const part of AR_CLOSEUP_PARTS){
+for(const part of AR_CLOSEUP_PARTS.filter(p=>p.furnitureId)){
  const src=[],dst=new Map();
  room.traverse(o=>{if(o.isMesh&&furnitureOf(o)===part.furnitureId)src.push(o);});
  house.traverse(o=>{if(o.isMesh&&furnitureOf(o)===part.furnitureId)dst.set(o.name,o);});
@@ -62,6 +62,15 @@ for(const part of AR_CLOSEUP_PARTS){
   const m=new T.Mesh(s.geometry,d.material);const r=await simplifyMeshForAR(m,{ratio:part.ratio});d.geometry=m.geometry;after+=r.after;
  }
  closeupLog.push(`${part.label} ${Math.round(before)} → ${Math.round(after)} tris (ratio ${part.ratio})`);
+}
+// VR機器：静止ARでは「ぴよみが身に着けている」のでテーブルから外してある。動くARでは台の上に置いたまま見せる
+house.getObjectByName('VR_dock_gear')?.removeFromParent();
+{
+ const gear=(await loader.parseAsync(read('assets/props/vr-gear.glb'),'')).scene;gear.name='VR_dock_gear';
+ const part=AR_CLOSEUP_PARTS.find(p=>p.prop==='vr-gear');let before=0,after=0;
+ const meshes=[];gear.traverse(o=>{if(o.isMesh)meshes.push(o);});
+ for(const m of meshes){m.material=new T.MeshStandardMaterial({name:m.material.name,color:m.material.color,roughness:m.material.roughness??.8,metalness:0});const r=await simplifyMeshForAR(m,{ratio:part?.ratio??null});before+=r.before;after+=r.after;}
+ house.add(gear);closeupLog.push(`VR機器 ${Math.round(before)} → ${Math.round(after)} tris (ratio ${part?.ratio})`);
 }
 console.log('closeup: '+closeupLog.join(' / '));
 

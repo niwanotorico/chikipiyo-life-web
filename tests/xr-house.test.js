@@ -4,7 +4,7 @@ import * as T from 'three';
 import {createFloorPlan,facePose} from '../src/xr/xr-floorplan.js';
 import {houseFloor,houseStartPose,HOUSE_FLOOR_Y,HOUSE_BOUNDS,HOUSE_OUTSIDE_Y} from '../src/world/xr-house.js';
 import {roomObstacles,roomFurniture} from '../src/world/room-layout.js';
-import {whenXRSupported,xrProfile} from '../src/xr/xr-session.js';
+import {whenXRSupported,xrProfile,isStandaloneHeadset} from '../src/xr/xr-session.js';
 
 test('floor plan: flat floor, bounds and box obstacles',()=>{
  const plan=createFloorPlan({floorY:0,outsideY:-.5,bounds:{minX:-2,maxX:2,minZ:-2,maxZ:2},floorRect:{minX:-3,maxX:3,minZ:-3,maxZ:3},obstacles:[{position:[1,0,0],footprint:[1,1]}],radius:.2});
@@ -52,4 +52,24 @@ test('shared XR helpers: support check and headset profile',async()=>{
  assert.equal(xrProfile(none,'Mozilla/5.0 (X11; Linux x86_64; Quest 3) OculusBrowser/35').xrScale,.9);
  assert.equal(xrProfile(new URLSearchParams('xrscale=1.2'),'OculusBrowser').xrScale,1.2);
  assert.equal(xrProfile(none,'Mozilla/5.0 (Windows NT 10.0)').xrScale,1);
+});
+
+test('house VR button: Quest / Pico browsers show the entry even when isSessionSupported is false or never answers',async()=>{
+ const none=new URLSearchParams('');
+ const QUEST='Mozilla/5.0 (X11; Linux x86_64; Quest 3) AppleWebKit/537.36 (KHTML, like Gecko) OculusBrowser/35.0 SamsungBrowser/4.0 Chrome/126.0 VR Safari/537.36';
+ const PICO='Mozilla/5.0 (Linux; Android 12; Pico 4) AppleWebKit/537.36 (KHTML, like Gecko) PicoBrowser/3.3 Chrome/105.0 VR Safari/537.36';
+ const PC='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36';
+ const IPHONE='Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
+ const no={isSessionSupported:async()=>false},hang={isSessionSupported:()=>new Promise(()=>{})};
+ const opt={trustHeadset:true};
+ assert.ok(isStandaloneHeadset(QUEST)&&isStandaloneHeadset(PICO)&&!isStandaloneHeadset(PC)&&!isStandaloneHeadset(IPHONE));
+ assert.equal(await whenXRSupported(none,{userAgent:QUEST,xr:no},opt),true);
+ assert.equal(await whenXRSupported(none,{userAgent:QUEST,xr:hang},opt),true);
+ assert.equal(await whenXRSupported(none,{userAgent:PICO},opt),true);
+ // PC・スマホは今まで通り事前判定だけ
+ assert.equal(await whenXRSupported(none,{userAgent:PC,xr:no},opt),false);
+ assert.equal(await whenXRSupported(none,{userAgent:IPHONE},opt),false);
+ assert.equal(await whenXRSupported(none,{userAgent:PC,xr:{isSessionSupported:async()=>true}},opt),true);
+ // trustHeadset を付けないページ（渓流など）は従来どおり
+ assert.equal(await whenXRSupported(none,{userAgent:QUEST,xr:no}),false);
 });
