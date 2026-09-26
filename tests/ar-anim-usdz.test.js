@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,existsSync} from 'node:fs';
 import {unzipSync,strFromU8} from 'three/addons/libs/fflate.module.js';
-import {ANIM_USDZ_FILE,ANIM_FPS,DAILY_SCRIPT,PUDDING_PERIOD,seededRandom,puddingJiggle,loopSeconds,crossfadeWeight,reduceKeyframes,ANIM_POSTER_FILE,MATTE,matteMaterial} from '../src/ar/dollhouse-anim-config.js';
+import {ANIM_USDZ_FILE,ANIM_FPS,DAILY_SCRIPT,PUDDING_PERIOD,seededRandom,puddingJiggle,loopSeconds,crossfadeWeight,reduceKeyframes,printGrowth,ANIM_POSTER_FILE,MATTE,matteMaterial} from '../src/ar/dollhouse-anim-config.js';
 
 // 動くAR箱庭（3人の日常＋プリン・マット調整済み）の本番 USDZ。静止AR版（assets/ar/chikipiyo-dollhouse.glb）とは別ファイル
 const url=new URL(`../${ANIM_USDZ_FILE}`,import.meta.url);
@@ -20,7 +20,7 @@ test('animated USDZ is a Quick Look friendly package (stored, 64-byte aligned, m
   at=data+size;
  }
  assert.equal(first,'model.usda');assert.ok(n>10);
- assert.ok(bytes.length/1048576<11,'size '+(bytes.length/1048576).toFixed(1)+' MB (keep around 10 MB)');
+ assert.ok(bytes.length/1048576<12.5,'size '+(bytes.length/1048576).toFixed(1)+' MB (keep around 10–12 MB)');
 });
 
 test('animated USDZ: all three residents and the pudding move, and every track closes the loop',()=>{
@@ -40,9 +40,25 @@ test('animated USDZ: all three residents and the pudding move, and every track c
  }
 });
 
-test('daily script: each resident leaves, visits the sofa, and comes home',()=>{
- for(const id of ['chiki','piyo','piyomi']){const s=DAILY_SCRIPT[id];assert.ok(s.some(x=>x.go==='sofa'));assert.ok(s.at(-1).home);}
+test('daily script: start and end on the sofa, with a real activity in between',()=>{
+ const activities={chiki:'vr',piyo:'desk',piyomi:'piano'};
+ for(const id of ['chiki','piyo','piyomi']){
+  const {leave,steps}=DAILY_SCRIPT[id];
+  assert.ok(leave>0&&leave<3,id+' leaves the sofa quickly');
+  assert.ok(steps.some(x=>x.go===activities[id]),id+' does '+activities[id]);
+  assert.deepEqual(steps.at(-1),{go:'sofa',stay:true},id+' gathers on the sofa at the end');
+ }
  const a=seededRandom(1),b=seededRandom(1);for(let i=0;i<5;i++)assert.equal(a(),b());
+});
+
+test('print growth: clears the old house, prints from the bottom, finishes',()=>{
+ assert.equal(printGrowth(0),1);assert.ok(printGrowth(.3)<1&&printGrowth(.3)>0);assert.equal(printGrowth(1),0);
+ assert.ok(printGrowth(8)>0&&printGrowth(8)<1);assert.equal(printGrowth(14),1);assert.equal(printGrowth(20),1);
+});
+
+test('animated USDZ: VR gear, headphones, keyboard and the printed house move with the scenes',()=>{
+ const u=usda(),names=[...u.matchAll(/def Xform "(ANIM_[^"]+)"[\s\S]*?xformOp:transform\.timeSamples/g)].map(m=>m[1]);
+ for(const re of [/VR_headset_/,/VR_handL_/,/VR_handR_/,/Headphones_/,/Piano_keyboard/,/edp_house/])assert.ok(names.some(n=>re.test(n)),String(re));
 });
 
 test('loop helpers: pudding period, crossfade, keyframe reduction',()=>{

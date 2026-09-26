@@ -8,14 +8,28 @@ export const ANIM_SEED=20260926;       // 生活シミュレーションの乱�
 export const ANIM_CROSSFADE=1.2;       // ループ最後の数秒で、最初のポーズへなめらかにつなぐ（秒）
 export const ANIM_MAX_SECONDS=60;
 
-// 3人の日常（アプリと同じ LifeSimulation を「監督」が順番に動かす）。
-// 全員が開始位置から出発して、ソファで並んでのんびりし、また開始位置へ戻って前を向く → そこで一周。
-//   wait：その場でひとやすみ（秒）／go：家具へ（アプリと同じ command）／home：開始位置へ歩いて戻る（moveTo）
+// 3人の暮らし（アプリと同じ LifeSimulation を「監督」が順番に動かす）。
+// 3人がソファに並んで座ったところから始まり、少しずつずらして立ち上がって、それぞれの用事をして、
+// またソファに集まる → 最初のポーズへつながって一周。待っている時間を作らない。
+//   leave：記録開始から何秒でソファを立つか
+//   go：家具へ（アプリと同じ command）／hold：着いてからその行動を続ける秒数（省略時はアプリの長さ）
+//   stay：着いたらそのまま（最後のソファ）
 export const DAILY_SCRIPT={
- piyo:  [{wait:.6},{go:'sofa'},{home:true}],
- chiki: [{wait:2.2},{go:'sofa'},{home:true}],
- piyomi:[{wait:3.8},{go:'sofa'},{home:true}],
+ piyo:  {leave:.5, steps:[{go:'desk'},{go:'printer',hold:3},{go:'sofa',stay:true}]},         // PCでモデリング → 3Dプリンターで刷れた家をのぞく
+ chiki: {leave:1.0,steps:[{go:'vr',hold:19},{go:'sofa',stay:true}]},                        // 机のVRゴーグルを着けて、コントローラーを持って遊ぶ
+ piyomi:{leave:1.6,steps:[{go:'piano',hold:20},{go:'sofa',stay:true}]},                     // 新しい角度のキーボードで演奏
 };
+// 動くARだけ歩く速さを上げる（アプリは .9m/s）。歩く足の動きも同じ倍率で速めるので、足は滑らない
+export const AR_WALK_SPEED=1.5;
+// 小道具の出し入れ（秒）：ゴーグル・ヘッドホンを手に取る／戻す速さ、キーボードが出る速さ
+export const PROP_BLEND=.35;
+// ぴよきちのモデリング中に 3Dプリンターの家が積み上がる（モデリング開始から printStart 秒で刷り始め、printEnd 秒で完成）
+export const PRINT_GROWTH={clear:.6,printStart:3,printEnd:14};
+export function printGrowth(modelElapsed,{clear,printStart,printEnd}=PRINT_GROWTH){
+ if(modelElapsed<clear){const u=modelElapsed/clear;return 1-u*u*(3-2*u);}   // できていた家を片付ける
+ if(modelElapsed<printStart)return 0;
+ const u=Math.min(1,(modelElapsed-printStart)/(printEnd-printStart));return u;
+}
 export const HOME_YAW=0;               // 開始時の向き（createCharacter の既定と同じ）
 
 // 決まった種から同じ乱数列を作る（mulberry32）

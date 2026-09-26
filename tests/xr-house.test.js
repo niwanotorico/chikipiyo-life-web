@@ -35,7 +35,8 @@ test('house VR start: standing on the real floor, clear of furniture, looking in
 
 test('house VR: cannot stand inside furniture or outside the house, floor outside is the garden',()=>{
  // 掃除機は動き回るので障害物にしない（キャラクターの経路探索と同じ）
- for(const f of roomFurniture.filter(f=>f.id!=='vacuum'))assert.equal(houseFloor.canStand(f.position[0],f.position[2]),false,f.id);
+ // キーボードも演奏中しか出さない小物なので障害物にしない（room-layout.js の roomObstacles）
+ for(const f of roomFurniture.filter(f=>!['vacuum','piano'].includes(f.id)))assert.equal(houseFloor.canStand(f.position[0],f.position[2]),false,f.id);
  assert.equal(houseFloor.canStand(HOUSE_BOUNDS.maxX+.3,0),false);
  assert.equal(houseFloor.ground(9,9),HOUSE_OUTSIDE_Y);
  // 家の中には歩いて回れる通路がある（歩ける格子点が十分ある）

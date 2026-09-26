@@ -7,6 +7,7 @@ import {updateBurgerMotion,updatePotatoMotion} from './burger-motion.js';
 import {installModelingHologram,installModelingScreen,updateModelingHologram,updateModelingScreen} from './modeling-screen.js';
 import {hopOffDuration,modelingBeats} from '../characters/modeling-timeline.js';
 import {applyOpaqueTransmissionTargets} from './transmission.js';
+import {applySoftNormals} from './soft-normals.js';
 
 export async function loadLatestRoom(scene,url,loader=new GLTFLoader(),{createCanvas}={}){
  const {scene:room}=await loader.loadAsync(url);
@@ -16,24 +17,11 @@ export async function loadLatestRoom(scene,url,loader=new GLTFLoader(),{createCa
   return {...d,group,visualSource:'latest-blend'};
  });
  scene.add(room);room.updateMatrixWorld(true);
- const desk=furniture.find(f=>f.id==='desk'),chair=room.getObjectByName(desk?.modelChairName),laptop=room.getObjectByName(desk?.modelLaptopName);
- if(desk&&chair&&laptop){
-  const chairBounds=new Box3().setFromObject(chair),chairCenter=chairBounds.getCenter(new Vector3());
-  const seatHit=new Raycaster(new Vector3(chairCenter.x,10,chairCenter.z),new Vector3(0,-1,0),0,20).intersectObject(chair,true)[0];
-  if(!seatHit)throw new Error('Modeling chair seat surface missing');
-  const laptopCenter=new Box3().setFromObject(laptop).getCenter(new Vector3()),face=Math.atan2(laptopCenter.x-seatHit.point.x,laptopCenter.z-seatHit.point.z);
-  // 椅子の背もたれ越しではなく、椅子の横（本人の右＝通路側）から座面へ跳び乗る。
-  desk.spot=[chairBounds.min.x-.38,0,seatHit.point.z];desk.face=face;
-  desk.standAnchor=[seatHit.point.x+Math.sin(face)*.08,seatHit.point.y,seatHit.point.z+Math.cos(face)*.08];
-  // 翼の先を置く面：立ち位置から PC へ向かって下向きRaycastし、最初に当たるノートPC本体の天面。
-  const fwd=new Vector3(Math.sin(face),0,Math.cos(face)),down=new Raycaster(new Vector3(),new Vector3(0,-1,0),0,20);
-  for(let d=.05;d<1;d+=.005){
-   down.ray.origin.set(desk.standAnchor[0]+fwd.x*d,5,desk.standAnchor[2]+fwd.z*d);
-   const hit=down.intersectObject(laptop,true)[0];
-   if(hit){desk.typing={front:d,surfaceY:hit.point.y};break;}
-  }
-  installModelingScreen(desk,laptop,[seatHit.point.x,seatHit.point.y,seatHit.point.z],{createCanvas});
-  installModelingHologram(desk,laptop,[seatHit.point.x,seatHit.point.y,seatHit.point.z]);
+ const desk=furniture.find(f=>f.id==='desk'),laptop=desk&&room.getObjectByName(desk.modelLaptopName);
+ const seat=desk&&measureModelingDesk(desk,room);
+ if(seat){
+  installModelingScreen(desk,laptop,seat,{createCanvas});
+  installModelingHologram(desk,laptop,seat);
  }
  furniture.coffeeAccessories=captureRoomAccessories(room,['08_Coffee_|_Vert001']);
  const meshes=[];
@@ -48,10 +36,42 @@ export async function loadLatestRoom(scene,url,loader=new GLTFLoader(),{createCa
   furniture.find(f=>f.id===mesh.userData.furnitureId)?.group.attach(mesh);
   if(mesh.userData.roomPart==='Blanket_in_use'){mesh.visible=false;mesh.userData.blanketRestY=mesh.position.y;}
  }
+ // ソファは近くで見ても陰がギザつかないよう、法線だけ作り直す（形は変えない）。
+ applySoftNormals(meshes);
+ // 使用中の掛け布団は、下の縁をマットレス脇に残したまま上だけ伸ばす（持ち上げると縁が浮く）。
+ const inUse=meshes.filter(m=>m.userData.roomPart==='Blanket_in_use');
+ if(inUse.length){
+  let low=Infinity,high=-Infinity;
+  for(const m of inUse){m.geometry.computeBoundingBox();low=Math.min(low,m.geometry.boundingBox.min.y);high=Math.max(high,m.geometry.boundingBox.max.y);}
+  for(const m of inUse)m.userData.blanketRest={y:m.position.y,scaleY:m.scale.y,low,high};
+ }
  furniture.obstacles=roomObstacles;
  furniture.roomRoot=room;
  installPrinterMotion(furniture.find(f=>f.id==='printer'));
  return furniture;
+}
+
+// ぴよきちのモデリング：椅子の座面・立ち位置・キーボード面を部屋の実メッシュから測って desk に書き込む。
+// アプリ（loadLatestRoom）と動くAR の書き出し（build-ar-anim-usdz.mjs）で共通。座面の点 [x,y,z] を返す。
+export function measureModelingDesk(desk,room){
+ const chair=room.getObjectByName(desk.modelChairName),laptop=room.getObjectByName(desk.modelLaptopName);
+ if(!chair||!laptop)return null;
+ room.updateMatrixWorld(true);
+ const chairBounds=new Box3().setFromObject(chair),chairCenter=chairBounds.getCenter(new Vector3());
+ const seatHit=new Raycaster(new Vector3(chairCenter.x,10,chairCenter.z),new Vector3(0,-1,0),0,20).intersectObject(chair,true)[0];
+ if(!seatHit)throw new Error('Modeling chair seat surface missing');
+ const laptopCenter=new Box3().setFromObject(laptop).getCenter(new Vector3()),face=Math.atan2(laptopCenter.x-seatHit.point.x,laptopCenter.z-seatHit.point.z);
+ // 椅子の背もたれ越しではなく、椅子の横（本人の右＝通路側）から座面へ跳び乗る。
+ desk.spot=[chairBounds.min.x-.38,0,seatHit.point.z];desk.face=face;
+ desk.standAnchor=[seatHit.point.x+Math.sin(face)*.08,seatHit.point.y,seatHit.point.z+Math.cos(face)*.08];
+ // 翼の先を置く面：立ち位置から PC へ向かって下向きRaycastし、最初に当たるノートPC本体の天面。
+ const fwd=new Vector3(Math.sin(face),0,Math.cos(face)),down=new Raycaster(new Vector3(),new Vector3(0,-1,0),0,20);
+ for(let d=.05;d<1;d+=.005){
+  down.ray.origin.set(desk.standAnchor[0]+fwd.x*d,5,desk.standAnchor[2]+fwd.z*d);
+  const hit=down.intersectObject(laptop,true)[0];
+  if(hit){desk.typing={front:d,surfaceY:hit.point.y};break;}
+ }
+ return [seatHit.point.x,seatHit.point.y,seatHit.point.z];
 }
 
 export function animateRoom(furniture,characters,time){
@@ -79,7 +99,7 @@ export function animateRoom(furniture,characters,time){
    const part=o.userData.roomPart;
    if(part==='Blanket_idle')o.visible=!actor;
    // 小さい二人は布団を少しだけ下げる。下げすぎるとおなかと翼が布団の上に出る。
-   if(part==='Blanket_in_use'){o.visible=!!actor;o.position.y=o.userData.blanketRestY+(f.blanketLift??0)-(actor?(actor.variant==='chicken'?(f.blanketDropChicken??0):(f.blanketDrop??.2)):0);}
+   if(part==='Blanket_in_use'){o.visible=!!actor;fitBlanket(o,(f.blanketLift??0)-(actor?(actor.variant==='chicken'?(f.blanketDropChicken??0):(f.blanketDrop??.2)):0));}
    // Reveal the Blender print from its build plate upward; leave the gantry and cable intact.
    if(part==='edp_house'){
     if(!o.userData.printMaterials){o.material=Array.isArray(o.material)?o.material.map(m=>m.clone()):o.material.clone();o.userData.printMaterials=true;}
@@ -94,4 +114,14 @@ export function animateRoom(furniture,characters,time){
   });
   if(f.id==='vacuum')updateVacuumMotion(f,actor);
  }
+}
+
+// 掛け布団の天面だけを raise 分上げ下げし、下の縁（マットレス脇に垂れる所）は元の高さに残す。
+// 以前は布団ごと平行移動していたので、ちきん（+.12）のときに縁が浮いてマットレスが見えていた。
+export function fitBlanket(mesh,raise){
+ const rest=mesh.userData.blanketRest;
+ if(!rest){mesh.position.y=(mesh.userData.blanketRestY??mesh.position.y)+raise;return;}
+ const bottom=rest.y+rest.scaleY*rest.low,height=rest.scaleY*(rest.high-rest.low);
+ const scaleY=rest.scaleY*Math.max(.5,(height+raise)/height);
+ mesh.scale.y=scaleY;mesh.position.y=bottom-scaleY*rest.low;
 }

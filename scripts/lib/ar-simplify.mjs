@@ -4,11 +4,13 @@
 import * as T from 'three';
 import {mergeVertices,toCreasedNormals} from 'three/addons/utils/BufferGeometryUtils.js';
 import {MeshoptSimplifier} from 'meshoptimizer';
+import {smoothSoftNormals} from '../../src/world/soft-normals.js';
 
 export const AR_SIMPLIFY={error:.01,crease:Math.PI*55/180};
 // ratio を渡すとその割合まで（1 なら間引かない）。省略時は三角形数に応じた段階（静止AR版と同じ）
 export const defaultRatio=tris=>tris>60000?.04:tris>20000?.08:tris>6000?.15:tris>1500?.25:.45;
-export async function simplifyMeshForAR(mesh,{error=AR_SIMPLIFY.error,crease=AR_SIMPLIFY.crease,ratio=null}={}){
+// soft：ソファなど柔らかい家具。通常表示・VR と同じ smoothSoftNormals（角度重み付き・50°）で法線を作る
+export async function simplifyMeshForAR(mesh,{error=AR_SIMPLIFY.error,crease=AR_SIMPLIFY.crease,ratio=null,soft=false}={}){
  await MeshoptSimplifier.ready;
  let g=mesh.geometry.clone();
  for(const k of Object.keys(g.attributes))if(k!=='position')g.deleteAttribute(k);
@@ -26,7 +28,7 @@ export async function simplifyMeshForAR(mesh,{error=AR_SIMPLIFY.error,crease=AR_
    const s=new T.BufferGeometry();s.setAttribute('position',new T.Float32BufferAttribute(np,3));s.setIndex(Array.from(ni));g=s;
   }
  }
- g=mergeVertices(toCreasedNormals(g,crease),1e-4);
+ g=mergeVertices(soft?smoothSoftNormals(g):toCreasedNormals(g,crease),1e-4);
  const after=g.index.count/3;mesh.geometry=g;
  return {before:tris,after};
 }

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {Box3,Quaternion,Raycaster,Scene,Vector3} from 'three';
+import {Box3,Matrix4,Quaternion,Raycaster,Scene,Vector3} from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {loadLatestRoom,animateRoom} from '../src/world/latest-room.js';
 import {roomFurniture,roomObstacles} from '../src/world/room-layout.js';
@@ -11,7 +11,7 @@ import {animateCharacter} from '../src/characters/animation.js';
 import {LifeSimulation} from '../src/simulation/life.js';
 import {actions} from '../src/simulation/actions.js';
 import {findPath} from '../src/simulation/navigation.js';
-import {installRoomAccessories} from '../src/world/room-accessories.js';
+import {installRoomAccessories,vacuumWandLength} from '../src/world/room-accessories.js';
 import {installModelingHeadphones,modelingHeadphonesFit} from '../src/world/action-props.js';
 import {loadCharacterVisual} from '../src/characters/gltf.js';
 import {loadHumanActionProps} from './action-props-fixture.js';
@@ -95,9 +95,15 @@ test('ぴよみだけが空き床でキーボードを演奏し、終了時に�
  const toKeyboard=new Vector3(...piano.keyboardCenter).sub(piyomi.root.position).setY(0).normalize();
  assert.equal(props.musicKeyboard.visible,true,'演奏中だけ表示');assert(forward.dot(toKeyboard)>.995,'鍵盤を正面に見る');assert(keyboardBounds.min.y<=.01&&keyboardBounds.min.y>=-.01,'キーボードが床へ接地する');
  assert(piyomi.legs.every(leg=>leg.rotation.x<-.9),'低い演奏姿勢');assert(Math.abs(piyomi.arms[0].rotation.x-piyomi.arms[1].rotation.x)>.05,'左右の翼を交互に動かす');
- const wingFront=Math.max(...piyomi.arms.map(arm=>new Box3().setFromObject(arm).max.z)),vertex=new Vector3();let bodyFrontAtKeyboardHeight=-Infinity;
- piyomi.body.traverse(node=>{const positions=node.geometry?.attributes.position;if(!node.isMesh||!positions)return;for(let index=0;index<positions.count;index++){vertex.fromBufferAttribute(positions,index);node.localToWorld(vertex);if(vertex.y>=keyboardBounds.min.y&&vertex.y<=keyboardBounds.max.y)bodyFrontAtKeyboardHeight=Math.max(bodyFrontAtKeyboardHeight,vertex.z);}});
- assert(bodyFrontAtKeyboardHeight<keyboardBounds.min.z,'鍵盤の高さで身体はめり込まない');assert(keyboardBounds.min.z-wingFront<.04,'通常姿勢の翼先が鍵盤へ自然に届く距離にある');
+ // 鍵盤は斜めに置かれるので、鍵盤の向き（白鍵の手前＝鍵盤ローカル +Z）にそろえて測る。
+ const toKeyboardFrame=new Matrix4().makeRotationY(-piano.keyboardYaw),vertex=new Vector3(),keyboardLocal=new Box3();
+ props.musicKeyboard.traverse(node=>{const positions=node.geometry?.attributes.position;if(!node.isMesh||!positions)return;for(let index=0;index<positions.count;index++)keyboardLocal.expandByPoint(vertex.fromBufferAttribute(positions,index).applyMatrix4(node.matrixWorld).applyMatrix4(toKeyboardFrame));});
+ const localPoints=root=>{const out=[];root.traverse(node=>{const positions=node.geometry?.attributes.position;if(!node.isMesh||!positions)return;for(let index=0;index<positions.count;index++)out.push(vertex.fromBufferAttribute(positions,index).applyMatrix4(node.matrixWorld).applyMatrix4(toKeyboardFrame).clone());});return out;};
+ const wingFront=Math.min(...piyomi.arms.flatMap(arm=>localPoints(arm).map(p=>p.z)));
+ const bodyFront=Math.min(...localPoints(piyomi.body).filter(p=>p.y>=keyboardLocal.min.y&&p.y<=keyboardLocal.max.y).map(p=>p.z));
+assert(bodyFront>keyboardLocal.max.z,'鍵盤の高さで身体はめり込まない');// テストは GLB を読まない予備モデル（翼が小さい）で測るので、手前の縁から 10cm 以内を許容。
+ assert(wingFront-keyboardLocal.max.z<.10,'通常姿勢の翼先が鍵盤へ自然に届く距離にある');
+ assert(Math.abs(piyomi.root.rotation.y-piano.face)<.02||Math.abs(Math.abs(piyomi.root.rotation.y-piano.face)-2*Math.PI)<.02,'鍵盤の向きに合わせて座る');
  Object.assign(piyomi,{action:'idle',target:null,phase:'acting'});animateCharacter(piyomi,2);animateRoom(furniture,[piyomi],2);
  assert.equal(props.musicKeyboard.visible,false,'終了時は非表示へ戻す');
 });
@@ -133,12 +139,20 @@ test('bed blankets, VR pickup, vacuum and printing restore after interruption',a
  // 掃除中は本体もキャラの横へ移動し、ホースは短く、ノズルだけが手元で前後に動く。
  const vacuum=furniture.find(f=>f.id==='vacuum'),motion=vacuum.vacuumMotion,cleaner=createCharacter(characterDefinitions[0]);
  cleaner.root.position.set(-1.2,0,.6);cleaner.root.rotation.y=.9;
- Object.assign(cleaner,{target:{...vacuum,spot:[-1.2,0,.6],face:.9},phase:'acting',elapsed:0});
- const sampled=[],hoses=[];
+ Object.assign(cleaner,{action:'clean',target:{...vacuum,spot:[-1.2,0,.6],face:.9},phase:'acting',elapsed:0});
+ const sampled=[],hoses=[],feet=[];
  for(const elapsed of [.2,.9,1.6,2.3]){cleaner.elapsed=elapsed;animateCharacter(cleaner,elapsed);animateRoom(furniture,[cleaner],elapsed);
   sampled.push(motion.nozzle.position.clone());
+  // その場で掃除：root と rig は動かさず、足先は床の同じ所に残る
+  assert.deepEqual(cleaner.root.position.toArray(),[-1.2,0,.6]);assert.equal(cleaner.rig.position.length(),0,'rig を平行移動しない');
+  feet.push(cleaner.legs.map(leg=>leg.localToWorld(new Vector3(0,-.24,0))));
+  // ワンドは固定長：伸び縮みさせず、手元とノズルの距離もいつも同じ
+  assert.deepEqual(motion.wand.scale.toArray(),[1,1,1],'ワンドの scale は変えない');
+  const tipToTip=cleaner.arms[1].localToWorld(new Vector3(.10,-.22,.035)).distanceTo(motion.nozzle.position);
+  assert(Math.abs(tipToTip-vacuumWandLength)<1e-6,`ワンドの長さが一定: ${tipToTip}`);
   const dock=motion.carrier.localToWorld(new Vector3(4.27,.25,3.49).sub(motion.home));
   hoses.push(dock.distanceTo(cleaner.arms[1].getWorldPosition(new Vector3())));}
+ assert(feet.every(f=>f.every((p,i)=>p.distanceTo(feet[0][i])<.015)),'足元が床を滑らない');
  assert.equal(vacuum.group.position.length(),0);
  assert(motion.rig.visible);
  for(const name of ['Cube052','Cube052_1','Cube052_2'])assert(vacuum.group.getObjectByName(name).visible,`${name}: canister must remain visible during cleaning`);
@@ -150,7 +164,7 @@ test('bed blankets, VR pickup, vacuum and printing restore after interruption',a
  const gap=Math.hypot(body.x-cleaner.root.position.x,body.z-cleaner.root.position.z);
  assert(gap>.5&&gap<1.15,`本体がキャラのそば: ${gap}`);
  assert(hoses.every(d=>d<1.2),`ホースが伸びきらない: ${hoses}`);
- assert(Math.max(...sampled.map(p=>p.x))-Math.min(...sampled.map(p=>p.x))>.05||Math.max(...sampled.map(p=>p.z))-Math.min(...sampled.map(p=>p.z))>.05);
+ assert(Math.max(...sampled.map(p=>p.x))-Math.min(...sampled.map(p=>p.x))>.05&&Math.max(...sampled.map(p=>p.z))-Math.min(...sampled.map(p=>p.z))>.05);
  assert(sampled.every(p=>Math.abs(p.y-.065)<1e-6),'ノズルは床の高さのまま');
  // ワンドは短く、手元から伸びたまま固定しない。
  assert(sampled.every(p=>p.distanceTo(cleaner.arms[1].getWorldPosition(new Vector3()))<.95),'ノズルは手元のそば');

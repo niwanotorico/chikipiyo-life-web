@@ -11,7 +11,13 @@ const bounds=(names)=>{
 };
 const bed=bounds(['bed']),sofa=bounds(['Plane.006']),table=bounds(['table_part_01']),vr=bounds(['vr_part_01']),desk=bounds(['Plane.090']),laptop=bounds(['Plane.145']),printer=bounds(['desk_part_09']),vacuum=bounds(['13 Vacuum | Cube.081']);
 const diningChair=bounds(['Cube.004']),print=bounds(['edp_house']);
-const piano={position:[4.2098,0,2.3552],footprint:[1.386,.419]};
+// キーボードは演奏中だけ出す小物（music-keyboard.glb）。通行の障害物は書き出し時の外形から取る。
+// 演奏位置と向きは読み込み後に action-props.js の keyboardPlayPose が鍵盤の向きから決め直す。
+const piano=(()=>{
+ const rows=manifest.actionProps['music-keyboard'],min=[0,1,2].map(i=>Math.min(...rows.map(r=>r.min[i]))),max=[0,1,2].map(i=>Math.max(...rows.map(r=>r.max[i])));
+ // actionProps は Blender 座標（X, Y, Z-up）のまま。Three.js では (X, Z, -Y)。
+ return {position:[(min[0]+max[0])/2,0,-(min[1]+max[1])/2],footprint:[max[0]-min[0],max[1]-min[1]]};
+})();
 export const roomFurniture=[
  // sleepHeight はリグ原点＝頭の中心が乗る高さ。マットレス天面 .792 / 枕天面 .872。
  // 背中をマットレスへ沈めて、おなかが布団から浮かないところまで下げる。
@@ -50,15 +56,17 @@ const facePlate=(x,z)=>Math.atan2(plate[0]-x,plate[2]-z);
  printer.seats={
   chiki:{spot:printer.spot,...watch(printer.spot[0],printer.spot[2]),headTilt:-.26,
    label:'プリントを見る',activityLabel:'プリントを横から見守る'},
-  piyo:{spot:[printChair.position[0]-.26,0,printChair.max[2]+.60],...stand(4.24,-1.92),headTilt:-.21,
+  piyo:{spot:[printChair.position[0]-.26,0,printChair.max[2]+.60],...stand(4.24,-1.76),headTilt:-.21,
    label:'プリントを覗く',activityLabel:'造形物をのぞきこみ中'},
   // Piyomi's wide feet need the middle of the seat, clear of the rear rim.
-  piyomi:{spot:[printChair.position[0]+.30,0,printChair.max[2]+.60],standAnchor:[4.40,.61,-1.82],face:facePlate(4.40,-1.82),headTilt:-.21,
+  // 二人とも、前かがみでのぞいたときにくちばしがビルドプレートの手前の縁（z=-2.27）に届かない位置まで下げる。
+  piyomi:{spot:[printChair.position[0]+.30,0,printChair.max[2]+.60],standAnchor:[4.40,.61,-1.70],face:facePlate(4.40,-1.70),headTilt:-.21,
    label:'プリントを覗く',activityLabel:'造形物をのぞきこみ中'},
  };
 }
 // Static props also block walking, despite having no action buttons.
-export const roomObstacles=[...roomFurniture.filter(f=>f.id!=='vacuum'),...[
+// キーボードは演奏中しか出さず、斜めに置くと外形の箱が演奏位置まで覆ってしまうので通行の障害物にしない。
+export const roomObstacles=[...roomFurniture.filter(f=>!['vacuum','piano'].includes(f.id)),...[
  ['fridge_part_01'],['07 Stove | Cube.009'],['Kitchen storage'],['Plane.086'],
  ['Circle.002'],['Cube.002'],['Cube.003'],['Cube.004'],
 ].map(bounds)];

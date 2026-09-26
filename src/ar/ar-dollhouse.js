@@ -22,7 +22,7 @@ function animCard(){
    <span class="ar-anim-go" aria-hidden="true">動くARで置く</span>
    <div class="ar-anim-loading" role="status" hidden><span class="ar-spinner" aria-hidden="true"></span><strong>動くおうちを準備中…</strong><small>初回は少し時間がかかります</small></div>
   </div>
-  <p class="ar-choice-meta"><span class="ar-badge">iPhone Safari対応</span>初回は読み込みに少し時間がかかります<small>（約10MB）</small></p>
+  <p class="ar-choice-meta"><span class="ar-badge">iPhone Safari対応</span>初回は読み込みに少し時間がかかります<small>（約12MB）</small></p>
  </section>`;
 }
 // 「動くARで置く」を押した直後の読み込み表示。Quick Look の起動は止めない（preventDefault しない）。

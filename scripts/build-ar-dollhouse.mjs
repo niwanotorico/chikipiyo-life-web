@@ -15,6 +15,7 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {GLTFExporter} from 'three/addons/exporters/GLTFExporter.js';
 import {mergeVertices,toCreasedNormals} from 'three/addons/utils/BufferGeometryUtils.js';
 import {MeshoptSimplifier} from 'meshoptimizer';
+import {smoothSoftNormals,softNormalFurniture} from '../src/world/soft-normals.js';
 import {characterDefinitions} from '../src/characters/config.js';
 import {createCharacter} from '../src/characters/model.js';
 import {characterAssetPaths,installCharacterVisual} from '../src/characters/gltf.js';
@@ -112,8 +113,8 @@ for(const mesh of meshes){
  const hadGroups=g.groups.length>0;
  g=mergeVertices(g,1e-5);
  const tris=g.index.count/3;before+=tris;
+ const fid=(()=>{for(let p=mesh;p;p=p.parent)if(p.userData?.furnitureId)return p.userData.furnitureId;return null;})();
  if(tris>200&&!hadGroups){
-  const fid=(()=>{for(let p=mesh;p;p=p.parent)if(p.userData?.furnitureId)return p.userData.furnitureId;return null;})();
   const ratio=closeupRatio({furnitureId:fid,prop:mesh.userData.arProp})??(tris>60000?.04:tris>20000?.08:tris>6000?.15:tris>1500?.25:.45);
   const idx=new Uint32Array(g.index.array),pos=new Float32Array(g.attributes.position.array);
   const [out]=MeshoptSimplifier.simplify(idx,pos,3,Math.max(36,Math.floor(tris*ratio)*3),SIMPLIFY_ERROR,[]);
@@ -123,7 +124,8 @@ for(const mesh of meshes){
    const s=new T.BufferGeometry();s.setAttribute('position',new T.Float32BufferAttribute(np,3));s.setIndex(Array.from(ni));g=s;
   }
  }
- g=mergeVertices(toCreasedNormals(g,CREASE),1e-4);
+ // ソファなど柔らかい家具は、通常表示・VR と同じ法線の作り方（soft-normals.js）にそろえる
+ g=mergeVertices(softNormalFurniture.includes(fid)?smoothSoftNormals(g):toCreasedNormals(g,CREASE),1e-4);
  after+=g.index.count/3;mesh.geometry=g;
 }
 

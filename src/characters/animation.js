@@ -1,15 +1,20 @@
 import {Quaternion,Vector3} from 'three';
 import {updateCharacterExpression} from './expressions.js';
 import {animateMeal} from './meal.js';
+import {cleanSweep} from './clean-motion.js';
 import {modelingBeat,modelingBeats,span,smooth,trackpadStroke,hopOffDuration} from './modeling-timeline.js';
 const sleepRotation=new Quaternion().setFromAxisAngle(new Vector3(1,0,0),-Math.PI/2);
 // ちきんのコーヒーカップ。翼の先（腕ローカル）でカップを握り、肩から見た向きだけを動かす。
 // こうするとカップは必ず手先にあり、翼が胴体を突き抜ける角度にもならない。
-const cupGrip=new Vector3(0,-.30,.05),cupGripDir=cupGrip.clone().normalize();
+const cupGrip=new Vector3(0,-.30,.05);
 // 肩からカップ中心までの距離。翼の長さ(.304)より少し長く取り、翼の先がカップの手前側に触れる。
 const cupReach=.40;
 const cupRestDir=new Vector3(.10,-.38,.86).normalize();
 const cupSipDir=new Vector3(-.18,.52,.84).normalize();
+// ソファに座る小さい二人：太ももごと前へ出すと足先が左右へ大きく開くので、
+// 脚を内側へ寄せ(z)、つま先を正面へ戻す(y)。足先は太ももの前に並ぶ。
+export const sofaLegIn=.30,sofaLegTurn=.35;
+const cupTipDir=new Vector3(),cupFlat=new Vector3(),cupToShoulder=new Vector3(),cupTip=new Vector3(),cupHandle=new Vector3(),cupYaw=new Quaternion();
 const cupDir=new Vector3(),standPoint=new Vector3(),upAxis=new Vector3(0,1,0),sideAxis=new Vector3(1,0,0);
 export function animateCharacter(c,time){const t=c.elapsed,walking=c.phase==='walking',a=walking?'walk':c.action;
  updateCharacterExpression(c);
@@ -32,7 +37,7 @@ export function animateCharacter(c,time){const t=c.elapsed,walking=c.phase==='wa
   c.rig.quaternion.copy(c.root.getWorldQuaternion(new Quaternion()).invert()).multiply(new Quaternion().setFromAxisAngle(new Vector3(0,1,0),yaw)).multiply(sleepRotation);
   c.head.scale.y=.98+Math.sin(t*1.7)*.012;
  }else c.head.scale.y=1;
- if(a==='relax'){c.rig.position.set(0,.48,.75);if(c.target?.seatAnchor){c.root.updateWorldMatrix(true,false);c.rig.position.copy(c.root.worldToLocal(new Vector3(...c.target.seatAnchor)));}c.rig.rotation.x=c.target?.seats?-.30:-.18;c.legs.forEach(p=>p.rotation.x=-1.25);if(c.target?.seats){const tilt=c.rig.rotation.x;c.rig.quaternion.copy(c.root.getWorldQuaternion(new Quaternion()).invert()).multiply(new Quaternion().setFromAxisAngle(new Vector3(0,1,0),c.target.face)).multiply(new Quaternion().setFromAxisAngle(new Vector3(1,0,0),tilt));}}
+ if(a==='relax'){c.rig.position.set(0,.48,.75);if(c.target?.seatAnchor){c.root.updateWorldMatrix(true,false);c.rig.position.copy(c.root.worldToLocal(new Vector3(...c.target.seatAnchor)));}c.rig.rotation.x=c.target?.seats?-.30:-.18;c.legs.forEach(p=>p.rotation.x=-1.25);if(c.variant!=='chicken')c.legs.forEach((p,i)=>{const side=i?-1:1;p.rotation.y=side*sofaLegTurn;p.rotation.z=side*sofaLegIn;});if(c.target?.seats){const tilt=c.rig.rotation.x;c.rig.quaternion.copy(c.root.getWorldQuaternion(new Quaternion()).invert()).multiply(new Quaternion().setFromAxisAngle(new Vector3(0,1,0),c.target.face)).multiply(new Quaternion().setFromAxisAngle(new Vector3(1,0,0),tilt));}}
  if(a==='eat'){
   // ちきんはカップを持って、ときどき口元へ上げて少し上を向く。
   const sip=c.variant==='chicken'?Math.max(0,Math.sin(t*.85))**2:0;
@@ -41,9 +46,23 @@ export function animateCharacter(c,time){const t=c.elapsed,walking=c.phase==='wa
    // 右の翼を持ち上げ、その先にカップを置く。左の翼は体側へ軽く添えるだけ。
    c.arms[0].rotation.x=-.22;
    cupDir.copy(cupRestDir).lerp(cupSipDir,sip).normalize();
-   c.arms[1].quaternion.setFromUnitVectors(cupGripDir,cupDir);
-   c.food.position.copy(c.arms[1].position).addScaledVector(cupDir,cupReach);
-   c.food.rotation.set(-sip*.42,0,0);
+   const handle=c.food.userData.handle;
+   // 翼の先は見た目の翼（GLB）から測る。無ければ従来の目安（cupGrip）。
+   const tip=handle?(wingTip(c.arms[1],c.visualSource)??cupGrip):cupGrip;
+   c.arms[1].quaternion.setFromUnitVectors(cupTipDir.copy(tip).normalize(),cupDir);
+   if(handle){
+    // 翼の先で持ち手を握る：持ち手を肩の側（-cupDir の水平成分）へ向け、持ち手の中ほどを翼の先に合わせる。
+    // カップは立てたまま（ひと口のときだけ少し傾ける）なので、胴は翼の先より外側に来る。
+    cupFlat.set(handle.grip.x-handle.axis.x,0,handle.grip.z-handle.axis.z).normalize();
+    cupToShoulder.set(-cupDir.x,0,-cupDir.z).normalize();
+    cupYaw.setFromUnitVectors(cupFlat,cupToShoulder);
+    c.food.quaternion.setFromAxisAngle(sideAxis,-sip*.42).multiply(cupYaw);
+    cupTip.copy(c.arms[1].position).addScaledVector(cupDir,tip.length());
+    c.food.position.copy(cupTip).sub(cupHandle.copy(handle.grip).applyQuaternion(c.food.quaternion));
+   }else{
+    c.food.position.copy(c.arms[1].position).addScaledVector(cupDir,cupReach);
+    c.food.rotation.set(-sip*.42,0,0);
+   }
    // 口はカップのある側にあるので、飲むときは顔をカップへ向けつつ上を向く。
    c.head.rotation.set(.12+Math.sin(t*3)*.035-sip*.46,sip*.42,0);
   }else{
@@ -92,7 +111,16 @@ export function animateCharacter(c,time){const t=c.elapsed,walking=c.phase==='wa
   });
  }
  if(a==='vr'){c.head.rotation.y=Math.sin(t*1.5)*.55;c.arms.forEach((p,i)=>{p.rotation.x=-.9+Math.sin(t*3+i)*.4;p.rotation.z=Math.sin(t*2+i)*.3;});}
- if(a==='clean'){c.rig.rotation.z=Math.sin(t*3)*.08;c.arms[1].rotation.x=-.65+Math.sin(t*2.5)*.12;c.arms[0].rotation.x=-.3;}
+ if(a==='clean'){
+  // その場に立ったまま腕で掃除する。rig の平行移動・向きの回転はしない（足が床を滑るため）。
+  // 上半身は足元を支点にわずかに前傾するだけ。脚は逆に回して足先を床に着けたままにする。
+  const sweep=cleanSweep(t);
+  c.rig.position.set(0,0,0);
+  c.rig.rotation.set(sweep.lean,0,0);
+  c.legs.forEach(p=>p.rotation.set(-sweep.lean,0,0));
+  // 右の翼（ワンドを持つ腕）：押し引きで前後、ノズルの弧に合わせて左右へ振る。
+  c.arms[1].rotation.set(-.62-sweep.stroke*.9,sweep.arm,0);c.arms[0].rotation.x=-.3;
+ }
  if(['idle','relax'].includes(a))c.head.rotation.y=Math.sin(t*.8)*.2;
 }
 

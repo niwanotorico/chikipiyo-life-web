@@ -1,3 +1,4 @@
+import {cleanSweep} from '../characters/clean-motion.js';
 import {Box3,CatmullRomCurve3,CylinderGeometry,Group,Mesh,MeshStandardMaterial,TubeGeometry,Vector3} from 'three';
 
 function centeredCopy(meshes){
@@ -27,7 +28,7 @@ const vrFit={
 };
 export function installRoomAccessories(c,furniture){
  const fit=vrFit[c.id],assets=furniture.accessories;
- c.food.clear();c.food.add(assets['08_Coffee_|_Vert001'].clone(true));c.food.visualSource='room-glb';
+ c.food.clear();c.food.add(assets['08_Coffee_|_Vert001'].clone(true));c.food.visualSource='room-glb';c.food.userData.handle=measureCupHandle(c.food);
  c.vr.clear();c.vr.position.set(0,0,0);c.vr.scale.setScalar(1);
  const headset=assets.VR_headset.clone(true);headset.name='Worn_Room_VR_headset';headset.scale.setScalar(fit.scale);headset.position.set(...fit.position);c.vr.add(headset);c.vr.visualSource='room-glb';
  c.vrControllers=['VR_handL','VR_handR'].map((name,i)=>{
@@ -38,6 +39,22 @@ export function installRoomAccessories(c,furniture){
   c.arms[i].add(controller);controller.visible=false;return controller;
  });
  return true;
+}
+
+// マグの持ち手の位置（カップのローカル）。飲口の縁の円の中心を胴の軸とし、
+// 軸から縁の半径より明らかに外へ出ている頂点の重心を「持ち手を握る所」とする。
+export function measureCupHandle(cup){
+ cup.updateWorldMatrix(true,true);
+ const inverse=cup.matrixWorld.clone().invert(),points=[],v=new Vector3();
+ cup.traverse(o=>{if(!o.isMesh)return;const pos=o.geometry.attributes.position,m=inverse.clone().multiply(o.matrixWorld);for(let i=0;i<pos.count;i++)points.push(v.fromBufferAttribute(pos,i).applyMatrix4(m).clone());});
+ if(!points.length)return null;
+ const top=Math.max(...points.map(p=>p.y)),bottom=Math.min(...points.map(p=>p.y)),rim=points.filter(p=>p.y>top-(top-bottom)*.04);
+ const axis=rim.reduce((a,p)=>a.add(p),new Vector3()).divideScalar(rim.length).setY(0);
+ const radius=Math.max(...rim.map(p=>Math.hypot(p.x-axis.x,p.z-axis.z)));
+ const handle=points.filter(p=>Math.hypot(p.x-axis.x,p.z-axis.z)>radius*1.08);
+ if(!handle.length)return null;
+ const grip=handle.reduce((a,p)=>a.add(p),new Vector3()).divideScalar(handle.length);
+ return {grip,axis};
 }
 
 // The vacuum's dark material combines wheels, hose and floor head. Separate only
@@ -86,8 +103,11 @@ export function installVacuumMotion(furniture,scene){
  const material=new MeshStandardMaterial({color:0xf5f2e9,roughness:.7});
  const rest=[vacuumDock.clone(),vacuumDock.clone().add(new Vector3(-.12,.08,.03)),vacuumDock.clone().add(new Vector3(-.20,.16,.06)),vacuumDock.clone().add(new Vector3(-.26,.22,.08))];
  const hose=new Mesh(new TubeGeometry(new CatmullRomCurve3(rest),24,.035,6,false),material);
- const wand=new Mesh(new CylinderGeometry(.025,.025,1,12),new MeshStandardMaterial({color:0x8c9b97,metalness:.55,roughness:.35}));
- wand.position.copy(vacuumDock).setY(.30);wand.scale.y=.30;
+ // ワンドは待機中の掃除機のワンド・ノズルと同じ素材（Cube.001 の濃い緑）で作り、持った時だけ別物に見えないようにする。
+ const wandMaterial=[].concat(source.material)[0];
+ // ワンドは固定長の一本の棒。長さはジオメトリで決め、アニメーションでは位置と向きだけを動かす（scale は触らない）。
+ const wand=new Mesh(new CylinderGeometry(.025,.025,vacuumWandLength,12),wandMaterial??new MeshStandardMaterial({color:0x8c9b97,metalness:.55,roughness:.35}));
+ wand.position.copy(vacuumDock).setY(vacuumWandLength/2);
  parts.nozzle.position.copy(vacuumDock).setY(.065);
  rig.add(hose,wand,parts.nozzle);rig.visible=false;
  rig.traverse(o=>{if(o.isMesh){o.castShadow=true;o.userData.furnitureId=furniture.id;}});
@@ -97,6 +117,7 @@ export function installVacuumMotion(furniture,scene){
  const authoredMovingParts=[dockPipe].filter(Boolean);
  furniture.vacuumMotion={rig,carrier,chassis,home,dockAngle,source,...parts,hose,wand,dockPipe,authoredMovingParts};
 }
+export const vacuumWandLength=.60;
 // 本体はキャラの斜め後ろ、およそ1キャラ分（.85m前後）のところへ置く。
 const chassisBack=.45,chassisSide=.72;
 export function updateVacuumMotion(furniture,candidate){
@@ -121,23 +142,25 @@ export function updateVacuumMotion(furniture,candidate){
  motion.carrier.updateWorldMatrix(true,true);
  const dock=motion.carrier.localToWorld(vacuumDock.clone().sub(motion.home));
  const grip=actor.arms[1].localToWorld(new Vector3(.10,actor.variant==='chicken'?-.22:-.16,.035));
- // ノズルは手元から前後へストロークさせる。ワンドは短く、ホースは本体からすぐ届く長さ。
- const swing=.14*Math.sin(actor.elapsed*2.4);
- const wandLength=.60,drop=Math.max(.05,grip.y-.065);
- const reach=Math.sqrt(Math.max(.01,wandLength**2-drop**2))+swing;
- const floor=grip.clone().addScaledVector(forward,reach);floor.y=.065;
- motion.nozzle.position.copy(floor);motion.nozzle.rotation.y=yaw+Math.PI/2;
- const delta=grip.clone().sub(floor);motion.wand.position.copy(grip).add(floor).multiplyScalar(.5);motion.wand.scale.y=delta.length();motion.wand.quaternion.setFromUnitVectors(new Vector3(0,1,0),delta.normalize());
- // 本体から手元へ、胴体の外側を回る緩い弧にする。手前の逃がし点を残すため、
- // 持ち手へ向かう直線が身体を横切らない。
- // Route in the actor frame: keep the entire middle span outside the torso,
- // including its radius and the hose thickness, rather than offsetting a chord.
+ // ノズルは体の前で左右の弧を描きながら前後にも押し引きする（clean-motion.js と同じリズム）。
+ // ワンドは手元とノズルを結ぶ一本の棒、ホースは本体からワンドの付け根（手元）までの柔らかい管。
+ const {sweep}=cleanSweep(actor.elapsed??0),sweepYaw=yaw+sweep;
+ const sweepDir=new Vector3(Math.sin(sweepYaw),0,Math.cos(sweepYaw));
+ // ワンドの長さは一定。手元の高さから、床に届く水平距離が決まる（手が前後すればノズルも前後する）。
+ // 前後の押し引き（stroke）は体と腕の動き（animation.js）で手元が動くことで出す。
+ const drop=Math.min(vacuumWandLength*.98,Math.max(.05,grip.y-.065));
+ const reach=Math.sqrt(vacuumWandLength**2-drop**2);
+ const floor=grip.clone().addScaledVector(sweepDir,reach);floor.y=grip.y-drop;
+ motion.nozzle.position.copy(floor);motion.nozzle.rotation.y=sweepYaw+Math.PI/2;
+ const delta=grip.clone().sub(floor);motion.wand.position.copy(grip).add(floor).multiplyScalar(.5);motion.wand.quaternion.setFromUnitVectors(new Vector3(0,1,0),delta.normalize());
+ // ホース：差込口から上へ出て、床へたるんでからキャラの外側を回って手元へ上がる。
+ // 途中の点は体の外側（clearance）に置くので、手元へ向かう線が胴体を横切らない。
  const localGrip=actor.root.worldToLocal(grip.clone());
  const clearance=actor.variant==='chicken'?.48:.38;
  const escape=(z,y)=>actor.root.localToWorld(new Vector3(Math.max(clearance,localGrip.x+.09),y,z));
- // The authored socket is vertical: leave upward before bending toward the hand.
- const curve=new CatmullRomCurve3([dock,dock.clone().add(new Vector3(0,.075,0)),
-  escape(-.27,Math.max(.16,grip.y-.14)),escape(localGrip.z-.08,grip.y-.055),
+ const sag=dock.clone().lerp(escape(-.27,0),.55).setY(.05);
+ const curve=new CatmullRomCurve3([dock,dock.clone().add(new Vector3(0,.075,0)),sag,
+  escape(-.27,Math.max(.14,grip.y*.45)),escape(localGrip.z-.08,grip.y-.055),
   grip.clone().addScaledVector(right,.085),grip],false,'centripetal');
- motion.hose.geometry.dispose();motion.hose.geometry=new TubeGeometry(curve,24,.035,6,false);
+ motion.hose.geometry.dispose();motion.hose.geometry=new TubeGeometry(curve,40,.035,6,false);
 }
