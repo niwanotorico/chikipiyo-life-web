@@ -20,7 +20,7 @@ test('animated USDZ is a Quick Look friendly package (stored, 64-byte aligned, m
   at=data+size;
  }
  assert.equal(first,'model.usda');assert.ok(n>10);
- assert.ok(bytes.length/1048576<16,'size '+(bytes.length/1048576).toFixed(1)+' MB');
+ assert.ok(bytes.length/1048576<11,'size '+(bytes.length/1048576).toFixed(1)+' MB (keep around 10 MB)');
 });
 
 test('animated USDZ: all three residents and the pudding move, and every track closes the loop',()=>{
@@ -78,4 +78,21 @@ test('matte material rules',()=>{
  const vivid=matteMaterial({h:6/360,s:1,l:.59,roughness:.78});assert.ok(vivid.s>=.95);
  const piyo=matteMaterial({h:41/360,s:1,l:.67,roughness:.72},'character');assert.ok(piyo.s>=.97&&piyo.l===.67&&piyo.roughness>=.85);
  const pudding=matteMaterial({h:35/360,s:.6,l:.7,roughness:.4},'pudding');assert.equal(pudding.roughness,MATTE.pudding.roughness);
+});
+
+test('AR close-up parts: sofa is rebuilt from the source room with gentler simplification',async()=>{
+ const {AR_CLOSEUP_PARTS}=await import('../src/ar/dollhouse-anim-config.js');
+ const {roomFurniture}=await import('../src/world/room-layout.js');
+ const ids=new Set(roomFurniture.map(f=>f.id));
+ assert.ok(AR_CLOSEUP_PARTS.some(p=>p.id==='sofa'));
+ for(const p of AR_CLOSEUP_PARTS){assert.ok(ids.has(p.furnitureId),p.id);assert.ok(p.ratio>0&&p.ratio<=1,p.id);}
+});
+
+test('number trimming keeps geometry lines valid and leaves other lines alone',async()=>{
+ const {trimUsdNumbers}=await import('../src/ar/dollhouse-anim-config.js');
+ const src='\t\tpoint3f[] points = [(-0.4532101, 1.200000, 3.141593e-8)]\n\t\tnormal3f[] normals = [(0.7071068, -0.7071068, 0.0000000)]\n\t\tint[] faceVertexIndices = [0, 1, 2]\n\t\tfloat inputs:roughness = 0.699999988079071';
+ const out=trimUsdNumbers(src).split('\n');
+ assert.equal(out[0],'\t\tpoint3f[] points = [(-0.45321, 1.2, 3.1416e-8)]');
+ assert.equal(out[1],'\t\tnormal3f[] normals = [(0.707, -0.707, 0)]');
+ assert.equal(out[2],src.split('\n')[2]);assert.equal(out[3],src.split('\n')[3]);
 });

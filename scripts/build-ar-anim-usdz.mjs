@@ -21,7 +21,7 @@ import {loadPudding} from '../src/world/pudding.js';
 import {roomFurniture,roomObstacles} from '../src/world/room-layout.js';
 import {DOLLHOUSE_FILE} from '../src/ar/dollhouse-config.js';
 import {simplifyMeshForAR} from './lib/ar-simplify.mjs';
-import {ANIM_USDZ_FILE,ANIM_FPS,ANIM_SEED,ANIM_MAX_SECONDS,DAILY_SCRIPT,HOME_YAW,seededRandom,puddingJiggle,loopSeconds,crossfadeWeight,reduceKeyframes,MATTE,matteMaterial} from '../src/ar/dollhouse-anim-config.js';
+import {ANIM_USDZ_FILE,ANIM_FPS,ANIM_SEED,ANIM_MAX_SECONDS,DAILY_SCRIPT,HOME_YAW,seededRandom,puddingJiggle,loopSeconds,crossfadeWeight,reduceKeyframes,MATTE,matteMaterial,AR_CLOSEUP_PARTS,trimUsdNumbers} from '../src/ar/dollhouse-anim-config.js';
 
 const root=new URL('../',import.meta.url);
 const read=p=>{const b=readFileSync(new URL(p,root));return b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength);};
@@ -46,8 +46,26 @@ let tb=0,ta=0;
 for(const c of characters){const meshes=[];c.root.traverse(o=>{if(o.isMesh)meshes.push(o);});for(const m of meshes){const r=await simplifyMeshForAR(m);tb+=r.before;ta+=r.after;}}
 console.log(`characters triangles ${tb} -> ${ta}`);
 
-// 3) プリン：アプリと同じ loadPudding でテーブルの皿の上に置き、底を支点にする入れ物（Jiggle）に入れる
+// 2b) AR 近接品質：近くで見られやすい部品（AR_CLOSEUP_PARTS）は、軽量化前の元データから弱めに間引き直して差し替える
 const room=(await loader.parseAsync(read('assets/room/human-room.glb'),'')).scene;
+const furnitureOf=o=>{for(let p=o;p;p=p.parent)if(p.userData?.furnitureId)return p.userData.furnitureId;return null;};
+const closeupLog=[];
+for(const part of AR_CLOSEUP_PARTS){
+ const src=[],dst=new Map();
+ room.traverse(o=>{if(o.isMesh&&furnitureOf(o)===part.furnitureId)src.push(o);});
+ house.traverse(o=>{if(o.isMesh&&furnitureOf(o)===part.furnitureId)dst.set(o.name,o);});
+ if(!src.length)throw new Error(`closeup part ${part.id}: no source meshes`);
+ let before=0,after=0;
+ for(const s of src){
+  const d=dst.get(s.name);if(!d)throw new Error(`closeup part ${part.id}: ${s.name} not found in the AR dollhouse`);
+  before+=d.geometry.index?d.geometry.index.count/3:d.geometry.attributes.position.count/3;
+  const m=new T.Mesh(s.geometry,d.material);const r=await simplifyMeshForAR(m,{ratio:part.ratio});d.geometry=m.geometry;after+=r.after;
+ }
+ closeupLog.push(`${part.label} ${Math.round(before)} → ${Math.round(after)} tris (ratio ${part.ratio})`);
+}
+console.log('closeup: '+closeupLog.join(' / '));
+
+// 3) プリン：アプリと同じ loadPudding でテーブルの皿の上に置き、底を支点にする入れ物（Jiggle）に入れる
 const table={...roomFurniture.find(f=>f.id==='table'),group:room};
 const tmp=new T.Scene();tmp.add(room);
 const pudding=await loadPudding(tmp,'pudding',table,{loadAsync:async()=>loader.parseAsync(read('assets/props/pudding.glb'),'')});
@@ -123,6 +141,8 @@ const usdz=await new USDZExporter().parseAsync(top,{quickLookCompatible:true});
 
 // 6) 動く部品の transform を timeSamples に差し替え、ステージにループ情報を書く
 const files=unzipSync(usdz);
+// 形状ファイルの数値の桁を詰める（見た目は同じ・容量だけ軽く）
+for(const k in files)if(k.startsWith('geometries/'))files[k]=strToU8(trimUsdNumbers(strFromU8(files[k])));
 let usda=strFromU8(files['model.usda']);
 const fmt=e=>`( (${e[0]}, ${e[1]}, ${e[2]}, ${e[3]}), (${e[4]}, ${e[5]}, ${e[6]}, ${e[7]}), (${e[8]}, ${e[9]}, ${e[10]}, ${e[11]}), (${e[12]}, ${e[13]}, ${e[14]}, ${e[15]}) )`;
 const round=m=>m.map(v=>+v.toFixed(5));
@@ -164,7 +184,8 @@ for(const [m,part] of matParts){
  m.color.getHSL(hsl);const r=matteMaterial({...hsl,roughness:m.roughness},part);
  m.color.setHSL(r.h,r.s,r.l);m.roughness=r.roughness;m.metalness=r.metalness;partCount[part]=(partCount[part]||0)+1;
 }
-const out=await exportUsdz(ANIM_USDZ_FILE,{ior:MATTE.ior});
+const OUT_FILE=process.env.AR_ANIM_OUT||ANIM_USDZ_FILE;   // 検証版を別名で書き出すとき用
+const out=await exportUsdz(OUT_FILE,{ior:MATTE.ior});
 console.log(log.join('\n'));
 console.log(`settled ${settledAt.toFixed(2)}s → loop ${LOOP}s (${frames+1} frames @ ${ANIM_FPS}fps), animated prims ${moving.length}, matte materials: ${Object.entries(partCount).map(([k,v])=>k+' '+v).join(' / ')}`);
-console.log(`usdz ${(out.byteLength/1048576).toFixed(2)} MB → ${ANIM_USDZ_FILE}`);
+console.log(`usdz ${(out.byteLength/1048576).toFixed(2)} MB → ${OUT_FILE}`);

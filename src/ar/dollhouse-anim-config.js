@@ -76,3 +76,26 @@ export function matteMaterial({h,s,l,roughness=1},part='house',m=MATTE){
  return {h,s:s*(s>=.8?m.house.vividSat:m.house.sat),l:isWhite({s,l})?l*m.house.whiteLight:l,
   roughness:Math.max(roughness,soft?m.soft.roughness:m.house.roughness),metalness:0};
 }
+
+// ── AR 近接品質の優先部品リスト ──
+// ARでは箱庭にかなり近づいて見られるので、近くで見たくなる部品だけ間引きを弱める（それ以外は静止AR版と同じ軽量化のまま）。
+// 対象の部品は、軽量化前の元データ（assets/room/human-room.glb）から ratio（残す三角形の割合。1＝間引かない）で作り直す。
+//   furnitureId … room-layout と同じ家具ID（GLB の extras）
+// 方針：全体は軽くし、実機で近づいて破綻が見えた部品だけここに足して救済する（2026-09-27 ソファを 60% で採用）。
+// 候補：キャラの顔まわり・プリン・テーブルの小物・3Dプリンター周辺（破綻が見つかったら追加）。
+export const AR_CLOSEUP_PARTS=[
+ {id:'sofa',label:'ソファ',furnitureId:'sofa',ratio:.6},
+];
+
+// USDZ の数値の桁数（見た目は変えずにファイルを軽くする）。USDZExporter は 7 桁で書く。
+// 点の位置は 5 桁（家の座標で 0.1mm 以下、40cm の箱庭では数ミクロン）、法線は小数 3 桁
+export const USD_DIGITS={points:5,normals:3};
+export function trimUsdNumbers(text,d=USD_DIGITS){
+ const trim=s=>s.replace(/(\.\d*?)0+(?=$|e)/,'$1').replace(/\.(?=$|e)/,'');
+ return text.split('\n').map(line=>{
+  const isP=line.includes('point3f[] points'),isN=line.includes('normal3f[] normals');
+  if(!isP&&!isN)return line;
+  return line.replace(/-?\d+\.?\d*(?:e[-+]?\d+)?/g,n=>{const v=+n;if(!Number.isFinite(v))return n;
+   const s=isP?v.toPrecision(d.points):v.toFixed(d.normals);return trim(s.includes('e')?String(+s):s)||'0';});
+ }).join('\n');
+}
