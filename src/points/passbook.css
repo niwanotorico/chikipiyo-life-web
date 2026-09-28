@@ -1,0 +1,25 @@
+/* チキンポイント通帳：戸棚の中の入口ラベルと、見るだけのパネル。おうちの配色に合わせて控えめに。 */
+.passbook-entry{position:absolute;left:0;top:0;z-index:3;display:flex;align-items:center;gap:6px;padding:6px 11px 6px 8px;border:1px solid #efd9a0;border-radius:14px;background:#fffaf0f0;color:#5b4a33;font-size:11px;font-weight:700;letter-spacing:.04em;white-space:nowrap;box-shadow:0 4px 12px #6d5a2e24;margin-top:-6px;transition:background .15s}
+.passbook-entry::after{content:'';position:absolute;left:50%;bottom:-6px;width:10px;height:10px;background:inherit;border-right:1px solid #efd9a0;border-bottom:1px solid #efd9a0;transform:translateX(-50%) rotate(45deg)}
+.passbook-entry:hover,.passbook-entry[aria-expanded=true]{background:#fff3d2}
+.passbook-entry-icon{width:14px;height:17px;border-radius:2px 3px 3px 2px;background:linear-gradient(#fffaf0 0 62%,#f0c552 62% 78%,#fffaf0 78%);border:2px solid #f0c552;box-sizing:border-box}
+.passbook-panel{position:absolute;top:22px;right:22px;z-index:6;width:min(344px,calc(100% - 32px));padding:18px 18px 16px;border:1px solid #e6e1cf;border-radius:22px;background:#fffdf7f5;box-shadow:0 14px 34px #3a4d4020;backdrop-filter:blur(8px);color:#374e43}
+.passbook-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
+.passbook-eyebrow{font-size:9px;letter-spacing:.18em;color:#a08a55;font-weight:600}
+.passbook-panel h2{font-size:17px;letter-spacing:.06em;font-weight:700;margin:5px 0 0}
+.passbook-close{flex:none;width:34px;height:34px;padding:0;border:1px solid #e3e6da;border-radius:50%;background:#fff;font-size:19px;line-height:1;color:#6b7b6f}
+.passbook-close:hover{background:#f1f4ec}
+.passbook-balances{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.passbook-card{min-width:0;border-radius:16px;background:#f7edc9;padding:10px 8px 12px;text-align:center}
+.passbook-card.piyomi{background:#f4e3de}
+.passbook-card img{display:block;width:100%;max-width:104px;height:96px;object-fit:contain;margin:0 auto 4px}
+.passbook-card h3{font-size:13px;margin:0 0 2px;font-weight:700}
+.passbook-card p{margin:0;overflow-wrap:anywhere}
+.passbook-card strong{font-size:30px;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.passbook-card span{font-size:12px;margin-left:3px;color:#6b7b6f}
+.passbook-status{font-size:11px;color:#7b8b7d;margin:12px 2px 4px}
+.passbook-panel.is-ready .passbook-status::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:#7d9d72;margin-right:6px;vertical-align:1px}
+.passbook-note{font-size:11px;color:#8a978b;margin:0 2px;line-height:1.6}
+.passbook-note a{color:#39765c}
+.passbook-entry[hidden],.passbook-panel[hidden]{display:none}
+@media(max-width:740px){.passbook-panel{top:auto;bottom:14px;right:12px;left:12px;width:auto;padding:14px 14px 12px}.passbook-card img{height:78px}.passbook-card strong{font-size:26px}}

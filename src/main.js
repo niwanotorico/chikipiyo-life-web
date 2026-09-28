@@ -28,6 +28,8 @@ import {createUI} from './ui.js';
 import {mountSiteNav} from './nav/site-nav.js';
 import {whenXRSupported,xrProfile} from './xr/xr-session.js';
 import {mountARButton,dockXRButton} from './ar/ar-dollhouse.js';
+import {installCupboard} from './world/cupboard.js';
+import {createPassbook} from './points/passbook.js';
 const scene=new T.Scene();scene.background=new T.Color(0xeaf0e9);scene.fog=new T.Fog(0xeaf0e9,24,60);
 const camera=new T.PerspectiveCamera(36,1,.1,100);let controls;function resetCamera(){camera.position.set(13,12,17);controls?.target.set(0,.5,0);controls?.update();}resetCamera();
 scene.add(new T.HemisphereLight(0xfffaf1,0x8dafa4,2.5));const sun=new T.DirectionalLight(0xffe7c6,3.2);sun.position.set(-3,12,7);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-9,right:9,top:9,bottom:-9,near:.1,far:35});sun.shadow.normalBias=.035;sun.shadow.bias=-.0001;scene.add(sun);
@@ -36,8 +38,13 @@ const furniture=await loadLatestRoom(scene,roomUrl);
 const actionProps=await loadActionProps(scene,furniture,{vacuum:vacuumUrl,headphones:headphonesUrl,'music-keyboard':musicKeyboardUrl,burger:burgerUrl,burger_bite01:burgerBite01Url,burger_bite02:burgerBite02Url,'potato-single':potatoSingleUrl,'vr-gear':vrGearUrl});
 const characters=characterDefinitions.map(createCharacter);characters.forEach(c=>{scene.add(c.root);c.visualReady=loadCharacterVisual(c,characterAssets[characterAssetPaths[c.variant]]);c.vrVisualReady=c.visualReady.then(()=>{installRoomAccessories(c,furniture);if(c.id==='piyo')installModelingHeadphones(c,actionProps.headphones);});});
 const pudding=await loadPudding(scene,puddingUrl,furniture.find(f=>f.id==='table'));
+// 戸棚の下の扉（hirakiL / hirakiR）。開いている間だけ、中にチキンポイント通帳の入口が出る。
+const cupboard=installCupboard(furniture.roomRoot);
 let ui;const simulation=new LifeSimulation(characters,furniture,message=>ui?.event(message));ui=createUI(characters,furniture,simulation,resetCamera);mountSiteNav(document.querySelector('header .brand'),'house');mountARButton(document.querySelector('.scene-bottom'));
 const host=document.querySelector('#canvas-host');let renderer;
+const passbook=cupboard&&createPassbook(document.querySelector('.world'),host);
+// 戸棚を閉じたら通帳パネルも閉じる。
+cupboard?.onChange(open=>{if(!open)passbook.close();});
 try{renderer=new T.WebGLRenderer({antialias:true});}catch(error){host.innerHTML='<p class="webgl-error">3D表示を開始できませんでした。ブラウザのハードウェアアクセラレーションを有効にして再読み込みしてください。</p>';throw error;}
 renderer.localClippingEnabled=true;renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;host.appendChild(renderer.domElement);
 // モデリング用の画面・ホログラムのシェーダーを先にコンパイルしておく（初回表示のカクつき防止）。
@@ -97,11 +104,24 @@ renderer.domElement.addEventListener('pointerup',e=>{
  if(e.button!==0||!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>6){down=null;return;}
  down=null;aimPointer(e);
  const hit=visibleHit(raycaster.intersectObjects(furniture.map(f=>f.group),true));
+ // 戸棚の扉・通帳が家具より手前で当たったときだけ戸棚を優先する（上の棚のカメラ等はそのまま家具として選べる）。
+ const cup=cupboard?.hit(raycaster);
+ if(cup&&(!hit||cup.distance<=hit.distance)){if(cup.kind==='passbook')passbook.open();else cupboard.toggle();return;}
  if(hit)ui.selectFurniture(hit.object.userData.furnitureId);
 });
 // WebXR：対応ブラウザ（Meta Quest など）でだけ VR 用コードを読み込み「VRで入る」ボタンを出す。?xr で強制表示。
 // 家・家具・キャラクター・シミュレーションは通常表示と共通。VR 中はカメラをリグに載せ替えて歩けるようにするだけ。
 let xr=null;
 whenXRSupported(undefined,undefined,{trustHeadset:true}).then(ok=>ok&&import('./world/xr-house.js')).then(m=>{if(m){xr=m.mountHouseXR({renderer,scene,camera,controls,profile:xrProfile(),onExit:resize});dockXRButton(xr.button.el);}}).catch(e=>console.warn('[house-xr]',e));
-const clock=new T.Clock();let uiElapsed=0;renderer.setAnimationLoop(()=>{const dt=Math.min(clock.getDelta(),.05);simulation.update(dt);characters.forEach(c=>animateCharacter(c,simulation.time));animateRoom(furniture,characters,simulation.time);animatePudding(pudding,dt);if(xr?.active)xr.update(dt);else controls.update();renderer.render(scene,camera);uiElapsed+=dt;if(uiElapsed>.2){ui.update();uiElapsed=0;}});
-window.__house={scene,camera,controls,renderer,characters,furniture,simulation,get xr(){return xr;}};
+// 通帳の入口ラベルを、戸棚の中の通帳の上に重ねる。戸棚の裏側から見ているときと VR 中は出さない。
+const entryPoint=new T.Vector3(),entryScreen={x:0,y:0};
+function placePassbookEntry(){
+ if(!passbook)return;
+ if(!cupboard.entryVisible||renderer.xr.isPresenting||camera.position.z<cupboard.front){passbook.placeEntry(null);return;}
+ entryPoint.copy(cupboard.entryAnchor()).project(camera);
+ if(entryPoint.z>1||Math.abs(entryPoint.x)>1||Math.abs(entryPoint.y)>1){passbook.placeEntry(null);return;}
+ const w=renderer.domElement.clientWidth,h=renderer.domElement.clientHeight;
+ entryScreen.x=(entryPoint.x+1)/2*w;entryScreen.y=(1-entryPoint.y)/2*h;passbook.placeEntry(entryScreen);
+}
+const clock=new T.Clock();let uiElapsed=0;renderer.setAnimationLoop(()=>{const dt=Math.min(clock.getDelta(),.05);simulation.update(dt);characters.forEach(c=>animateCharacter(c,simulation.time));animateRoom(furniture,characters,simulation.time);animatePudding(pudding,dt);cupboard?.update(dt);placePassbookEntry();if(xr?.active)xr.update(dt);else controls.update();renderer.render(scene,camera);uiElapsed+=dt;if(uiElapsed>.2){ui.update();uiElapsed=0;}});
+window.__house={scene,camera,controls,renderer,characters,furniture,simulation,cupboard,passbook,get xr(){return xr;}};
