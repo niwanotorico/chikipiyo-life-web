@@ -1,7 +1,7 @@
 import * as T from 'three';
 import {mergeGeometries,mergeVertices} from 'three/addons/utils/BufferGeometryUtils.js';
 import {fbm3,noise,rng,smooth} from './noise.js';
-import {heightAt,bankDistance,riverCenter} from './terrain.js';
+import {heightAt,baseHeightAt,bankDistance,riverCenter} from './terrain.js';
 import {patchWind,patchFoliage,foliageDepthMaterial} from './materials.js';
 
 // ─────────────────────────────────────────────────────────────
@@ -240,7 +240,9 @@ export function createVegetation(shared,{mobile=false,clear=[],focus=null,viewer
  const leafDepth=foliageDepthMaterial(shared),needleDepth=foliageDepthMaterial(shared,{evergreen:true});
  const grassMat=new T.MeshStandardMaterial({vertexColors:true,roughness:.9,metalness:0,side:T.DoubleSide});patchWind(grassMat,shared,{amp:.12,base:.05,key:'grass'});
  const m=new T.Matrix4(),q=new T.Quaternion(),ql=new T.Quaternion(),s=new T.Vector3(),p=new T.Vector3(),c=new T.Color(),Y=new T.Vector3(0,1,0),Z=new T.Vector3(0,0,1);
- const slope=(x,z)=>Math.abs(heightAt(x+1,z)-heightAt(x-1,z))/2+Math.abs(heightAt(x,z+1)-heightAt(x,z-1))/2;
+ // 生やすかどうかの判定は元の地形（baseHeightAt）で行い、高さだけ今の地面（heightAt）に合わせる。
+ // 釣り場の河原を整形しても乱数の順番が変わらず、木・草の水平位置がそのまま（terrain.js の beachCut）
+ const slope=(x,z)=>Math.abs(baseHeightAt(x+1,z)-baseHeightAt(x-1,z))/2+Math.abs(baseHeightAt(x,z+1)-baseHeightAt(x,z-1))/2;
  const tint=()=>{const v=.88+R()*.24,h=(R()-.5)*.16;c.setRGB(v*(1+h),v,v*(1-h*1.3),T.LinearSRGBColorSpace);return [c.r,c.g,c.b];};
  // 樹種ごとの生える場所（岸からの距離 d、標高 alt、群落ノイズ、釣り場からの距離 near）
  const dens={
@@ -260,8 +262,8 @@ export function createVegetation(shared,{mobile=false,clear=[],focus=null,viewer
   while(k<target&&guard++<target*120){
    const x=(R()*2-1)*88,z=(R()*2-1)*148,d=bankDistance(x,z);
    if(d<(small?.6:1.9)||blocked(x,z,small?.8:2.5))continue;
-   const h=heightAt(x,z);if(slope(x,z)>(small?1.2:1.3))continue;
-   const alt=smooth((h-3)/7),gr=.5+.5*noise(x*.045+3.1,z*.045),nr=1-smooth((Math.hypot(x-fx,z-fz)-25)/45);
+   const h0=baseHeightAt(x,z),h=heightAt(x,z);if(slope(x,z)>(small?1.2:1.3))continue;
+   const alt=smooth((h0-3)/7),gr=.5+.5*noise(x*.045+3.1,z*.045),nr=1-smooth((Math.hypot(x-fx,z-fz)-25)/45);
    if(R()>dens[kind](d,alt,gr,nr))continue;
    const [s0,s1]=scaleOf[kind],sc=lerp(s0,s1,R()),toRiver=Math.sign(riverCenter(z)-x);
    const lean=kind==='spread'?.22+R()*.2:kind==='bush'?0:smooth(1-(d-2.2)/6)*(kind==='cedar'||kind==='fir'?.05:.18);
@@ -279,9 +281,10 @@ export function createVegetation(shared,{mobile=false,clear=[],focus=null,viewer
  // 草むら（釣り場まわりに集中）
  const gn=mobile?6000:14000,grass=new T.InstancedMesh(grassTuft(),grassMat,gn);let k=0,guard=0;
  const e=new T.Euler();
- while(k<gn&&guard++<200000){const z=5+R()*125,x=riverCenter(z)+(R()*2-1)*34,d=bankDistance(x,z);if(d<.5||blocked(x,z,-1))continue;const h=heightAt(x,z);if(h<.3||slope(x,z)>1.2)continue;
+ while(k<gn&&guard++<200000){const z=5+R()*125,x=riverCenter(z)+(R()*2-1)*34,d=bankDistance(x,z);if(d<.5||blocked(x,z,-1))continue;const h=heightAt(x,z);if(baseHeightAt(x,z)<.3||slope(x,z)>1.2)continue;
   const sc=.7+R()*.9;p.set(x,h-.02,z);e.set(0,R()*6.28,0);q.setFromEuler(e);s.set(sc,sc*(.7+R()*.6),sc);m.compose(p,q,s);grass.setMatrixAt(k,m);c.setHSL(.2+R()*.08,.5,.45+R()*.25);grass.setColorAt(k,c);k++;}
  grass.count=k;grass.receiveShadow=true;grass.computeBoundingSphere();group.add(grass);
+ group.userData.grass=grass; // キャンプ ON の間だけ、テントの下の草を隠すため（camp.js）
 
  // LOD の振り分け：視点が数 m 動いたときだけ並べ直す（毎フレームは何もしない）
  let lx=Infinity,lz=Infinity;

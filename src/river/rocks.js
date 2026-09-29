@@ -1,7 +1,7 @@
 import * as T from 'three';
 import {mergeVertices} from 'three/addons/utils/BufferGeometryUtils.js';
 import {fbm3,rng,smooth} from './noise.js';
-import {heightAt,riverCenter,riverHalfWidth,WATER_Y} from './terrain.js';
+import {heightAt,baseHeightAt,riverCenter,riverHalfWidth,WATER_Y} from './terrain.js';
 import {patchSurface} from './materials.js';
 
 export function rockGeometry(seed,detail){
@@ -24,8 +24,9 @@ export function rockGeometry(seed,detail){
 // 岩を置いてよい地面か：水辺・河原はOK、水面より上で勾配 0.7 を超える崖の草地はNG
 export const ROCK_MAX_DRY_SLOPE=.7;
 export function rockGroundOk(x,z){
- if(heightAt(x,z)<=WATER_Y+.4)return true;
- const gx=(heightAt(x+1,z)-heightAt(x-1,z))/2,gz=(heightAt(x,z+1)-heightAt(x,z-1))/2;
+ // 置くかどうかは元の地形で判定（釣り場の河原の整形で岩の数・位置が変わらないように）。高さは今の地面に合わせる
+ if(baseHeightAt(x,z)<=WATER_Y+.4)return true;
+ const gx=(baseHeightAt(x+1,z)-baseHeightAt(x-1,z))/2,gz=(baseHeightAt(x,z+1)-baseHeightAt(x,z-1))/2;
  return Math.hypot(gx,gz)<=ROCK_MAX_DRY_SLOPE;
 }
 

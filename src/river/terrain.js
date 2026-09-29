@@ -9,7 +9,13 @@ export const TERRAIN={width:180,length:300};
 export const riverCenter=z=>7*Math.sin(z*.03)+3.5*Math.sin(z*.083+1.3);
 export const riverHalfWidth=z=>7.5+2.2*Math.sin(z*.047+2)+1.4*noise(z*.08,3.1);
 
+// 描画・配置に使う地面の高さ＝元の地形（baseHeightAt）−釣り場の河原の整形（beachCut）
 export function heightAt(x,z){
+ const c=riverCenter(z);const h=baseHeightAt(x,z);
+ return x<c?h-beachCut(Math.abs(x-c)-riverHalfWidth(z),z):h;
+}
+// 元の地形。木・草・岩の「ここに生やすか」の判定はこちらで行う（乱数の順番が変わらない＝水平位置がそのまま）
+export function baseHeightAt(x,z){
  const c=riverCenter(z),hw=riverHalfWidth(z),s=Math.abs(x-c)-hw;
  if(s<0){
   const d=Math.min(1,-s/Math.max(hw*.55,1));
@@ -19,6 +25,22 @@ export function heightAt(x,z){
  const side=x>c?1.25:.85;
  const cliff=17*side*smooth((s-2.5)/24)+5*fbm(x*.035,z*.035,4)*smooth(s/12);
  return .22+s*.22+cliff+.35*fbm(x*.25,z*.25,3)*smooth(s/2);
+}
+
+// 釣り場（左岸・3人の後ろ）の河原を少し広く・なだらかにする（2026-09-29）。
+// 元の地形は岸から陸へ上り坂（焚火・テントのあたりで約14°、その奥は 30°以上）。
+// 3人の立ち位置（岸から ~1m）より奥の、焚火〜テントのあたり（岸から ~2.4〜5.4m）の大きな坂を、
+// 支点 sp を通る なだらかな坂（grade）に置き換える。元の小さな凸凹（fbm）はそのまま残す＝平らな台にはしない。
+// 岸・水面（s<=s1）は変えない。変える量は奥・上流・下流へなめらかに 0 に戻す（段差を作らない）。
+export const BEACH={z0:70.8,zCore:4.5,zFall:6,s1:1.1,sRamp:2.4,sp:3.0,sCore:5.4,sFall:7,grade:.1};
+const trend=s=>.22+s*.22+17*.85*smooth((s-2.5)/24);               // baseHeightAt の左岸の大きな坂（凸凹なし）
+// 正＝削る、負＝盛る
+export function beachCut(s,z){
+ const B=BEACH,dz=Math.abs(z-B.z0);
+ if(s<=B.s1||dz>=B.zCore+B.zFall||s>=B.sCore+B.sFall)return 0;
+ const w=(1-smooth((dz-B.zCore)/B.zFall))*smooth((s-B.s1)/B.sRamp)*(1-smooth((s-B.sCore)/B.sFall));
+ const se=Math.min(s,B.sCore);                                      // テントの奥（sCore）から先は削る量を増やさず、なめらかに 0 へ戻す
+ return (trend(se)-(trend(B.sp)+B.grade*(se-B.sp)))*w;
 }
 
 // Distance from the channel edge: negative inside the stream.

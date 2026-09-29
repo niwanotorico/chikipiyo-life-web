@@ -14,6 +14,8 @@ import {createRiverSfx} from './river-sfx.js';
 import {createMasterVolume,mountVolumeControl} from './river-volume.js';
 import {createSeasonSystem,forcedSeason,parseDateParam} from './seasons.js';
 import {createRiverFall} from './river-fall.js';
+import {createCamp,loadCampOn,mountCampToggle} from './camp.js';
+import campUrl from '../../assets/props/camp.glb?url';
 import {whenXRSupported,xrProfile as sharedXRProfile} from '../xr/xr-session.js';
 import {mountRiverAR} from '../ar/ar-river.js';
 
@@ -72,7 +74,14 @@ controls.maxPolarAngle=Math.PI*.495;controls.minDistance=2.5;controls.maxDistanc
 // 川のせせらぎ（assets/audio/river-stream.* がある時だけ。最初の操作で鳴り始める）
 // 音はすべてこの 1 つの耳（AudioListener）を通る。出口にマスター音量（river-volume.js）を挟み、ナビの左の 🔊 で調整・保存
 const listener=new T.AudioListener();camera.add(listener);
-const volume=createMasterVolume(listener);mountVolumeControl(volume,topbar,{prepend:true});
+const volume=createMasterVolume(listener);const volumeBox=mountVolumeControl(volume,topbar,{prepend:true});
+// 🏕️ キャンプ：3人の後ろにテント＋焚火（Human の Blender）＋動く炎（Three.js）。季節とは別の ON/OFF、localStorage に保存（camp.js）
+// ?camp=1 / ?camp=0 で撮影・確認用に固定（保存はしない）
+const campParam=params.get('camp');
+const camp=createCamp({scene,spot,url:campUrl,mobile,vegetation});
+if(campParam==='1'||campParam==='0')camp.set(campParam==='1',{save:false});else if(loadCampOn())camp.set(true,{save:false});
+mountCampToggle(camp,topbar,{after:volumeBox});
+// 📦 AR：渓流の一角（静止 v0.1）をスマホで部屋の床へ（iPhone＝Quick Look / Android＝Scene Viewer）。並びの先頭。スマホ幅では並びのすぐ上に浮かぶ
 mountRiverAR(topbar);
 const riverAudio=createRiverAudio({camera,scene,listener,mobile});
 // 釣りの効果音（着水・釣り上げ・リリース）。せせらぎと同じ耳を使う＝同じマスター音量
@@ -124,7 +133,7 @@ whenXRSupported(params).then(ok=>{
 const clock=new T.Clock(),eye=new T.Vector3();
 function frame(dt){
  shared.uTime.value+=dt;water.material.uniforms.uTime.value=shared.uTime.value;
- fish.update(dt,shared.uTime.value);fishing.update(dt,shared.uTime.value);
+ fish.update(dt,shared.uTime.value);fishing.update(dt,shared.uTime.value);camp.update(dt,shared.uTime.value);
  if(renderer.xr.isPresenting&&xr)xr.update(dt);else{controls.update();constrain();}
  vegetation.userData.update(camera.getWorldPosition(eye));
  season.update(dt);fall.update(dt,eye);
@@ -136,5 +145,5 @@ function frame(dt){
  renderer.setRenderTarget(out);renderer.render(screenScene,camera);
  document.body.classList.add('ready');
 }
-window.__river={scene,camera,controls,fish,fishing,renderer,frame,water,vegetation,xr,riverAudio,sfx,season,fall,shared,volume};
+window.__river={scene,camera,controls,fish,fishing,renderer,frame,water,vegetation,xr,riverAudio,sfx,season,fall,shared,volume,camp};
 if(!params.has('still'))renderer.setAnimationLoop(()=>frame(Math.min(clock.getDelta(),.05)));

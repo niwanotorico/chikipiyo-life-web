@@ -63,3 +63,10 @@ body.ready .river-loading{opacity:0;pointer-events:none}
  /* スマホで音量を開いている間だけ、同じ場所（ナビの上）にある「VRで入る」を隠す */
  body.volume-open .xr-enter{visibility:hidden}
 }
+
+/* 🏕️ キャンプ ON/OFF：音量ボタンと同じ丸ボタン。OFF は少し控えめ、ON は焚火色のふち */
+.camp-toggle{width:46px;height:46px;flex:none;border:1px solid rgba(255,255,255,.85);border-radius:50%;background:rgba(255,255,255,.62);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 4px 18px rgba(20,50,40,.14);font-size:18px;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0;transition:background .2s,box-shadow .2s;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;-webkit-tap-highlight-color:transparent;filter:grayscale(.55);opacity:.85}
+.camp-toggle:hover{background:#fff}
+.camp-toggle[aria-pressed="true"]{background:#fff6ea;border-color:#f2a54a;box-shadow:0 0 0 2px rgba(242,140,50,.35),0 4px 18px rgba(20,50,40,.14);filter:none;opacity:1}
+.camp-toggle:focus-visible{outline:3px solid #d39b45;outline-offset:2px}
+@media (max-width:520px){.camp-toggle{width:44px;height:44px;font-size:16px}}
