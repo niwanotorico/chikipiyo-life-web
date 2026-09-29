@@ -1,0 +1,37 @@
+/* 渓流の「📦 AR」ボタンとシート（3DPハウスの ar.css とは別。渓流ページだけで読む） */
+.river-ar-btn{height:46px;flex:none;display:flex;align-items:center;gap:6px;padding:0 16px 0 13px;border:1px solid #9fd3cb;border-radius:999px;
+ background:rgba(255,255,255,.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 0 0 2px rgba(47,143,134,.18),0 4px 18px rgba(20,50,40,.16);
+ color:#1f5a53;font:700 14px/1 "Noto Sans JP",sans-serif;letter-spacing:.06em;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .2s}
+.river-ar-btn span{font-size:17px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.river-ar-btn:hover{background:#fff}
+.river-ar-btn:focus-visible{outline:3px solid #d39b45;outline-offset:2px}
+/* スマホ：下の並び（音量・キャンプ・場所のナビ）は幅がいっぱいなので、そのすぐ上の右端に浮かべる。ファーストビューで必ず見える */
+@media (max-width:520px){
+ .river-ar-btn{position:fixed;z-index:21;height:42px;padding:0 15px 0 12px;font-size:13px;
+  right:max(10px,calc(50% - 176px));bottom:calc(14px + 44px + 12px + env(safe-area-inset-bottom,0px))}
+ body.volume-open .river-ar-btn{visibility:hidden}     /* 音量パネルが同じ所に開いている間だけ隠す */
+ /* 「🥽 VRで入る」（WebXR 対応の Android などで並びのすぐ上・中央に出る）がある時は、その上の段へ */
+ body:has(.xr-enter) .river-ar-btn{bottom:calc(14px + 44px + 12px + 42px + 12px + env(safe-area-inset-bottom,0px))}
+}
+body.river-ar-open{overflow:hidden}
+.river-ar-sheet{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:16px;background:rgba(24,44,40,.42);backdrop-filter:blur(3px)}
+.river-ar-card{position:relative;width:min(440px,100%);max-height:calc(100dvh - 32px);overflow:auto;border-radius:20px;background:#fbfaf6;color:#24403a;
+ box-shadow:0 18px 50px rgba(10,30,25,.3);padding:20px 18px 18px;font-family:"Noto Sans JP",sans-serif}
+.river-ar-close{position:absolute;top:10px;right:10px;width:36px;height:36px;border:0;border-radius:50%;background:#eef3ef;color:#24403a;font-size:20px;cursor:pointer}
+.river-ar-head small{font-size:11px;letter-spacing:.14em;color:#2f8f86;font-weight:700}
+.river-ar-head strong{display:block;font-size:19px;margin:2px 36px 6px 0}
+.river-ar-head p{margin:0 0 12px;font-size:13px;line-height:1.7;color:#4c5f58}
+.river-ar-visual{position:relative;display:block;border-radius:14px;overflow:hidden;background:#e9eee9;aspect-ratio:10/7}
+.river-ar-visual img,.river-ar-visual model-viewer{display:block;width:100%;height:100%;object-fit:cover}
+.river-ar-go{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);padding:11px 22px;border:0;border-radius:999px;background:#2f8f86;color:#fff;
+ font:700 15px/1 "Noto Sans JP",sans-serif;letter-spacing:.06em;box-shadow:0 4px 14px rgba(20,60,55,.3);white-space:nowrap;cursor:pointer}
+.river-ar-go.passive{pointer-events:none}      /* iPhone：タップは下の画像（<a rel="ar">）へ通す */
+.river-ar-loading{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:6px;background:rgba(251,250,246,.86);text-align:center;font-size:14px}
+.river-ar-loading[hidden]{display:none}
+.river-ar-loading small{font-size:12px;color:#61746d}
+.river-ar-spin{width:28px;height:28px;border-radius:50%;border:3px solid #cfe3de;border-top-color:#2f8f86;animation:river-ar-spin .9s linear infinite}
+@keyframes river-ar-spin{to{transform:rotate(360deg)}}
+.river-ar-meta{margin:10px 2px 0;font-size:12px;line-height:1.6;color:#61746d}
+.river-ar-meta b{display:inline-block;margin-right:6px;padding:1px 8px;border-radius:999px;background:#e3f1ee;color:#1f5a53;font-size:11px}
+.river-ar-pc{margin-top:10px;width:100%;padding:10px;border:1px solid #cfe0db;border-radius:12px;background:#fff;color:#24403a;font:600 13px/1.2 "Noto Sans JP",sans-serif;cursor:pointer}
+@media (prefers-reduced-motion:reduce){.river-ar-spin{animation:none}}

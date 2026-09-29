@@ -15,6 +15,7 @@ import {createMasterVolume,mountVolumeControl} from './river-volume.js';
 import {createSeasonSystem,forcedSeason,parseDateParam} from './seasons.js';
 import {createRiverFall} from './river-fall.js';
 import {whenXRSupported,xrProfile as sharedXRProfile} from '../xr/xr-session.js';
+import {mountRiverAR} from '../ar/ar-river.js';
 
 // 右上（スマホは下中央）のナビ類をひとまとめにする入れ物：[🔊 音量][場所のナビ]。音量ボタンはあとで先頭に入る
 const topbar=document.createElement('div');topbar.className='river-topbar';document.body.appendChild(topbar);
@@ -72,6 +73,7 @@ controls.maxPolarAngle=Math.PI*.495;controls.minDistance=2.5;controls.maxDistanc
 // 音はすべてこの 1 つの耳（AudioListener）を通る。出口にマスター音量（river-volume.js）を挟み、ナビの左の 🔊 で調整・保存
 const listener=new T.AudioListener();camera.add(listener);
 const volume=createMasterVolume(listener);mountVolumeControl(volume,topbar,{prepend:true});
+mountRiverAR(topbar);
 const riverAudio=createRiverAudio({camera,scene,listener,mobile});
 // 釣りの効果音（着水・釣り上げ・リリース）。せせらぎと同じ耳を使う＝同じマスター音量
 const sfx=createRiverSfx({camera,scene,mobile,listener});

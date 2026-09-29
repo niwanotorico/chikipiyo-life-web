@@ -1,0 +1,24 @@
+<!doctype html><meta charset="utf-8"><title>river AR preview render</title>
+<style>html,body{margin:0;background:#ddd}</style>
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+<script type="module">
+// 確認用の静止画：部屋の床に置いた状態を、AR の見え方に近い光（RoomEnvironment の環境光＋上からの柔らかい影）で撮る
+import * as T from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
+window.renderViews=async(url,views,w=1280,h=800,opts={})=>{
+ const r=new T.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});r.setSize(w,h);r.toneMapping=T.NeutralToneMapping;r.toneMappingExposure=1;r.shadowMap.enabled=true;r.shadowMap.type=T.PCFSoftShadowMap;document.body.appendChild(r.domElement);
+ const s=new T.Scene();s.background=new T.Color(opts.bg??0xe9e4dc);
+ const pm=new T.PMREMGenerator(r);s.environment=pm.fromScene(new RoomEnvironment(),.04).texture;
+ const floor=new T.Mesh(new T.PlaneGeometry(14,14),new T.MeshStandardMaterial({color:0xc9b89c,roughness:.8}));floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;if(opts.floor!==false)s.add(floor);else{floor.material=new T.ShadowMaterial({opacity:.18});s.add(floor);}
+ const grid=new T.GridHelper(14,28,0xb09e82,0xb8a78c);grid.position.y=.001;if(opts.floor!==false)s.add(grid);
+ const sun=new T.DirectionalLight(0xffffff,.9);sun.position.set(1.5,5,2);sun.castShadow=true;sun.shadow.mapSize.setScalar(4096);Object.assign(sun.shadow.camera,{left:-4,right:4,top:4,bottom:-4,near:.5,far:12});sun.shadow.radius=6;sun.shadow.bias=-.0005;s.add(sun);
+ const g=await new GLTFLoader().loadAsync(url);g.scene.traverse(o=>{if(o.isMesh){o.castShadow=!o.material.transparent;o.receiveShadow=true;}});s.add(g.scene);
+ const out=[];
+ for(const v of views){const c=new T.PerspectiveCamera(v.fov||50,w/h,.005,50);c.position.fromArray(v.pos);c.lookAt(...v.at);r.render(s,c);
+  if(opts.outW){const cv=document.createElement('canvas');cv.width=opts.outW;cv.height=opts.outH;const g=cv.getContext('2d');g.imageSmoothingQuality='high';g.drawImage(r.domElement,0,0,cv.width,cv.height);out.push(cv.toDataURL('image/jpeg',opts.q||.88));}
+  else out.push(r.domElement.toDataURL('image/jpeg',.9));}
+ return out;
+};
+window.__ready=true;
+</script>
