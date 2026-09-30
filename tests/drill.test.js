@@ -1,8 +1,8 @@
-// ちきぴよクエスト（drill.html）の問題生成・判定・ポイント・保存のテスト
+// ピヨドリル（drill.html）の問題生成・判定・ポイント・保存のテスト
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {PLAYERS,makeQuestionSet,seededRandom,normalizeAnswer,checkAnswer,QUESTIONS_PER_SET} from '../src/drill/questions.js';
+import {PLAYERS,makeQuestionSet,seededRandom,normalizeAnswer,checkAnswer,QUESTIONS_PER_SET,ZONES} from '../src/drill/questions.js';
 import {createRun,answerRun,scoreAnswers,POINTS} from '../src/drill/scoring.js';
 import {loadStore,saveStore,commitResult,emptyStore,sanitizeStore,setPuddingDisplayed,selectPlayer,dayInfo,sessionsLeft,todayKey,STORE_KEY,BROKEN_KEY,DAILY_REWARD_SESSIONS} from '../src/drill/storage.js';
 
@@ -52,30 +52,118 @@ test('各学年：10問そろい、表示の式から計算した答えと正答
  }
 });
 
-test('ぴよみ（3年）：たし算・ひき算・九九・かんたんなわり算だけ、整数、答えは1000未満',()=>{
- const kinds=new Set();
- for(let seed=1;seed<=300;seed++)for(const q of makeQuestionSet('piyomi',seededRandom(seed))){
-  kinds.add(q.kind);
-  assert.ok(['add','sub','kuku','div'].includes(q.kind),q.kind);
-  assert.equal(q.decimal,false);
-  assert.match(q.answer,/^\d+$/);
-  assert.ok(Number(q.answer)<1000,q.text);
-  if(q.kind==='kuku'){const [a,,b]=q.tokens;assert.ok(a>=2&&a<=9&&b>=2&&b<=9);}
-  if(q.kind==='div'){const [a,,b]=q.tokens;assert.ok(Number(a)<=81&&Number(q.answer)<=9);}
+// ---- 難易度カーブ：1〜3秒殺／4〜7ふつう／8〜9ちょいムズ／10ボス（順番は固定、ゾーン内はランダム） ----
+const nums=q=>[Number(q.tokens[0]),Number(q.tokens[2])];
+const digits=n=>String(n).length;
+const gcdT=(a,b)=>b?gcdT(b,a%b):a;
+const carry=(a,b)=>a%10+b%10>=10, borrow=(a,b)=>a%10<b%10;
+
+test('難易度カーブ：ゾーンの並びは毎回 秒殺3・ふつう4・ちょいムズ2・ボス1',()=>{
+ for(const player of Object.keys(PLAYERS))for(let seed=1;seed<=500;seed++){
+  const zones=makeQuestionSet(player,seededRandom(seed)).map(q=>q.zone);
+  assert.deepEqual(zones,[...ZONES]);
  }
- assert.deepEqual([...kinds].sort(),['add','div','kuku','sub']);
+ assert.deepEqual(ZONES,['easy','easy','easy','normal','normal','normal','normal','hard','hard','boss']);
 });
 
-test('ぴよきち（5年）：大きな数・小数・分数・文章題が毎回入り、暗算か短い筆算の大きさ',()=>{
- for(let seed=1;seed<=300;seed++){
-  const set=makeQuestionSet('piyokichi',seededRandom(seed));
-  const labels=set.map(q=>q.label);
-  for(const [label,n] of [['大きな数',4],['小数',2],['分数',2],['文章題',2]])assert.equal(labels.filter(l=>l===label).length,n,`${label} seed${seed}`);
-  for(const q of set){
-   assert.ok(Number(q.answer)<10000,q.text);
-   if(q.label==='分数')assert.ok(Number(q.answer)<=48);
-   if(q.decimal)assert.match(q.answer,/^\d+(\.\d)?$/);
+test('ぴよみ（3年）：ゾーンごとの型と数の大きさ',()=>{
+ const seen={easy:new Set(),normal:new Set(),hard:new Set(),boss:new Set()};
+ for(let seed=1;seed<=1000;seed++)for(const q of makeQuestionSet('piyomi',seededRandom(seed))){
+  assert.ok(['add','sub','kuku','div'].includes(q.kind),q.kind);
+  assert.equal(q.decimal,false);assert.match(q.answer,/^\d+$/);
+  assert.ok(Number(q.answer)<1000,q.text);
+  const [a,b]=nums(q),op=q.tokens[1];
+  if(q.zone==='easy'){
+   if(q.kind==='add'){seen.easy.add('add');assert.ok(digits(a)===2&&digits(b)===2&&!carry(a,b)&&a+b<100,q.text);}
+   else if(q.kind==='sub'){seen.easy.add('sub');assert.ok(digits(a)===2&&digits(b)===2&&!borrow(a,b)&&a>b,q.text);}
+   else {assert.equal(q.kind,'kuku',q.text);seen.easy.add('kuku');assert.ok(a>=2&&a<=5&&b>=2&&b<=9,q.text);}
   }
+  if(q.zone==='normal'){
+   if(q.kind==='kuku'){seen.normal.add('kuku');assert.ok(a>=6&&a<=9&&b>=2&&b<=9,q.text);}
+   else if(q.kind==='add'){seen.normal.add('add');assert.ok(digits(a)===2&&digits(b)===2&&carry(a,b)&&a+b<100,q.text);}
+   else if(q.kind==='sub'){seen.normal.add('sub');assert.ok(digits(a)===2&&digits(b)===2&&borrow(a,b)&&a>b,q.text);}
+   else {assert.equal(q.kind,'div',q.text);seen.normal.add('div');assert.ok(b>=2&&b<=9&&a%b===0&&a/b<=9,q.text);}
+  }
+  if(q.zone==='hard'){
+   assert.ok(['add','sub'].includes(q.kind),q.text);seen.hard.add(q.kind);
+   assert.ok(digits(a)===3&&digits(b)===2,q.text);
+   if(q.kind==='sub')assert.ok(a-b>=100,q.text);
+  }
+  if(q.zone==='boss'){
+   assert.ok(['add','sub'].includes(q.kind),q.text);seen.boss.add(q.kind);
+   assert.ok(digits(a)===3&&digits(b)===3&&a<900&&b<600,q.text);
+   if(q.kind==='sub')assert.ok(a-b>=50,q.text);
+  }
+ }
+ assert.deepEqual([...seen.easy].sort(),['add','kuku','sub']);
+ assert.deepEqual([...seen.normal].sort(),['add','div','kuku','sub']);
+ assert.deepEqual([...seen.hard].sort(),['add','sub']);
+ assert.deepEqual([...seen.boss].sort(),['add','sub']);
+});
+
+test('ぴよきち（5年）：ゾーンごとの型と数の大きさ',()=>{
+ const seen={easy:new Set(),normal:new Set(),hard:new Set(),boss:new Set()};
+ for(let seed=1;seed<=1000;seed++){
+  const set=makeQuestionSet('piyokichi',seededRandom(seed));
+  assert.equal(set.filter(q=>q.zone==='easy'&&(q.decimal||q.label==='分数'||q.kind==='word')).length,0,'秒殺に小数・分数・文章題は出さない');
+  for(const q of set){
+   assert.ok(Number(q.answer)<20000,q.text);
+   if(q.decimal)assert.match(q.answer,/^\d+(\.\d)?$/);
+   const op=q.tokens[1];
+   if(q.zone==='easy'){
+    seen.easy.add(q.kind);assert.ok(['mul','bigAdd','div'].includes(q.kind),q.text);
+    const [a,b]=nums(q);
+    if(q.kind==='mul')assert.ok(digits(a)>=2&&digits(a)<=3&&b>=2&&b<=6,q.text);
+    if(q.kind==='bigAdd')assert.ok(a%100===0&&b%100===0&&a>=1000,q.text);
+    if(q.kind==='div')assert.ok(b>=2&&b<=9&&a%b===0&&a/b<=12,q.text);
+   }
+   if(q.zone==='normal'){
+    seen.normal.add(q.kind);assert.ok(['decAdd','decSub','fracAdd','fracSub','word'].includes(q.kind),q.text);
+    if(q.kind==='word')assert.match(q.text,/プリンを|ページずつ|おつり/,'ふつうの文章題は1回の計算');
+   }
+   if(q.zone==='hard'){
+    seen.hard.add(q.kind);assert.ok(['bigMul','decMul','decDiv'].includes(q.kind),q.text);
+    if(q.kind==='bigMul'){const [a,b]=nums(q);assert.ok(digits(a)===2&&digits(b)===2,q.text);}
+   }
+   if(q.zone==='boss'){
+    seen.boss.add(q.label);if(q.label==='分数'){ // 大きさの等しい分数：□を答えでうめて、もとの分数（約分した形）と大きいほうの分母を見る
+     const ans=Number(q.answer),fill=f=>f.map(v=>v??ans),[x,y]=[fill(q.tokens[0].frac),fill(q.tokens[2].frac)];
+     assert.equal(x[0]*y[1],y[0]*x[1],'大きさが等しい: '+q.text);
+     const g=gcdT(x[0],x[1]),base=[x[0]/g,x[1]/g];
+     assert.ok(base[0]>=2&&base[1]>=3,'1/2 や 1/3 のような分子1の分数は出さない: '+q.text);
+     assert.ok(Math.max(x[1],y[1])>=8&&Math.max(x[1],y[1])<=24,'大きいほうの分母は8〜24: '+q.text);
+    }
+    if(q.label==='大きな数'){
+     const [a,b]=nums(q),t=n=>Math.floor(n/10)%10,h=n=>Math.floor(n/100)%10;
+     if(q.kind==='bigDiv')assert.ok(digits(a)===3&&a>=200&&b>=4&&b<=9&&a/b>=25&&a/b<=99&&(a/b)%10!==0,'ボスのわり算は商が2桁: '+q.text);
+     if(q.kind==='bigAdd')assert.ok(digits(a)===4&&digits(b)===4&&a%10===0&&b%10===0&&(t(a)+t(b)>=10||h(a)+h(b)>=10)&&a+b<10000,'ボスのたし算は4桁＋4桁でくり上がり: '+q.text);
+     if(q.kind==='bigSub')assert.ok(digits(a)===4&&digits(b)===4&&a%10===0&&b%10===0&&(t(a)<t(b)||h(a)<h(b))&&a-b>=1000,'ボスのひき算は4桁−4桁でくり下がり: '+q.text);
+    }assert.ok(['分数','文章題','大きな数'].includes(q.label),q.text);
+    if(q.kind==='word')assert.match(q.text,/シールを|面積|リボン/);
+   }
+  }
+ }
+ assert.deepEqual([...seen.easy].sort(),['bigAdd','div','mul']);
+ assert.deepEqual([...seen.normal].sort(),['decAdd','decSub','fracAdd','fracSub','word']);
+ assert.deepEqual([...seen.hard].sort(),['bigMul','decDiv','decMul']);
+ assert.deepEqual([...seen.boss].sort(),['分数','大きな数','文章題']);
+});
+
+test('同じ型が1セットに偏らない：ゾーン内の型はまず1回ずつ出る',()=>{
+ for(let seed=1;seed<=300;seed++){
+  const pm=makeQuestionSet('piyomi',seededRandom(seed));
+  assert.equal(new Set(pm.slice(3,7).map(q=>q.kind)).size,4,'ぴよみのふつう4問は九九・たし算・ひき算・わり算が1問ずつ');
+  const pk=makeQuestionSet('piyokichi',seededRandom(seed));
+  assert.equal(new Set(pk.slice(0,3).map(q=>q.kind)).size,3,'ぴよきちの秒殺3問は型がばらばら');
+  assert.equal(new Set(pk.slice(7,9).map(q=>q.kind)).size,2,'ぴよきちのちょいムズ2問は型がちがう');
+ }
+});
+
+test('毎回同じ問題にならない：シードがちがえば並びもちがう',()=>{
+ for(const player of Object.keys(PLAYERS)){
+  const texts=new Set();
+  for(let seed=1;seed<=50;seed++)texts.add(makeQuestionSet(player,seededRandom(seed)).map(q=>q.text).join('|'));
+  assert.equal(texts.size,50);
  }
 });
 

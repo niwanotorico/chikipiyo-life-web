@@ -1,4 +1,4 @@
-/* ちきぴよクエスト：おうち（src/style.css）の配色に合わせた、明るく丸い画面。問題中は情報を少なめに。 */
+/* ピヨドリル：おうち（src/style.css）の配色に合わせた、明るく丸い画面。問題中は情報を少なめに。 */
 :root{
  --ink:#374e43;--ink-soft:#6f8273;--line:#dfe5d9;--paper:#fffdf7;--bg:#f3f5ee;
  --green:#6a8960;--green-dark:#56784e;--green-soft:#eef4e8;
@@ -282,30 +282,12 @@ body[data-heat="4"] .dq-chip.is-combo.is-hot{background:linear-gradient(90deg,#f
 /* ---------- プリンフィーバー（約4秒のショー。1.2秒後からタップ／Enter で結果へ） ---------- */
 .dq-fever{position:fixed;inset:0;z-index:25;display:grid;grid-template-rows:auto 1fr auto auto;justify-items:center;align-items:center;padding:calc(28px + env(safe-area-inset-top,0px)) 16px calc(28px + env(safe-area-inset-bottom,0px));overflow:hidden;background:radial-gradient(80% 60% at 50% 45%,#fff6c8,#ffc86e 50%,#ff94bd);cursor:pointer}
 .dq-fever-rays{position:absolute;left:50%;top:45%;width:240vmax;height:240vmax;margin:-120vmax 0 0 -120vmax;background:repeating-conic-gradient(#fff7 0deg 8deg,transparent 8deg 20deg);animation:dq-rot 7s linear infinite}
-/* 「プリンフィーバー！」ロゴ：太い丸文字・黄〜オレンジのグラデーション・濃い茶の太フチ＋外側の白フチ、2行をゆるいアーチに。
-   文字は1字ずつ span。::before に同じ字を置き、丸い輪の text-shadow で「茶フチ→白フチ」を作る（外部フォント・画像なし） */
-.dq-fever-title{position:relative;z-index:1;margin:0;display:flex;flex-direction:column;align-items:center;gap:clamp(0px,1vw,6px);
- font-family:'Hiragino Maru Gothic ProN','Hiragino Maru Gothic Pro','Zen Maru Gothic','M PLUS Rounded 1c','Rounded Mplus 1c','Noto Sans JP',sans-serif;
- font-weight:900;line-height:1;letter-spacing:0;pointer-events:none;--b:#5a2a0c;--w:#fff}
-.fv-line{display:flex;align-items:flex-end;justify-content:center}
-.fv-1{font-size:clamp(40px,12.6vw,80px);--tilt:7deg;--arch:.075em}
-.fv-2{font-size:clamp(38px,13.2vw,86px);--tilt:4.5deg;--arch:.05em;margin-top:-.02em}
-.fv-ch{position:relative;display:inline-block;padding:0 .015em;margin:0 -.03em;
- transform:translateY(calc((var(--i) - var(--c)) * (var(--i) - var(--c)) * var(--arch))) rotate(calc((var(--i) - var(--c)) * var(--tilt)));
- /* いちばん下：濃い茶の太フチ（丸い輪）＋外側の白フチ＋落ち影 */
- color:var(--b);-webkit-text-fill-color:var(--b);
- text-shadow:0.050em 0.000em var(--b),0.043em 0.025em var(--b),0.025em 0.043em var(--b),0.000em 0.050em var(--b),-0.025em 0.043em var(--b),-0.043em 0.025em var(--b),-0.050em 0.000em var(--b),-0.043em -0.025em var(--b),-0.025em -0.043em var(--b),-0.000em -0.050em var(--b),0.025em -0.043em var(--b),0.043em -0.025em var(--b),0.095em 0.000em var(--b),0.092em 0.025em var(--b),0.082em 0.047em var(--b),0.067em 0.067em var(--b),0.048em 0.082em var(--b),0.025em 0.092em var(--b),0.000em 0.095em var(--b),-0.025em 0.092em var(--b),-0.047em 0.082em var(--b),-0.067em 0.067em var(--b),-0.082em 0.047em var(--b),-0.092em 0.025em var(--b),-0.095em 0.000em var(--b),-0.092em -0.025em var(--b),-0.082em -0.047em var(--b),-0.067em -0.067em var(--b),-0.048em -0.082em var(--b),-0.025em -0.092em var(--b),-0.000em -0.095em var(--b),0.025em -0.092em var(--b),0.048em -0.082em var(--b),0.067em -0.067em var(--b),0.082em -0.048em var(--b),0.092em -0.025em var(--b),0.165em 0.000em .012em var(--w),0.162em 0.032em .012em var(--w),0.152em 0.063em .012em var(--w),0.137em 0.092em .012em var(--w),0.117em 0.117em .012em var(--w),0.092em 0.137em .012em var(--w),0.063em 0.152em .012em var(--w),0.032em 0.162em .012em var(--w),0.000em 0.165em .012em var(--w),-0.032em 0.162em .012em var(--w),-0.063em 0.152em .012em var(--w),-0.092em 0.137em .012em var(--w),-0.117em 0.117em .012em var(--w),-0.137em 0.092em .012em var(--w),-0.152em 0.063em .012em var(--w),-0.162em 0.032em .012em var(--w),-0.165em 0.000em .012em var(--w),-0.162em -0.032em .012em var(--w),-0.152em -0.063em .012em var(--w),-0.137em -0.092em .012em var(--w),-0.117em -0.117em .012em var(--w),-0.092em -0.137em .012em var(--w),-0.063em -0.152em .012em var(--w),-0.032em -0.162em .012em var(--w),-0.000em -0.165em .012em var(--w),0.032em -0.162em .012em var(--w),0.063em -0.152em .012em var(--w),0.092em -0.137em .012em var(--w),0.117em -0.117em .012em var(--w),0.137em -0.092em .012em var(--w),0.152em -0.063em .012em var(--w),0.162em -0.032em .012em var(--w),0 .24em 0 #c2571e,0 .31em .2em #8a2d4466}
-/* まん中：塗りを少し太らせる（丸文字っぽい太さに） */
-.fv-ch::before{content:attr(data-ch);position:absolute;inset:0;padding:inherit;color:#ffbe34;-webkit-text-fill-color:#ffbe34;text-shadow:0.045em 0.000em #ffbe34,0.042em 0.017em #ffbe34,0.032em 0.032em #ffbe34,0.017em 0.042em #ffbe34,0.000em 0.045em #ffbe34,-0.017em 0.042em #ffbe34,-0.032em 0.032em #ffbe34,-0.042em 0.017em #ffbe34,-0.045em 0.000em #ffbe34,-0.042em -0.017em #ffbe34,-0.032em -0.032em #ffbe34,-0.017em -0.042em #ffbe34,-0.000em -0.045em #ffbe34,0.017em -0.042em #ffbe34,0.032em -0.032em #ffbe34,0.042em -0.017em #ffbe34}
-/* いちばん上：黄〜オレンジのグラデーション＋上のつや */
-.fv-ch::after{content:attr(data-ch);position:absolute;inset:0;padding:inherit;text-shadow:none;color:transparent;-webkit-text-fill-color:transparent;
- background:linear-gradient(180deg,#ffffffc0 0 18%,#fff0 32%),linear-gradient(180deg,#fff6b0 0%,#ffe04f 30%,#ffbd2c 62%,#ff8a1c 100%);
- -webkit-background-clip:text;background-clip:text}
+/* 「プリンフィーバー！」ロゴ：透過PNG（assets/drill/fever/pudding-fever-logo.png）。登場の動き・タイミングは文字版のときと同じ */
+.dq-fever-title{position:relative;z-index:1;margin:0;display:flex;justify-content:center;line-height:0;pointer-events:none}
+.fv-logo{display:block;width:min(92vw,560px);height:auto;max-height:36vh;object-fit:contain;transform-origin:50% 85%}
 /* 登場：ドンッと大きく出て → プリンのように ぷるるん → その後はゆっくり弾む（タイミングは従来どおり 0.35 秒から） */
-.dq-fever.go .fv-line{animation:fv-don .42s cubic-bezier(.2,1.3,.4,1) .35s both,fv-purun .9s ease-out .77s both}
-.dq-fever.go .fv-2{animation-delay:.47s,.89s}
+.dq-fever.go .fv-logo{animation:fv-don .42s cubic-bezier(.2,1.3,.4,1) .35s both,fv-purun .9s ease-out .77s both}
 .dq-fever.go .dq-fever-title{animation:fv-bounce 1.1s ease-in-out 1.9s infinite}
-.fv-line{transform-origin:50% 85%}
 @keyframes fv-don{0%{opacity:0;transform:scale(2.6)}55%{opacity:1;transform:scale(.86)}78%{transform:scale(1.08)}100%{opacity:1;transform:scale(1)}}
 @keyframes fv-purun{0%{transform:scale(1)}14%{transform:scale(1.14,.84)}30%{transform:scale(.9,1.12)}46%{transform:scale(1.07,.94)}62%{transform:scale(.97,1.04)}80%{transform:scale(1.02,.99)}100%{transform:scale(1)}}
 @keyframes fv-bounce{0%,100%{transform:none}50%{transform:translateY(-3px) scale(1.02,.99)}}

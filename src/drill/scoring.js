@@ -1,4 +1,4 @@
-// ちきぴよクエスト：1回（10問）の進行とポイント計算（DOM なし・純粋関数）。
+// ピヨドリル：1回（10問）の進行とポイント計算（DOM なし・純粋関数）。
 import {checkAnswer,QUESTIONS_PER_SET} from './questions.js';
 
 // ポイント仮仕様

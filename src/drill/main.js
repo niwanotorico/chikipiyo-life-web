@@ -1,4 +1,4 @@
-// ちきぴよクエスト v0.2：ホーム → 10問（音つきドパ演出）→ プリンフィーバー → 結果。記録は端末内（storage.js）。
+// ピヨドリル v0.2：ホーム → 10問（音つきドパ演出）→ プリンフィーバー → 結果。記録は端末内（storage.js）。
 import {PLAYERS,makeQuestionSet} from './questions.js';
 import {createRun,answerRun} from './scoring.js';
 import {loadStore,saveStore,commitResult,setPuddingDisplayed,selectPlayer,dayInfo,sessionsLeft,todayKey,DAILY_REWARD_SESSIONS,safeStorage} from './storage.js';

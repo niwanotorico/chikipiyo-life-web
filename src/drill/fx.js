@@ -1,4 +1,4 @@
-// ちきぴよクエスト v0.2：画面の演出（粒子・ポイントの飛行・揺れ・フラッシュ）。
+// ピヨドリル v0.2：画面の演出（粒子・ポイントの飛行・揺れ・フラッシュ）。
 // 粒子は 1 枚の canvas に描く。動いている粒子があるときだけ requestAnimationFrame を回し、上限数を決めて重くしない。
 const TAU=Math.PI*2;
 const COLORS={star:['#f5c542','#ffdf6e','#f29f3d'],dot:['#f0c552','#ffe08a'],feather:['#fff6d8','#ffe9a8','#fbd66b'],confetti:['#f28b82','#8ccf9f','#7fb8f0','#f5c542','#c8a2e8','#ff9fc4'],pudding:['#f6cf6c']};

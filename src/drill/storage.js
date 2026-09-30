@@ -1,4 +1,4 @@
-// ちきぴよクエスト：記録の保存（v0.1 は端末内 localStorage だけ）。
+// ピヨドリル：記録の保存（v0.1 は端末内 localStorage だけ）。
 // 既存のチキンポイント通帳（Firestore records）は、ちきんの管理者ログインでしか書けない。
 // ドリルから安全に加算する手段がまだ無いので、ここでは Firestore に一切触らず、別のキーに分けて保存する。
 import {PLAYERS,playerIds} from './questions.js';

@@ -1,4 +1,4 @@
-// ちきぴよクエスト v0.2：ドパ演出の上昇曲線と、音のしくみ（偽の Web Audio で Node 上で確かめる）
+// ピヨドリル v0.2：ドパ演出の上昇曲線と、音のしくみ（偽の Web Audio で Node 上で確かめる）
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
