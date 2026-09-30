@@ -1,0 +1,91 @@
+<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><meta name="theme-color" content="#f3f5ee"><meta name="description" content="ちきぴよクエスト — べんきょうすると、おうちが育つ。ぴよきち・ぴよみの算数10問チャレンジ。"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700;800&display=swap"><link rel="stylesheet" href="/src/drill/drill.css"><title>ちきぴよクエスト｜ちきぴよ暮らし</title></head><body>
+<div class="dq-bg" aria-hidden="true"><i class="dq-sunburst"></i></div>
+<header class="dq-top"><a class="dq-brand" href="./">ちきぴよ暮らし</a><span class="dq-top-right"><button type="button" class="dq-sound" data-sound aria-pressed="true"><span class="dq-sound-icon" aria-hidden="true"></span><span data-sound-label>おと あり</span></button><span class="dq-nav-slot" data-nav></span></span></header>
+<main class="dq-main">
+
+<section class="dq-screen dq-home" data-screen="home" aria-labelledby="dq-title">
+ <div class="dq-hero"><p class="dq-eyebrow">CHIKIPIYO QUEST</p><h1 id="dq-title">ちきぴよクエスト</h1><p class="dq-catch">べんきょうすると、おうちが育つ。</p></div>
+ <p class="dq-notice" data-notice hidden></p>
+ <fieldset class="dq-players"><legend>だれが あそぶ？</legend><div class="dq-pgrid">
+  <label class="dq-player is-piyokichi"><input type="radio" name="player" value="piyokichi"><img data-art="piyokichi" alt="" width="84" height="120"><span class="dq-player-name">ぴよきち</span><span class="dq-player-grade">小学5年</span><span class="dq-player-meta"><b data-points="piyokichi">0</b> pt<span class="dq-sep">・</span><span data-today="piyokichi">きょうは まだ</span></span></label>
+  <label class="dq-player is-piyomi"><input type="radio" name="player" value="piyomi"><img data-art="piyomi" alt="" width="84" height="104"><span class="dq-player-name">ぴよみ</span><span class="dq-player-grade">小学3年</span><span class="dq-player-meta"><b data-points="piyomi">0</b> pt<span class="dq-sep">・</span><span data-today="piyomi">きょうは まだ</span></span></label>
+ </div></fieldset>
+ <button type="button" class="dq-start" data-start disabled>きょうの算数を はじめる</button>
+ <p class="dq-start-note" data-start-note>だれが あそぶか えらんでね</p>
+ <div class="dq-panels">
+  <section class="dq-panel" aria-labelledby="dq-today-h"><h2 id="dq-today-h">きょうの記録 <small data-today-who></small></h2>
+   <dl class="dq-today">
+    <div><dt>チャレンジ</dt><dd><b data-t="sessions">0</b>回</dd></div>
+    <div><dt>ベスト正解</dt><dd><b data-t="best">0</b>/10</dd></div>
+    <div><dt>ベストコンボ</dt><dd><b data-t="combo">0</b></dd></div>
+    <div><dt>きょうのポイント</dt><dd><b data-t="points">0</b>pt</dd></div>
+   </dl>
+  </section>
+  <section class="dq-panel" aria-labelledby="dq-col-h"><h2 id="dq-col-h">ごほうびコレクション</h2>
+   <ul class="dq-collection">
+    <li class="dq-item" data-item="pudding"><span class="dq-item-icon" aria-hidden="true">🍮</span><span class="dq-item-name">プリン</span><span class="dq-item-state" data-item-state>はじめて クリアすると もらえるよ</span></li>
+    <li class="dq-item is-locked"><span class="dq-item-icon" aria-hidden="true">？</span><span class="dq-item-name">つぎのごほうび</span><span class="dq-item-state">じゅんびちゅう</span></li>
+   </ul>
+  </section>
+ </div>
+ <p class="dq-foot">ここで ためた チキンポイントは、この端末に きろくされます。戸棚の通帳に入れるのは、ちきんが たしかめてからだよ。</p>
+</section>
+
+<section class="dq-screen dq-play" data-screen="play" hidden aria-label="もんだい">
+ <div class="dq-bar">
+  <button type="button" class="dq-quit" data-quit>やめる</button>
+  <button type="button" class="dq-sound is-compact" data-sound aria-pressed="true"><span class="dq-sound-icon" aria-hidden="true"></span><span data-sound-label>おと あり</span></button>
+  <div class="dq-progress"><span class="dq-qno"><b data-qno>1</b> / 10 もんめ</span><span class="dq-track" aria-hidden="true"><i data-track></i></span></div>
+  <div class="dq-chips"><span class="dq-chip is-combo" data-combo-chip>コンボ <b data-combo>0</b></span><span class="dq-chip is-pts"><span class="dq-chip-word">こんかい </span><b data-earned>0</b>pt</span></div>
+ </div>
+ <div class="dq-card" data-card>
+  <span class="dq-reach" data-reach aria-hidden="true">さいごの 1もん！</span>
+  <span class="dq-kind" data-kind>たし算</span>
+  <p class="dq-question" data-question></p>
+  <div class="dq-readout" data-readout role="status" aria-label="きみの こたえ"><span data-input></span><i class="dq-caret" aria-hidden="true"></i><small data-unit></small></div>
+  <span class="dq-cutin" data-cutin aria-hidden="true"></span>
+  <span class="dq-mark" data-mark aria-hidden="true"></span>
+ </div>
+ <div class="dq-react" aria-live="polite"><div class="dq-stage" data-stage aria-hidden="true"></div><p data-react-line></p></div>
+ <div class="dq-pad" data-pad>
+  <button type="button" data-key="7">7</button><button type="button" data-key="8">8</button><button type="button" data-key="9">9</button>
+  <button type="button" data-key="4">4</button><button type="button" data-key="5">5</button><button type="button" data-key="6">6</button>
+  <button type="button" data-key="1">1</button><button type="button" data-key="2">2</button><button type="button" data-key="3">3</button>
+  <button type="button" data-key="." aria-label="しょうすうてん">.</button><button type="button" data-key="0">0</button><button type="button" data-key="back" aria-label="1もじ けす">けす</button>
+ </div>
+ <button type="button" class="dq-submit" data-submit>こたえる</button>
+</section>
+
+<section class="dq-screen dq-result" data-screen="result" hidden aria-labelledby="dq-result-h">
+ <div class="dq-result-head"><img data-result-img alt="" width="72" height="96"><div><h2 id="dq-result-h">けっか はっぴょう</h2><p data-result-line></p></div></div>
+ <div class="dq-stats">
+  <div><span>正解</span><b data-r="correct">0</b><small>/10</small></div>
+  <div><span>最大コンボ</span><b data-r="combo">0</b></div>
+  <div class="is-points"><span>もらったポイント</span><b data-r="points">0</b><small>pt</small></div>
+ </div>
+ <ul class="dq-breakdown" data-breakdown></ul>
+ <div class="dq-reward" data-reward><span class="dq-reward-icon" aria-hidden="true">🍮</span><div><b data-reward-title>プリン</b><small data-reward-note></small></div></div>
+ <div class="dq-actions">
+  <button type="button" class="dq-btn is-display" data-display>おうちに かざる</button>
+  <button type="button" class="dq-btn is-again" data-again>もういちど</button>
+  <a class="dq-btn is-house" href="./" data-house-link>3DPハウスへ</a>
+ </div>
+ <button type="button" class="dq-textbtn" data-to-home>クエストの トップへ</button>
+</section>
+
+</main>
+<section class="dq-fever" data-fever hidden aria-live="assertive" aria-label="プリンフィーバー">
+ <div class="dq-fever-rays" aria-hidden="true"></div>
+ <p class="dq-fever-title" aria-label="プリンフィーバー！"><span class="fv-line fv-1" style="--c:1.0" aria-hidden="true"><span class="fv-ch" data-ch="プ" style="--i:0">プ</span><span class="fv-ch" data-ch="リ" style="--i:1">リ</span><span class="fv-ch" data-ch="ン" style="--i:2">ン</span></span><span class="fv-line fv-2" style="--c:2.5" aria-hidden="true"><span class="fv-ch" data-ch="フ" style="--i:0">フ</span><span class="fv-ch" data-ch="ィ" style="--i:1">ィ</span><span class="fv-ch" data-ch="ー" style="--i:2">ー</span><span class="fv-ch" data-ch="バ" style="--i:3">バ</span><span class="fv-ch" data-ch="ー" style="--i:4">ー</span><span class="fv-ch" data-ch="！" style="--i:5">！</span></span></p>
+ <div class="dq-fever-stage">
+  <img class="dq-fever-buddy" data-fever-img alt="ぴよきちと ぴよみ" width="689" height="459">
+  <div class="dq-fever-pudding" data-fever-pudding aria-hidden="true">
+   <svg viewBox="0 0 200 170" width="200" height="170"><ellipse cx="100" cy="150" rx="92" ry="16" fill="#fff" stroke="#e8dcc0" stroke-width="3"/><ellipse cx="100" cy="146" rx="66" ry="9" fill="#f1e6cc"/><path d="M42 142 L60 46 Q100 28 140 46 L158 142 Q100 156 42 142Z" fill="#f7d273"/><path d="M60 46 Q100 28 140 46 L136 66 Q126 58 118 70 Q108 56 96 68 Q84 56 74 70 Q68 58 63 64Z" fill="#9b561f"/><path d="M70 60 Q80 52 92 52" stroke="#c98a45" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M66 90 Q64 116 70 132" stroke="#fff3c4" stroke-width="8" fill="none" stroke-linecap="round" opacity=".8"/></svg>
+  </div>
+ </div>
+ <p class="dq-fever-caption" data-fever-caption>プリン ゲット！</p>
+ <p class="dq-fever-skip" data-fever-skip hidden>タップで けっかへ</p>
+</section>
+<div class="dq-flash" data-flash aria-hidden="true"></div>
+<canvas class="dq-fx" data-fx aria-hidden="true"></canvas>
+<script type="module" src="/src/drill/main.js"></script></body></html>

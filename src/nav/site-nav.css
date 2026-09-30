@@ -29,6 +29,11 @@
  .site-nav__link{min-height:34px;padding:0 10px;font-size:12px;gap:5px}
  .site-nav__icon{font-size:14px}
 }
+/* 浮かせるナビ（渓流・あかばぬ。）はスマホ幅だと 3 つ並ぶと窮屈なので短い名前にする */
+@media (max-width:520px){
+ .site-nav--floating .site-nav__label--full{display:none}
+ .site-nav--floating .site-nav__label--short{display:inline}
+}
 @media (max-width:340px){
  .site-nav__label--full{display:none}
  .site-nav__label--short{display:inline}
