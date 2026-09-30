@@ -204,11 +204,11 @@ export class QuestAudio{
   const s=step%16,bar=Math.floor(step/16)%4,ch=PROG[bar],k=this.trans,L=this.layers,sd=this.stepDur;
   if(s%4===0&&this.onBeat)this.onBeat(Math.max(0,(t-this.now())*1000),s===0);
   if(this.muted)return;
-  if(this.reach){ // さいごの1もん：こもった音でスネアが詰まっていく
-   const e=Math.min(1,(t-this.reachStart)/3);
-   if(s%4===0){this.kick(t,.8);this.bass(t,ch.bass+k,sd*3,.3);}
-   if(s%(e>.6?1:e>.3?2:4)===0)this.snare(t,.08+.3*e);
-   if(s===0)this.pad(t,ch.tones.map(m=>m+k),sd*16,.035,600+1600*e);
+  if(this.reach){ // さいごの1もん：音楽が消えて「ドクン…ドクン…」と時計の「チッ…チッ…」だけ。ドラムロール中は無音
+   if(this.rolling)return;
+   if(s===0||s===8){this.kick(t,.75);this.kick(t+sd*1.1,.45);}          // 心臓：ドクン（2回で1拍）
+   if(s%4===0)this.toy(t,(s%8?69:74)+k,.03,s%8?.3:-.3);                 // 時計のチクタク
+   if(s===0&&bar%2===0)this.pad(t,[ch.bass+k,ch.bass+7+k],sd*32,.03,420);  // 低いうなり
    return;
   }
   if(L.has('toy')&&s%2===0){const i=TOY[(s/2)%8];this.toy(t,ch.tones[i]+12+k,.075,i===1?.3:-.3);}
@@ -235,8 +235,15 @@ export class QuestAudio{
   if(on===this.reach||!this.ctx){this.reach=on;return;}
   this.reach=on;const t=this.now(),f=this.musicFilter.frequency;
   f.cancelScheduledValues(t);f.setValueAtTime(f.value,t);
-  if(on){this.reachStart=t;f.exponentialRampToValueAtTime(1100,t+.6);if(!silent&&!this.muted)this.riser(t,3.2,.12);}
-  else f.exponentialRampToValueAtTime(18000,t+.05);
+  if(on){this.reachStart=t;this.rolling=false;f.exponentialRampToValueAtTime(1100,t+.6);if(!silent&&!this.muted)this.riser(t,1.6,.1);}
+  else{this.rolling=false;f.exponentialRampToValueAtTime(18000,t+.05);}
+ }
+ // さいごの1もん：「こたえる」→ 発表までのドラムロール（だんだん細かく・大きく）。最後に「ジャン」はしない（正解／まちがいの音にまかせる）
+ drumroll(sec=1.5){
+  this.rolling=true;
+  if(!this.ok())return;const t0=this.now();let at=0,gap=.1;
+  while(at<sec){this.snare(t0+at,.05+.28*(at/sec));at+=gap;gap=Math.max(.032,gap*.93);}
+  this.riser(t0,sec,.08);
  }
 
  // ---------- 効果音 ----------

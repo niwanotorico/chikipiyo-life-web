@@ -2,13 +2,15 @@
 //
 //   0 ふつう → 1 すこし楽しい → 2 もりあがる → 3 かなり盛り上がる → 4 おまつり → 5 プリンフィーバー
 //
-// コンボで段階が上がる。まちがえるとコンボは 0 にもどるが、後半（7問目以降）は「ふつう」まで落とさない。
+// 10問の中で だんだん盛り上がる（問題の番号が土台）。コンボでさらに上がる。
+// まちがえるとコンボは 0 にもどるが、進んだぶんの盛り上がりは落とさない。
+//   1問目 ふつう／2〜3問目 すこし楽しい／4〜6問目 もりあがる／7〜9問目 かなり（コンボで おまつり）
 export const STAGE_NAMES=['ふつう','すこし楽しい','もりあがる','かなり盛り上がる','おまつり','プリンフィーバー'];
 export const FEVER=5;
 
 export function stageFor({combo=0,index=0}={}){
  const byCombo=combo>=8?4:combo>=5?3:combo>=3?2:combo>=2?1:0;
- const byProgress=index>=6?1:0;
+ const byProgress=index>=7?3:index>=4?2:index>=2?1:0;
  return Math.max(byCombo,byProgress);
 }
 
@@ -21,8 +23,11 @@ export function comboMilestone(combo){
  return null;
 }
 
-// 正解→次の問題まで（ms）。0.6〜1.0秒の間で、盛り上がるほど余韻をすこし長く
-export function nextDelay(stage){return Math.round(650+Math.min(4,Math.max(0,stage))*80);}
+// 正解→次の問題まで（ms）。答えにケチャップのハートが描かれるのを見てから次へ（1.0〜1.4秒）。盛り上がるほど余韻をすこし長く
+export function nextDelay(stage){return Math.round(1050+Math.min(4,Math.max(0,stage))*70);}
+export const HERO_MS=1250;          // 答えスポットライト（答えを演出より手前に出して見せる時間）
+export const SUSPENSE_MS=1500;      // さいごの1もん：「こたえる」を押してから発表までのタメ（ドラムロール）
+export const SUSPENSE_MS_REDUCED=700;
 export const WRONG_DELAY=2200;     // まちがい：正しい答えを読める長さ（ボタン／Enter ですぐ次へも行ける）
 export const FEVER_MS=3900;        // プリンフィーバーの画面（最後の正解から 0.3 秒後に開き、約3.9秒。1.2秒後からタップ／Enter でスキップ可）
 export const FEVER_SKIP_AFTER=1200;
@@ -44,15 +49,19 @@ export function layersFor(stage){return new Set(LAYERS[Math.min(FEVER,Math.max(0
 // 画面の演出量。reduced は prefers-reduced-motion
 export function visuals(stage,{reduced=false}={}){
  const s=Math.min(FEVER,Math.max(0,stage));
+ // 卵料理モチーフ（目玉焼き・ケチャップ・オムライス）。粒は大きめ・数は少なめで、ごちゃごちゃさせない
  const v={
-  particles:[12,18,28,42,64,120][s],
-  kinds:[['star','dot'],['star','dot','feather'],['star','dot','feather','confetti'],['star','dot','feather','confetti'],['star','dot','feather','confetti','pudding'],['star','dot','feather','confetti','pudding']][s],
+  particles:[7,10,14,20,28,48][s],
+  kinds:[['fried','star'],['fried','star','drop'],['fried','drop','omu','star'],['fried','drop','omu','feather','heart'],['fried','drop','omu','feather','heart','pudding'],['fried','omu','heart','pudding','feather']][s],
+  bigEggs:[1,1,1,2,2,2][s],          // 問題カードの角に ぽんっと出る大きな目玉焼き（答えにはかぶせない）
+  hopEggs:[0,0,4,5,6,7][s],          // 画面の下から ほっぺ付きのたまごが ぽこぽこ跳ねる
+  rain:[0,0,0,6,10,24][s],           // 目玉焼きの雨（かなり盛り上がってから）
   shake:[0,0,2,4,6,10][s],
   flash:[0,0,0,.18,.3,.6][s],
   hop:['hop','hop','hop2','spin','wild','fever'][s],
   ghosts:s>=4,
  };
- if(reduced)return {...v,particles:Math.ceil(v.particles/4),shake:0,flash:0,hop:'nod',ghosts:false};
+ if(reduced)return {...v,particles:Math.ceil(v.particles/4),shake:0,flash:0,hop:'nod',ghosts:false,hopEggs:0,rain:0};
  return v;
 }
 

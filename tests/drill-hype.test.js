@@ -2,13 +2,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stageFor,comboMilestone,nextDelay,WRONG_DELAY,FEVER,FEVER_MS,FEVER_SKIP_AFTER,tempo,keyShift,LAYERS,layersFor,visuals} from '../src/drill/hype.js';
+import {stageFor,comboMilestone,nextDelay,WRONG_DELAY,FEVER,FEVER_MS,FEVER_SKIP_AFTER,HERO_MS,SUSPENSE_MS,SUSPENSE_MS_REDUCED,tempo,keyShift,LAYERS,layersFor,visuals} from '../src/drill/hype.js';
 import {QuestAudio,SOUND_KEY} from '../src/drill/audio.js';
 
 test('段階：コンボ 2→すこし楽しい、3→もりあがる、5→かなり、8→おまつり。まちがいで下がる',()=>{
  assert.deepEqual([0,1,2,3,4,5,6,7,8,9].map(combo=>stageFor({combo,index:1})),[0,0,1,2,2,3,3,3,4,4]);
- assert.equal(stageFor({combo:0,index:3}),0,'前半のまちがいは ふつう にもどる');
- assert.equal(stageFor({combo:0,index:7}),1,'後半は ふつう まで落とさない');
+ assert.equal(stageFor({combo:0,index:1}),0,'1問目は ふつう');
+ assert.equal(stageFor({combo:0,index:3}),1,'2〜3問目は まちがえても すこし楽しい');
+ assert.equal(stageFor({combo:0,index:7}),3,'後半は まちがえても かなり盛り上がる のまま');
+});
+
+test('10問で だんだん盛り上がる：全問正解なら問題の番号とともに段階が上がり、下がらない',()=>{
+ const stages=[1,2,3,4,5,6,7,8,9].map(i=>stageFor({combo:i,index:i}));
+ for(let i=1;i<stages.length;i++)assert.ok(stages[i]>=stages[i-1],`q${i+1}`);
+ assert.equal(stages[0],0);assert.equal(stages.at(-1),4,'9問目は おまつり');
+ assert.deepEqual([1,2,4,7].map(i=>stageFor({combo:0,index:i})),[0,1,2,3],'問題の番号だけでも 1→2→4→7問目で段階が上がる');
  assert.equal(FEVER,5);
 });
 
@@ -20,8 +28,9 @@ test('コンボの節目：2・3・5・8以上でカットイン、だんだん�
  assert.match(comboMilestone(9).text,/9/);
 });
 
-test('テンポ：正解から次の問題まで 0.6〜1.0 秒、盛り上がるほど少し余韻。まちがい・フィーバーの長さ',()=>{
- for(let s=0;s<=4;s++){const d=nextDelay(s);assert.ok(d>=600&&d<=1000,`${s}: ${d}`);if(s)assert.ok(d>nextDelay(s-1));}
+test('テンポ：正解から次の問題まで 1.0〜1.4 秒（答えを見せてから次へ）、盛り上がるほど少し余韻。まちがい・フィーバーの長さ',()=>{
+ for(let s=0;s<=4;s++){const d=nextDelay(s);assert.ok(d>=1000&&d<=1400,`${s}: ${d}`);if(s)assert.ok(d>nextDelay(s-1));assert.ok(d<HERO_MS+200,'答えスポットライトが消えるころに次へ');}
+ assert.ok(SUSPENSE_MS>=1000&&SUSPENSE_MS<=2000,'さいごのタメは長すぎない');assert.ok(SUSPENSE_MS_REDUCED<SUSPENSE_MS);
  assert.ok(WRONG_DELAY>=1500&&WRONG_DELAY<=3000);
  assert.ok(FEVER_MS>=3000&&FEVER_MS<=5000,'クライマックスは長すぎない');
  assert.ok(FEVER_SKIP_AFTER<FEVER_MS);
@@ -46,7 +55,13 @@ test('prefers-reduced-motion：揺れ・フラッシュ・大きな動きをお�
   const v=visuals(s,{reduced:true});
   assert.equal(v.shake,0);assert.equal(v.flash,0);assert.equal(v.ghosts,false);assert.equal(v.hop,'nod');
   assert.ok(v.particles<=visuals(s).particles/3);
+  assert.equal(v.hopEggs,0);assert.equal(v.rain,0);
  }
+});
+
+test('卵料理モチーフ：どの段階にも目玉焼き。答えにかぶる大きな目玉焼きは角に1〜2個だけ',()=>{
+ for(let s=0;s<=FEVER;s++){const v=visuals(s);assert.ok(v.kinds.includes('fried'),`${s}`);assert.ok(v.bigEggs>=1&&v.bigEggs<=2);}
+ assert.equal(visuals(0).hopEggs,0,'はじめは静かに');assert.ok(visuals(4).hopEggs>visuals(2).hopEggs);
 });
 
 // ---- 偽の Web Audio：作られた音（発振器・ノイズ）を数える ----
@@ -112,7 +127,7 @@ test('ミュート：保存され、次に開いたときも ミュート。ミ�
 test('音が使えない環境（AudioContext なし）でも、すべての操作が落ちない',()=>{
  const a=new QuestAudio({storage:null,AudioCtx:undefined});
  assert.equal(a.available,false);assert.equal(a.unlock(),null);
- for(const f of ['tap','erase','point','wrong','reachOn','feverIn','fanfare','jiggle','finishSoft','suspend','resume'])a[f]();
+ for(const f of ['tap','erase','point','wrong','reachOn','drumroll','feverIn','fanfare','jiggle','finishSoft','suspend','resume'])a[f]();
  a.key(3);a.correct(4,8);a.comboUp(4);a.startMusic(2);a.setStage(3);a.stopMusic(1);a.setMuted(true);
 });
 

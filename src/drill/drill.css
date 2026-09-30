@@ -308,3 +308,149 @@ body[data-heat="4"] .dq-chip.is-combo.is-hot{background:linear-gradient(90deg,#f
 @keyframes dq-feverbuddy{0%{transform:scale(1.12,.86)}40%{transform:translateY(-34px) scale(.95,1.08) rotate(-8deg)}70%{transform:translateY(-10px) rotate(6deg)}100%{transform:scale(1.12,.86)}}
 @keyframes dq-puddingdrop{0%{opacity:0;transform:translateY(-120vh) rotate(-18deg)}70%{opacity:1;transform:translateY(0) scale(1.18,.78)}85%{transform:scale(.94,1.08)}100%{transform:none}}
 @keyframes dq-jiggle{0%{transform:scale(1.14,.86)}15%{transform:scale(.9,1.12) skewX(4deg)}30%{transform:scale(1.08,.93) skewX(-4deg)}45%{transform:scale(.95,1.05) skewX(2deg)}60%{transform:scale(1.03,.97)}80%{transform:scale(.99,1.01)}100%{transform:none}}
+
+/* =====================================================================
+   v0.4 たまご料理の演出：答えスポットライト・さいごの1もんの緊張感・テンキーの文字
+   ===================================================================== */
+/* テンキーと回答欄：まるくてポップな数字 */
+.dq-pad button,.dq-readout,.dq-hero-ans{font-family:'Mochiy Pop One','Noto Sans JP','Hiragino Sans',sans-serif;font-weight:400}
+.dq-pad button[data-key="back"]{font-family:'Noto Sans JP','Hiragino Sans',sans-serif;font-weight:700}
+
+/* 答えスポットライト：粒・目玉焼き（canvas）より手前。答えを隠さない */
+.dq-hero-ans{position:fixed;z-index:32;left:0;top:0;transform:translate(-50%,-50%);display:flex;align-items:baseline;gap:4px;pointer-events:none;
+ padding:2px 20px;border-radius:999px;background:#fffefae6;box-shadow:0 0 0 8px #fffefa8c,0 0 36px 16px #fffefab3;font-size:32px;color:var(--ink);white-space:nowrap;
+ animation:dq-heroin 1.25s ease forwards}
+.dq-hero-ans.is-big{animation-duration:1.9s}
+.dq-hero-num{position:relative;display:inline-grid;place-items:center;min-width:1.4em}
+.dq-hero-num b{position:relative;z-index:1;font-weight:400;color:#e0604e;text-shadow:0 3px 0 #fff,0 0 16px #ffe6a3;animation:dq-anspop .7s cubic-bezier(.2,1.8,.4,1) both}
+.dq-hero-ans small{font-family:'Noto Sans JP',sans-serif;font-size:15px;font-weight:700;color:var(--ink-soft)}
+.dq-hero-num svg{position:absolute;left:50%;top:50%;width:2.5em;height:2.5em;transform:translate(-50%,-46%);overflow:visible}
+.dq-hero-num path{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:130;stroke-dashoffset:130}
+.dq-hero-num .hk{stroke:#ee7462;stroke-width:3.2;animation:dq-draw .5s .12s ease-out forwards}
+.dq-hero-num .hw{stroke:#fff;stroke-width:.9;opacity:.8;animation:dq-draw .5s .16s ease-out forwards}
+@keyframes dq-draw{to{stroke-dashoffset:0}}
+@keyframes dq-anspop{0%{transform:scale(.6)}35%{transform:scale(1.75)}60%{transform:scale(1.25)}100%{transform:scale(1.35)}}
+@keyframes dq-heroin{0%{opacity:0}8%{opacity:1}85%{opacity:1}100%{opacity:0}}
+
+/* さいごの1もん：まわりを少し暗く、カードにだけ光。こたえたら ドキドキのタメ */
+.dq-bg::after{content:'';position:absolute;inset:0;opacity:0;transition:opacity .8s;background:radial-gradient(ellipse 62% 46% at 50% 38%,transparent 30%,#7a523873 100%)}
+body.is-reach .dq-bg::after{opacity:1}
+body.is-reach .dq-bar{opacity:.6;transition:opacity .6s}
+.dq-card.is-suspense{animation:dq-suspense 1.5s cubic-bezier(.4,0,1,1) forwards!important;border-color:#ee7462}
+@keyframes dq-suspense{0%{transform:scale(1.01)}20%{transform:scale(1.03) translateX(-1px)}40%{transform:scale(1.045) translateX(2px)}60%{transform:scale(1.06) translateX(-3px)}80%{transform:scale(1.07) translateX(3px) rotate(.4deg)}100%{transform:scale(1.08) translateX(-3px) rotate(-.4deg)}}
+body.is-reach .dq-track i{animation:dq-reachtag .5s ease-in-out infinite}
+
+/* =====================================================================
+   ラボデザイン（v0.5）：テーブルクロスの上の「たまご料理パーティー」
+   演出ラボ（records/lab/piyodrill-fx-lab.html）の見た目を本体に採用。
+   黒は使わず、線はやわらかい焼き色ブラウン。画面の構成・流れは今までどおり。
+   ===================================================================== */
+:root{
+ --ink:#7a5238;--ink-soft:#a98266;--line:#e6c3a2;--paper:#fffefa;--bg:#fffaf0;
+ --green:#ee7462;--green-dark:#d8604f;--green-soft:#ffe9e2;
+ --gold:#ffc94d;--gold-soft:#ffe6a3;--gold-ink:#7a5238;
+ --kichi:#fff1cf;--mi:#ffe3da;--warm:#fff1cf;--focus:#95cf8c;
+ --brown:#c08a64;--brown-soft:#e6c3a2;--cream:#fff1cf;--yolk:#ffc94d;--omelet:#ffdf80;--ketchup:#ee7462;--ketchup-soft:#ffd3c8;--herb:#95cf8c;
+ --pop:'Mochiy Pop One','Zen Maru Gothic','Hiragino Maru Gothic ProN',sans-serif;
+ font-family:'Zen Maru Gothic','Noto Sans JP','Hiragino Maru Gothic ProN','Yu Gothic',sans-serif;
+}
+html{background:var(--bg)}
+body{background:var(--bg)}
+/* 背景：うすいピンクのギンガムチェック。盛り上がるほど 黄色 → ケチャップ色 → 黄身色に */
+.dq-bg,body[data-heat="0"] .dq-bg{background:
+ repeating-linear-gradient(0deg,#ffd3c861 0 22px,transparent 22px 44px),
+ repeating-linear-gradient(90deg,#ffd3c861 0 22px,transparent 22px 44px),var(--bg)}
+body[data-heat="1"] .dq-bg{background:
+ repeating-linear-gradient(0deg,#ffc94d59 0 22px,transparent 22px 44px),
+ repeating-linear-gradient(90deg,#ffc94d59 0 22px,transparent 22px 44px),var(--bg)}
+body[data-heat="2"] .dq-bg{background:
+ repeating-linear-gradient(0deg,#ee746238 0 22px,transparent 22px 44px),
+ repeating-linear-gradient(90deg,#ee746238 0 22px,transparent 22px 44px),var(--cream)}
+body[data-heat="3"] .dq-bg{background:
+ repeating-linear-gradient(0deg,#ee746247 0 22px,transparent 22px 44px),
+ repeating-linear-gradient(90deg,#ee746247 0 22px,transparent 22px 44px),#ffeebd}
+body[data-heat="4"] .dq-bg{background:
+ repeating-linear-gradient(0deg,#ee746252 0 22px,transparent 22px 44px),
+ repeating-linear-gradient(90deg,#ee746252 0 22px,transparent 22px 44px),var(--gold-soft)}
+body[data-heat="5"] .dq-bg{background:
+ repeating-linear-gradient(0deg,#ee746266 0 22px,transparent 22px 44px),
+ repeating-linear-gradient(90deg,#ee746266 0 22px,transparent 22px 44px),#ffd98a}
+body.is-reach .dq-bg{background:
+ repeating-linear-gradient(0deg,#ffd3c84d 0 22px,transparent 22px 44px),
+ repeating-linear-gradient(90deg,#ffd3c84d 0 22px,transparent 22px 44px),var(--cream)}
+
+/* 見出し・数字はポップな丸文字 */
+.dq-hero h1,.dq-result-head h2,.dq-stats b,.dq-question,.dq-submit,.dq-start,.dq-cutin,.dq-reach,.dq-qno,.dq-chip b{font-family:var(--pop);font-weight:400}
+.dq-hero h1{color:var(--ketchup);letter-spacing:.06em;text-shadow:0 3px 0 var(--paper),0 5px 0 var(--brown-soft)}
+.dq-eyebrow{color:var(--brown)}
+
+/* ---------- ホーム ---------- */
+.dq-player{border:2.5px solid var(--brown);box-shadow:0 4px 0 var(--brown-soft)}
+.dq-player:has(input:checked){border-color:var(--ketchup);box-shadow:0 0 0 3px var(--ketchup-soft),0 4px 0 var(--brown-soft)}
+.dq-player:has(input:checked)::after{background:var(--ketchup)}
+.dq-start{border:2.5px solid #d8604f;background:var(--ketchup);color:#fff;box-shadow:0 5px 0 #f0a597}
+.dq-start:disabled{background:var(--cream);border-color:var(--brown-soft);color:var(--ink-soft);box-shadow:0 5px 0 var(--brown-soft)}
+.dq-panel{background:var(--paper);border:2.5px solid var(--brown);border-radius:20px;box-shadow:0 4px 0 var(--brown-soft)}
+
+/* ---------- もんだい：上はオムレツ色のプレート ---------- */
+body[data-view="play"] .dq-bar{padding:8px 12px 10px;border:2.5px solid var(--brown);border-radius:18px;background:var(--omelet);box-shadow:0 3px 0 var(--brown-soft)}
+.dq-quit,.dq-sound.is-compact{border:2px solid var(--brown);background:var(--paper);color:var(--ink)}
+.dq-quit[data-confirm]{background:var(--ketchup);border-color:var(--ketchup);color:#fff}
+.dq-chip{border:2px solid var(--brown);background:var(--paper);color:var(--ink)}
+.dq-chip.is-pts{background:var(--paper)}
+.dq-chip.is-pts b{color:var(--ketchup)}
+.dq-chip.is-combo.is-hot,body[data-heat="4"] .dq-chip.is-combo.is-hot{background:var(--ketchup);border-color:#d8604f;color:#fff}
+.dq-qno{color:var(--ink)}
+
+/* 10もんの進みぐあい：たまご → 目玉焼き（線のバーのかわり） */
+.dq-track{display:none}
+.dq-eggs{flex:1;display:grid;grid-template-columns:repeat(10,1fr);gap:4px;max-width:420px}
+.dq-eggs i{aspect-ratio:4/5;border:2px solid var(--brown);border-radius:50% 50% 50% 50%/60% 60% 40% 40%;background:var(--paper)}
+.dq-eggs i.is-done{background:radial-gradient(circle at 50% 56%,var(--yolk) 0 34%,var(--paper) 36%);animation:dq-plop .4s cubic-bezier(.3,1.8,.5,1)}
+.dq-eggs i.is-crack{background:linear-gradient(160deg,transparent 44%,var(--brown) 45% 49%,transparent 50%),var(--cream);border-style:dashed}
+.dq-eggs i.is-now{border-color:var(--ketchup);background:var(--ketchup-soft);animation:dq-eggnow .5s ease-in-out infinite alternate}
+@keyframes dq-plop{0%{transform:scale(1.6)}}
+@keyframes dq-eggnow{to{transform:translateY(-3px) scale(1.1)}}
+body.is-reach .dq-eggs i{animation:dq-eggjit .2s steps(2) infinite}
+body.is-reach .dq-eggs i.is-now{animation:dq-eggnow .3s ease-in-out infinite alternate}
+@keyframes dq-eggjit{50%{transform:translate(1px,-1px) rotate(3deg)}}
+
+/* 問題カード：白いお皿 */
+.dq-card{border:3px solid var(--brown);background:var(--paper);box-shadow:0 5px 0 var(--brown-soft),inset 0 0 0 8px var(--cream)}
+.dq-kind{background:var(--ketchup-soft);color:var(--ink)}
+.dq-question{color:var(--ink)}
+.dq-op{color:var(--ink)}
+.dq-box{border:0;border-bottom:.14em dotted var(--ketchup);border-radius:0;color:var(--ketchup)}
+.dq-box.is-filled{border:0;border-bottom:.14em solid var(--ketchup);background:transparent;color:var(--ketchup)}
+.dq-card.is-miss .dq-box.is-filled{border-bottom-color:var(--herb);color:var(--ink)}
+.dq-readout{border:2.5px solid var(--brown-soft);background:var(--paper);color:var(--ink)}
+.dq-cutin{background:var(--ketchup);color:#fff;border:2.5px solid var(--paper);box-shadow:0 3px 0 var(--brown-soft)}
+.dq-reach{background:var(--ketchup)}
+.dq-mark{border-color:var(--ketchup)}
+.dq-mark.s3,.dq-mark.s4{border-color:var(--ketchup);box-shadow:0 0 0 8px #ffc94d66}
+
+/* ふきだし */
+.dq-react p{border:2px solid var(--brown-soft);background:var(--paper)}
+.dq-react[data-mood="ok"] p{background:#fff6dc;border-color:var(--yolk)}
+.dq-react[data-mood="miss"] p{background:#f1f8ee;border-color:var(--herb)}
+.dq-react[data-mood="reach"] p{background:var(--ketchup-soft);border-color:var(--ketchup)}
+
+/* テンキー：たまごの白身みたいな まるいボタン */
+.dq-pad button{border:2.5px solid var(--brown);border-radius:22px;background:var(--paper);color:var(--ink);box-shadow:0 4px 0 var(--brown-soft)}
+.dq-pad button:hover:not(:disabled){background:#fffaf0}
+.dq-pad button:active:not(:disabled){box-shadow:0 1px 0 var(--brown-soft)}
+.dq-pad button[data-key="back"]{background:var(--gold-soft);color:var(--ink)}
+.dq-submit{border:2.5px solid #d8604f;background:var(--ketchup);color:#fff;box-shadow:0 5px 0 #f0a597}
+.dq-submit:active:not(:disabled){box-shadow:0 2px 0 #f0a597}
+.dq-submit:disabled{border-color:var(--brown-soft);background:var(--cream);color:var(--ink-soft);box-shadow:0 5px 0 var(--brown-soft)}
+
+/* ---------- けっか ---------- */
+.dq-result-head h2{color:var(--ketchup)}
+.dq-stats div,.dq-breakdown{border:2.5px solid var(--brown);background:var(--paper);box-shadow:0 3px 0 var(--brown-soft)}
+.dq-stats .is-points{background:var(--omelet);border-color:var(--brown)}
+.dq-stats .is-points b{color:var(--ketchup)}
+.dq-reward{border:2.5px solid var(--brown);background:var(--gold-soft)}
+.dq-btn{border:2.5px solid var(--brown);box-shadow:0 4px 0 var(--brown-soft)}
+.dq-btn.is-again{background:var(--ketchup);border-color:#d8604f;color:#fff}
+
+@media(prefers-reduced-motion:reduce){.dq-eggs i,.dq-eggs i.is-now,body.is-reach .dq-eggs i{animation:none}}

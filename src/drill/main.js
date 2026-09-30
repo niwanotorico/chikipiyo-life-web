@@ -2,7 +2,7 @@
 import {PLAYERS,makeQuestionSet} from './questions.js';
 import {createRun,answerRun} from './scoring.js';
 import {loadStore,saveStore,commitResult,setPuddingDisplayed,selectPlayer,dayInfo,sessionsLeft,todayKey,DAILY_REWARD_SESSIONS,safeStorage} from './storage.js';
-import {stageFor,comboMilestone,nextDelay,WRONG_DELAY,FEVER,FEVER_MS,FEVER_SKIP_AFTER,SOFT_FINISH_MS,visuals,actorPlan,eggRoll,EGG_TIMES,EGG_NEXT_DELAY,POSES,DUO} from './hype.js';
+import {stageFor,comboMilestone,nextDelay,WRONG_DELAY,FEVER,FEVER_MS,FEVER_SKIP_AFTER,SOFT_FINISH_MS,HERO_MS,SUSPENSE_MS,SUSPENSE_MS_REDUCED,visuals,actorPlan,eggRoll,EGG_TIMES,EGG_NEXT_DELAY,POSES,DUO} from './hype.js';
 import {Actor,POSE_URLS} from './actor.js';
 import {QuestAudio} from './audio.js';
 import {Particles,flyText,shake,replay,centerOf,prefersReducedMotion} from './fx.js';
@@ -116,10 +116,19 @@ function startPlay(){
  renderQuestion();
 }
 
+// 10もんの進みぐあい：たまご → 正解は目玉焼き、まちがいは ひびの入ったたまご。いまの問題は ぴょこぴょこ
+function renderEggs(){
+ const {run}=play,eggs=$$('[data-eggs] i'),now=run.done?-1:run.answers.length;
+ eggs.forEach((egg,i)=>{
+  const a=run.answers[i],state=a?(a.ok?'is-done':'is-crack'):i===now?'is-now':'';
+  if(egg.dataset.state!==state){egg.className=state;egg.dataset.state=state;}
+ });
+}
+
 function renderQuestion(){
  const {run}=play,question=run.questions[run.answers.length],index=run.answers.length;
  $('[data-qno]').textContent=index+1;
- $('[data-track]').style.width=`${index/run.questions.length*100}%`;
+ $('[data-track]').style.width=`${index/run.questions.length*100}%`;renderEggs();
  $('[data-kind]').textContent=question.label;
  const q=$('[data-question]');
  q.replaceChildren(...question.tokens.map(renderToken));
@@ -134,7 +143,7 @@ function renderQuestion(){
  // さいごの 1もん：リーチ（音がこもってタメる）
  const last=index===run.questions.length-1;
  document.body.classList.toggle('is-reach',last);
- if(last){audio.reachOn();react(lines.reach,'reach');}
+ if(last){audio.reachOn();react(lines.reach,'reach');particles.fadeAll(.4);}   // 画面を片付けて、しずかに
  play.input='';play.feedback=null;
  renderInput();renderChips();
  setSubmit('こたえる');
@@ -163,7 +172,7 @@ function setSubmit(label){const b=$('[data-submit]');b.textContent=label;b.disab
 function react(line,mood){const p=$('[data-react-line]');p.textContent=line;p.parentElement.dataset.mood=mood;}
 
 function press(key){
- if(!play||play.feedback)return;
+ if(!play||play.feedback||play.suspense)return;
  const q=play.run.questions[play.run.answers.length];
  const before=play.input;
  if(key==='back')play.input=play.input.slice(0,-1);
@@ -177,15 +186,29 @@ function press(key){
 }
 
 function submit(){
- if(!play)return;
+ if(!play||play.suspense)return;
  if(play.feedback)return next();
+ // さいごの1もん：「こたえる」→ ドラムロールのタメ → 発表
+ if(play.run.answers.length===play.run.questions.length-1&&play.input){
+  play.suspense=true;
+  const card=$('[data-card]');replay(card,'is-suspense');
+  react('ドキドキ…','reach');
+  const b=$('[data-submit]');b.textContent='ドキドキ…';b.disabled=true;
+  const ms=reduced?SUSPENSE_MS_REDUCED:SUSPENSE_MS;
+  audio.drumroll(ms/1000);
+  later(ms,()=>{play.suspense=false;card.classList.remove('is-suspense');judge();});
+  return;
+ }
+ judge();
+}
+function judge(){
  const index=play.run.answers.length;
  const {run,feedback}=answerRun(play.run,play.input);
  if(!feedback)return;
  play.run=run;play.feedback=feedback;
  // □ に正しい答えを入れて見せる（まちがえたときも、答えの形が目で分かる）
  for(const box of $$('[data-question] .dq-box')){box.textContent=feedback.answer;box.classList.add('is-filled');}
- $('[data-track]').style.width=`${run.answers.length/run.questions.length*100}%`;
+ $('[data-track]').style.width=`${run.answers.length/run.questions.length*100}%`;renderEggs();
  renderChips();
  if(run.done)finish();   // ポイントはここで1回だけ保存（演出中に更新されても二重にならない）
  setSubmit(run.done?'けっかへ':'つぎへ');
@@ -208,8 +231,16 @@ function celebrate(fb,index,done){
  const egg=!last&&!NO_EGG&&eggRoll({used:play.eggUsed,isLast:last,combo:fb.combo,force:FORCE_EGG});
  if(egg){play.eggUsed=true;play.eggNow=true;actor.egg((POSES[play.player]||POSES.piyokichi).light);audio.egg(EGG_TIMES);}
  else{play.eggNow=false;const plan=last?actorPlan({player:play.player,combo:4}):actorPlan({player:play.player,ok:true,combo:fb.combo});actor.play(plan);if(plan.duo&&!reduced)audio.whoosh();}
+ // 答えがいちばんの主役：演出より手前に答えを出して、ケチャップのハートで囲む。粒は答えの外側から
+ heroAnswer(readout,fb,last);
  const c=centerOf(readout);
- particles.burst(c.x,c.y,{count:v.particles,kinds:v.kinds,speed:320+stage*90,up:160+stage*30,life:.8+stage*.08});
+ particles.burst(c.x,c.y,{count:v.particles,kinds:v.kinds,speed:320+stage*90,up:160+stage*30,life:.8+stage*.08,ring:readout.offsetWidth*.4});
+ // 大きな目玉焼きはカードの左右の角（問題・答え・コンボ表示にはかけない）
+ const cr=card.getBoundingClientRect(),er=Math.min(32,cr.width*.09)*(1+Math.min(4,stage)*.06);
+ particles.bigEgg(cr.left+er*.95,cr.top+er*.15,er);
+ if(v.bigEggs>1)particles.bigEgg(cr.right-er*.95,cr.top+er*.15,er);
+ if(v.hopEggs)later(90,()=>particles.hopEggs(v.hopEggs));
+ if(v.rain)later(150,()=>particles.rain({count:v.rain,kinds:['fried','omu','heart'],life:1.6}));
  shake([card,$('.dq-bar')],v.shake);
  flash(v.flash);
  // +pt がポイント表示へ飛ぶ → 届いたら音とポップ
@@ -237,6 +268,25 @@ function miss(fb,done){
  if(done){document.body.classList.remove('is-reach');audio.setReach(false);later(SOFT_FINISH_MS,()=>{audio.finishSoft();showResult();});return;}
  setHeat(stage);audio.setStage(stage);
  later(WRONG_DELAY,next);
+}
+
+// 答えスポットライト：打った答えを、粒・目玉焼きより手前に大きく出して、ケチャップでハートを描く
+let HEART_D='';
+function heartPath(){
+ if(HEART_D)return HEART_D;
+ for(let i=0;i<=60;i++){const t=i/60*Math.PI*2,x=16*Math.sin(t)**3/17*18,y=-(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))/17*18;HEART_D+=(i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);}
+ return HEART_D;
+}
+function heroAnswer(readout,fb,big){
+ for(const old of $$('.dq-hero-ans'))old.remove();
+ const r=readout.getBoundingClientRect(),el=document.createElement('div');
+ el.className='dq-hero-ans'+(big?' is-big':'');el.setAttribute('aria-hidden','true');
+ el.style.left=`${r.left+r.width/2}px`;el.style.top=`${r.top+r.height/2}px`;
+ const d=heartPath();
+ el.innerHTML=`<span class="dq-hero-num"><svg viewBox="-20 -20 40 40"><path class="hk" d="${d}"/><path class="hw" d="${d}"/></svg><b></b></span><small></small>`;
+ $('b',el).textContent=play.input;$('small',el).textContent=fb.unit||'';
+ document.body.append(el);
+ setTimeout(()=>el.remove(),big?1900:HERO_MS);
 }
 
 function cutin(text,size){
@@ -307,7 +357,7 @@ function quit(){
  if(!b.dataset.confirm){b.dataset.confirm='1';b.textContent='ほんとに やめる？';setTimeout(()=>{if(b.dataset.confirm){delete b.dataset.confirm;b.textContent='やめる';}},3000);return;}
  leavePlay();renderHome();show('home');
 }
-function leavePlay(){clearTimers();actor.reset();audio.stopMusic(.3);particles.clear();play=null;setHeat(0);document.body.classList.remove('is-reach');$('[data-fever]').hidden=true;}
+function leavePlay(){clearTimers();actor.reset();for(const el of $$('.dq-hero-ans'))el.remove();audio.stopMusic(.3);particles.clear();play=null;setHeat(0);document.body.classList.remove('is-reach');$('[data-fever]').hidden=true;}
 
 // ---------- けっか ----------
 function showResult(){
