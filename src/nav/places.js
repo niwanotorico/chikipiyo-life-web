@@ -9,6 +9,7 @@ export const places=[
  {id:'house',page:'index.html',href:'',icon:'🏠',label:'3DPハウス',short:'ハウス'},
  {id:'river',page:'river.html',href:'river.html',icon:'🎣',label:'おさかな釣り',short:'釣り'},
  {id:'drill',page:'drill.html',href:'drill.html',icon:'✏️',label:'ピヨドリル',short:'ドリル'},
+ {id:'okoshi',page:'okoshi.html',href:'okoshi.html',icon:'⏰',label:'ぴよみ起こし',short:'起こし'},
 ];
 
 // GitHub Pages のサブディレクトリ（/repo/）でも正しく動くよう、Vite の BASE_URL を基準にする。
