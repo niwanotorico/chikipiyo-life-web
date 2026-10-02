@@ -440,6 +440,16 @@ body.is-reach .dq-eggs i.is-now{animation:dq-eggnow .3s ease-in-out infinite alt
 .dq-pad button:hover:not(:disabled){background:#fffaf0}
 .dq-pad button:active:not(:disabled){box-shadow:0 1px 0 var(--brown-soft)}
 .dq-pad button[data-key="back"]{background:var(--gold-soft);color:var(--ink)}
+/* 3択：テンキーと同じ見た目の よこ長ボタン */
+.dq-pad[hidden],.dq-choices[hidden]{display:none}
+.dq-choices{display:grid;gap:8px}
+.dq-choices button{min-height:clamp(50px,7.6dvh,64px);padding:8px 14px;border:2.5px solid var(--brown);border-radius:22px;background:var(--paper);color:var(--ink);box-shadow:0 4px 0 var(--brown-soft);font-family:var(--pop);font-size:clamp(17px,4.8vw,21px);touch-action:manipulation}
+.dq-choices button[aria-pressed="true"]{background:var(--gold-soft);border-color:#d8604f}
+.dq-choices button.is-answer{background:var(--ketchup-soft);border-color:#d8604f}
+.dq-choices button:disabled{cursor:default}
+.dq-choices button.hit{animation:dq-keyhit .16s ease-out}
+.dq-readout.is-choice{font-size:20px}
+.dq-hero-ans.is-long{font-size:20px}
 .dq-submit{border:2.5px solid #d8604f;background:var(--ketchup);color:#fff;box-shadow:0 5px 0 #f0a597}
 .dq-submit:active:not(:disabled){box-shadow:0 2px 0 #f0a597}
 .dq-submit:disabled{border-color:var(--brown-soft);background:var(--cream);color:var(--ink-soft);box-shadow:0 5px 0 var(--brown-soft)}

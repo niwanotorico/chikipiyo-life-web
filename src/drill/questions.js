@@ -131,6 +131,29 @@ const piyokichiPools={
  boss:['bossFrac','bossWord','bossBig'],
 };
 
+// ---------- 日付で決まる 3択セット ----------
+// その日だけ、ランダムの計算問題のかわりに出す10問。並びは ZONES と同じ（秒殺3・ふつう4・ちょいムズ2・ボス1）
+//   [科目, 問題文, 選択肢, 正解]
+export const DAILY_SETS={
+ '2026-10-02':{piyomi:[
+  ['国語','「夜」の読みは？',['よる','あさ','ひる'],'よる'],
+  ['算数','40 × 5 は？',['20','200','400'],'200'],
+  ['社会','野菜やくだものなどが作られた場所を何という？',['産地','日付','ねだん'],'産地'],
+  ['国語','「赤い りんごを 食べる」。「赤い」がくわしくしている言葉は？',['りんご','食べる','赤い'],'りんご'],
+  ['算数','450を10倍すると？',['45','4500','45000'],'4500'],
+  ['社会','品物を買うとき、「いつまでおいしく食べられるか」を知る手がかりは？',['賞味期限','産地','値段'],'賞味期限'],
+  ['国語','「うさこが ノートを 買う」。「ノートを」はどの言葉をくわしくしている？',['うさこ','ノート','買う'],'買う'],
+  ['算数','600を10でわると？',['6','60','6000'],'60'],
+  ['社会','買い物で、かんきょうのためによい行動はどれ？',['レジぶくろを毎回もらう','マイバッグを使う','必要ない物も買う'],'マイバッグを使う'],
+  ['国語','「犬が しっぽを ふる」を、ようすがもっとわかる文にするならどれ？',['犬がしっぽをふる','犬がうれしそうにしっぽをふる','犬がしっぽ'],'犬がうれしそうにしっぽをふる'],
+ ]},
+};
+function dailySet(player,dayKey){
+ const list=DAILY_SETS[dayKey]?.[player];
+ if(!list)return null;
+ return list.map(([subject,text,choices,answer],i)=>({...q('choice',subject,[text],answer,{choices}),zone:ZONES[i],id:`${player}-${i+1}`,text}));
+}
+
 // ゾーンごとの型の並び：ゾーン内はシャッフル（型が足りなければ繰り返す）。ゾーンの順番は変えない
 function zonePlan(rng,pools,count){
  const plan=[],used={};
@@ -157,8 +180,10 @@ function sameKey(question){
  return questionText(question);
 }
 
-export function makeQuestionSet(player,rng=Math.random,count=QUESTIONS_PER_SET){
+export function makeQuestionSet(player,rng=Math.random,count=QUESTIONS_PER_SET,{dayKey}={}){
  if(!PLAYERS[player])throw new Error(`unknown player: ${player}`);
+ const daily=dailySet(player,dayKey);
+ if(daily)return daily.slice(0,count);
  const makers=player==='piyomi'?piyomiMakers:piyokichiMakers;
  const plan=zonePlan(rng,player==='piyomi'?piyomiPools:piyokichiPools,count);
  const seen=new Set(),list=[];
@@ -184,6 +209,11 @@ export function normalizeAnswer(input){
 
 // 判定。close は「おしい」（差が 1 以内、または小数で 0.1 以内）
 export function checkAnswer(question,input){
+ // 3択：選んだ選択肢そのものを比べる
+ if(question.choices){
+  if(!question.choices.includes(input))return {ok:false,close:false,given:null,valid:false};
+  return {ok:input===question.answer,close:false,given:input,valid:true};
+ }
  const given=normalizeAnswer(input);
  if(given===null)return {ok:false,close:false,given:null,valid:false};
  const ok=given===normalizeAnswer(question.answer);

@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {PLAYERS,makeQuestionSet,seededRandom,normalizeAnswer,checkAnswer,QUESTIONS_PER_SET,ZONES} from '../src/drill/questions.js';
+import {PLAYERS,makeQuestionSet,seededRandom,normalizeAnswer,checkAnswer,QUESTIONS_PER_SET,ZONES,DAILY_SETS} from '../src/drill/questions.js';
 import {createRun,answerRun,scoreAnswers,POINTS} from '../src/drill/scoring.js';
 import {loadStore,saveStore,commitResult,emptyStore,sanitizeStore,setPuddingDisplayed,selectPlayer,dayInfo,sessionsLeft,todayKey,STORE_KEY,BROKEN_KEY,DAILY_REWARD_SESSIONS} from '../src/drill/storage.js';
 
@@ -318,4 +318,22 @@ test('drill.html：共通ナビに ピヨドリル、スマホ用 viewport、Fir
  const places=readFileSync(new URL('../src/nav/places.js',import.meta.url),'utf8');
  assert.match(places,/id:'drill',page:'drill\.html'/,'共通ナビ（とビルド対象）に ピヨドリル がある');
  assert.match(html,/<script type="module" src="\/src\/drill\/main\.js"/);
+});
+
+// ---- 日付で決まる 3択セット ----
+test('3択セット：その日のぴよみだけ固定の10問。ゾーン並び・3択・正解が選択肢にある',()=>{
+ for(const [dayKey,sets] of Object.entries(DAILY_SETS))for(const player of Object.keys(sets)){
+  const set=makeQuestionSet(player,seededRandom(1),QUESTIONS_PER_SET,{dayKey});
+  assert.equal(set.length,QUESTIONS_PER_SET);
+  assert.deepEqual(set.map(q=>q.zone),ZONES);
+  for(const q of set){
+   assert.equal(q.choices.length,3);
+   assert.ok(['国語','算数','社会'].includes(q.label));
+   assert.equal(checkAnswer(q,q.answer).ok,true);
+   for(const c of q.choices.filter(c=>c!==q.answer))assert.equal(checkAnswer(q,c).ok,false);
+   assert.equal(checkAnswer(q,'ちがう').valid,false);
+  }
+ }
+ assert.equal(makeQuestionSet('piyomi',seededRandom(1),QUESTIONS_PER_SET,{dayKey:'2026-10-03'})[0].choices,undefined,'ほかの日はいつもの計算');
+ assert.equal(makeQuestionSet('piyokichi',seededRandom(1),QUESTIONS_PER_SET,{dayKey:'2026-10-02'})[0].choices,undefined,'ぴよきちはいつもの計算');
 });

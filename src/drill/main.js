@@ -103,7 +103,7 @@ function startPlay(){
  clearTimers();particles.clear();
  const fresh=loadStore(storage);if(fresh.status==='ok')store=fresh.store;   // 別タブでの記録も反映
  const dayKey=todayKey();
- play={player,dayKey,sessionId:newSessionId(player),practice:sessionsLeft(store,player,dayKey)===0,run:createRun(makeQuestionSet(player)),input:'',feedback:null,committed:false,award:null,stage:0,token:Symbol('play')};
+ play={player,dayKey,sessionId:newSessionId(player),practice:sessionsLeft(store,player,dayKey)===0,run:createRun(makeQuestionSet(player,Math.random,undefined,{dayKey})),input:'',feedback:null,committed:false,award:null,stage:0,token:Symbol('play')};
  $('[data-fever-img]').src=POSE_URLS[DUO.high];
  actor.preload();actor.setIdle(art[player]);
  play.eggUsed=false;
@@ -133,7 +133,12 @@ function renderQuestion(){
  const q=$('[data-question]');
  q.replaceChildren(...question.tokens.map(renderToken));
  q.setAttribute('aria-label',question.text);
- q.classList.toggle('is-word',question.kind==='word');
+ q.classList.toggle('is-word',question.kind==='word'||!!question.choices);
+ // 3択：テンキーのかわりに選択肢ボタン
+ $('[data-pad]').hidden=!!question.choices;
+ const ch=$('[data-choices]');ch.hidden=!question.choices;
+ ch.replaceChildren(...(question.choices||[]).map(c=>{const b=document.createElement('button');b.type='button';b.dataset.choice=c;b.textContent=c;b.setAttribute('aria-pressed','false');return b;}));
+ $('[data-readout]').classList.toggle('is-choice',!!question.choices);
  $('[data-unit]').textContent=question.unit;
  const card=$('[data-card]');
  card.classList.remove('is-ok','is-miss','pop');
@@ -174,6 +179,7 @@ function react(line,mood){const p=$('[data-react-line]');p.textContent=line;p.pa
 function press(key){
  if(!play||play.feedback||play.suspense)return;
  const q=play.run.questions[play.run.answers.length];
+ if(q.choices)return;
  const before=play.input;
  if(key==='back')play.input=play.input.slice(0,-1);
  else if(key==='.'){if(q.decimal&&!play.input.includes('.')&&play.input.length<7)play.input=(play.input||'0')+'.';}
@@ -182,6 +188,18 @@ function press(key){
   if(key==='back')audio.erase();else audio.key(play.input.length-1+play.run.combo);
   replay($('[data-readout]'),'tick');
  }
+ renderInput();
+}
+
+// 3択：えらぶ（「こたえる」で確定）
+function choose(value){
+ if(!play||play.feedback||play.suspense)return;
+ const q=play.run.questions[play.run.answers.length];
+ if(!q.choices?.includes(value))return;
+ play.input=value;
+ for(const b of $$('[data-choices] button'))b.setAttribute('aria-pressed',String(b.dataset.choice===value));
+ audio.key(play.run.combo);
+ replay($('[data-readout]'),'tick');
  renderInput();
 }
 
@@ -208,6 +226,7 @@ function judge(){
  play.run=run;play.feedback=feedback;
  // □ に正しい答えを入れて見せる（まちがえたときも、答えの形が目で分かる）
  for(const box of $$('[data-question] .dq-box')){box.textContent=feedback.answer;box.classList.add('is-filled');}
+ for(const b of $$('[data-choices] button')){b.disabled=true;b.classList.toggle('is-answer',b.dataset.choice===feedback.answer);}
  $('[data-track]').style.width=`${run.answers.length/run.questions.length*100}%`;renderEggs();
  renderChips();
  if(run.done)finish();   // ポイントはここで1回だけ保存（演出中に更新されても二重にならない）
@@ -280,7 +299,7 @@ function heartPath(){
 function heroAnswer(readout,fb,big){
  for(const old of $$('.dq-hero-ans'))old.remove();
  const r=readout.getBoundingClientRect(),el=document.createElement('div');
- el.className='dq-hero-ans'+(big?' is-big':'');el.setAttribute('aria-hidden','true');
+ el.className='dq-hero-ans'+(big?' is-big':'')+(play.input.length>4?' is-long':'');el.setAttribute('aria-hidden','true');
  el.style.left=`${r.left+r.width/2}px`;el.style.top=`${r.top+r.height/2}px`;
  const d=heartPath();
  el.innerHTML=`<span class="dq-hero-num"><svg viewBox="-20 -20 40 40"><path class="hk" d="${d}"/><path class="hw" d="${d}"/></svg><b></b></span><small></small>`;
@@ -411,6 +430,7 @@ function bind(){
  const pad=$('[data-pad]');
  pad.addEventListener('pointerdown',e=>{const k=e.target.closest('[data-key]');if(k&&!k.disabled&&e.button===0){e.preventDefault();k.dataset.downAt=String(performance.now());press(k.dataset.key);replay(k,'hit');}});
  pad.addEventListener('click',e=>{const k=e.target.closest('[data-key]');if(!k||k.disabled)return;if(k.dataset.downAt&&performance.now()-Number(k.dataset.downAt)<800){delete k.dataset.downAt;return;}press(k.dataset.key);replay(k,'hit');});
+ $('[data-choices]').addEventListener('click',e=>{const b=e.target.closest('[data-choice]');if(b&&!b.disabled){choose(b.dataset.choice);replay(b,'hit');}});
  $('[data-submit]').addEventListener('click',submit);
  $('[data-quit]').addEventListener('click',quit);
  $('[data-again]').addEventListener('click',startPlay);
@@ -420,7 +440,9 @@ function bind(){
  document.addEventListener('keydown',e=>{
   if(document.body.dataset.view!=='play'||e.ctrlKey||e.metaKey||e.altKey)return;
   const k=e.key;
-  if(/^\d$/.test(k)){press(k);const b=$(`[data-pad] [data-key="${k}"]`);if(b)replay(b,'hit');}
+  const cq=play?.run.questions[play.run.answers.length];
+  if(cq?.choices&&/^[1-9]$/.test(k)){const c=cq.choices[Number(k)-1];if(c)choose(c);}
+  else if(/^\d$/.test(k)){press(k);const b=$(`[data-pad] [data-key="${k}"]`);if(b)replay(b,'hit');}
   else if(k==='.'||k==='Decimal')press('.');
   else if(k==='Backspace'){e.preventDefault();press('back');}
   else if(k==='Enter'||(k===' '&&play?.inFever)){
