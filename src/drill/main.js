@@ -103,7 +103,7 @@ function startPlay(){
  clearTimers();particles.clear();
  const fresh=loadStore(storage);if(fresh.status==='ok')store=fresh.store;   // 別タブでの記録も反映
  const dayKey=todayKey();
- play={player,dayKey,sessionId:newSessionId(player),practice:sessionsLeft(store,player,dayKey)===0,run:createRun(makeQuestionSet(player,Math.random,undefined,{dayKey})),input:'',feedback:null,committed:false,award:null,stage:0,token:Symbol('play')};
+ play={player,dayKey,sessionId:newSessionId(player),practice:sessionsLeft(store,player,dayKey)===0,run:createRun(makeQuestionSet(player,Math.random,undefined,{dayKey,round:dayInfo(store,player,dayKey).sessions})),input:'',feedback:null,committed:false,award:null,stage:0,token:Symbol('play')};
  $('[data-fever-img]').src=POSE_URLS[DUO.high];
  actor.preload();actor.setIdle(art[player]);
  play.eggUsed=false;

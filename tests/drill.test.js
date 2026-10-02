@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {PLAYERS,makeQuestionSet,seededRandom,normalizeAnswer,checkAnswer,QUESTIONS_PER_SET,ZONES,DAILY_SETS} from '../src/drill/questions.js';
+import {PLAYERS,makeQuestionSet,seededRandom,normalizeAnswer,checkAnswer,QUESTIONS_PER_SET,ZONES} from '../src/drill/questions.js';
 import {createRun,answerRun,scoreAnswers,POINTS} from '../src/drill/scoring.js';
 import {loadStore,saveStore,commitResult,emptyStore,sanitizeStore,setPuddingDisplayed,selectPlayer,dayInfo,sessionsLeft,todayKey,STORE_KEY,BROKEN_KEY,DAILY_REWARD_SESSIONS} from '../src/drill/storage.js';
 
@@ -321,19 +321,46 @@ test('drill.html：共通ナビに ピヨドリル、スマホ用 viewport、Fir
 });
 
 // ---- 日付で決まる 3択セット ----
-test('3択セット：その日のぴよみだけ固定の10問。ゾーン並び・3択・正解が選択肢にある',()=>{
- for(const [dayKey,sets] of Object.entries(DAILY_SETS))for(const player of Object.keys(sets)){
-  const set=makeQuestionSet(player,seededRandom(1),QUESTIONS_PER_SET,{dayKey});
+// 10/2 のぴよみ：1回目 A・2回目 B・3回目 C（依頼の番号 1〜30 の順）。[科目, 問題, 正解]
+const OCT2=[
+ [['国語','「夜」の読みは？','よる'],['算数','40 × 5 は？','200'],['社会','野菜やくだものなどが作られた場所を何という？','産地'],
+  ['国語','「赤い りんごを 食べる」。「赤い」がくわしくしている言葉は？','りんご'],['算数','450を10倍すると？','4500'],
+  ['社会','品物を買うとき、「いつまでおいしく食べられるか」を知る手がかりは？','賞味期限'],
+  ['国語','「うさこが ノートを 買う」。「ノートを」はどの言葉をくわしくしている？','買う'],['算数','600を10でわると？','60'],
+  ['社会','買い物で、かんきょうのためによい行動はどれ？','マイバッグを使う'],
+  ['国語','「犬が しっぽを ふる」を、ようすがもっとわかる文にするならどれ？','犬がうれしそうにしっぽをふる']],
+ [['算数','30 × 4 は？','120'],['国語','「朝」の読みは？','あさ'],['社会','品物がどこで作られたかを表すのは？','産地'],
+  ['算数','320を10倍すると？','3200'],['国語','「大きな 犬が 走る」。「大きな」がくわしくしている言葉は？','犬'],
+  ['社会','買い物で、食べものの新せんさを知る手がかりになるのは？','日付'],['算数','700を10でわると？','70'],
+  ['国語','「うさこが ゆっくり 歩く」。「ゆっくり」がくわしくしている言葉は？','歩く'],
+  ['社会','かんきょうのためにできることはどれ？','マイバッグを使う'],['算数','300 × 6 は？','1800']],
+ [['国語','「遠い」の読みは？','とおい'],['算数','50 × 3 は？','150'],['社会','買い物で、かんきょうのために持っていくとよいものは？','マイバッグ'],
+  ['国語','「赤い 花が さく」。「赤い」がくわしくしている言葉は？','花'],['算数','680を10倍すると？','6800'],
+  ['社会','食べものを買うとき、「いつまでおいしく食べられるか」を見るものは？','賞味期限'],
+  ['国語','「ぴよみが 公園で 遊ぶ」。「公園で」がくわしくしている言葉は？','遊ぶ'],['算数','4500を10でわると？','450'],
+  ['国語','「鳥が 飛ぶ」を、ようすがもっとわかる文にするならどれ？','鳥が高く飛ぶ'],
+  ['社会','買い物で、かんきょうのことを考えた行動はどれ？','必要な分だけ買う']],
+];
+test('10/2 ぴよみ：1回目A・2回目B・3回目C。30問の順番・科目・正解、ゾーン並び、3択',()=>{
+ OCT2.forEach((expected,round)=>{
+  const set=makeQuestionSet('piyomi',seededRandom(1),QUESTIONS_PER_SET,{dayKey:'2026-10-02',round});
   assert.equal(set.length,QUESTIONS_PER_SET);
-  assert.deepEqual(set.map(q=>q.zone),ZONES);
+  assert.deepEqual(set.map(q=>q.zone),ZONES,'秒殺3・ふつう4・ちょいムズ2・ボス1');
+  assert.deepEqual(set.map(q=>[q.label,q.text,q.answer]),expected,`セット${'ABC'[round]}`);
   for(const q of set){
    assert.equal(q.choices.length,3);
-   assert.ok(['国語','算数','社会'].includes(q.label));
+   assert.equal(new Set(q.choices).size,3);
    assert.equal(checkAnswer(q,q.answer).ok,true);
    for(const c of q.choices.filter(c=>c!==q.answer))assert.equal(checkAnswer(q,c).ok,false);
    assert.equal(checkAnswer(q,'ちがう').valid,false);
   }
+ });
+ // 4回目以降は A → B → C をくり返す
+ for(const round of [3,4,5])assert.equal(makeQuestionSet('piyomi',seededRandom(1),QUESTIONS_PER_SET,{dayKey:'2026-10-02',round})[0].text,OCT2[round%3][0][1]);
+});
+test('3択セットは 10/2 のぴよみだけ。ほかの日・ぴよきちはいつもの計算',()=>{
+ for(const round of [0,1,2,3]){
+  for(const q of makeQuestionSet('piyomi',seededRandom(round+1),QUESTIONS_PER_SET,{dayKey:'2026-10-03',round}))assert.equal(q.choices,undefined);
+  for(const q of makeQuestionSet('piyokichi',seededRandom(round+1),QUESTIONS_PER_SET,{dayKey:'2026-10-02',round}))assert.equal(q.choices,undefined);
  }
- assert.equal(makeQuestionSet('piyomi',seededRandom(1),QUESTIONS_PER_SET,{dayKey:'2026-10-03'})[0].choices,undefined,'ほかの日はいつもの計算');
- assert.equal(makeQuestionSet('piyokichi',seededRandom(1),QUESTIONS_PER_SET,{dayKey:'2026-10-02'})[0].choices,undefined,'ぴよきちはいつもの計算');
 });
