@@ -1,4 +1,4 @@
-<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><meta name="theme-color" content="#fffaf0"><meta name="description" content="ピヨドリル — べんきょうすると、おうちが育つ。ぴよきち・ぴよみの算数10問チャレンジ。"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Zen+Maru+Gothic:wght@500;700&family=Noto+Sans+JP:wght@400;600;700;800&display=swap"><link rel="stylesheet" href="/src/drill/drill.css"><title>ピヨドリル｜ちきぴよ暮らし</title></head><body>
+<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><meta name="theme-color" content="#fffaf0"><meta name="description" content="ピヨドリル — べんきょうすると、おうちが育つ。ぴよきち・ぴよみの10もんチャレンジ。"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Zen+Maru+Gothic:wght@500;700&family=Noto+Sans+JP:wght@400;600;700;800&display=swap"><link rel="stylesheet" href="/src/drill/drill.css"><title>ピヨドリル｜ちきぴよ暮らし</title></head><body>
 <div class="dq-bg" aria-hidden="true"><i class="dq-sunburst"></i></div>
 <header class="dq-top"><a class="dq-brand" href="./">ちきぴよ暮らし</a><span class="dq-top-right"><button type="button" class="dq-sound" data-sound aria-pressed="true"><span class="dq-sound-icon" aria-hidden="true"></span><span data-sound-label>おと あり</span></button><span class="dq-nav-slot" data-nav></span></span></header>
 <main class="dq-main">
@@ -10,7 +10,7 @@
   <label class="dq-player is-piyokichi"><input type="radio" name="player" value="piyokichi"><img data-art="piyokichi" alt="" width="84" height="120"><span class="dq-player-name">ぴよきち</span><span class="dq-player-grade">小学5年</span><span class="dq-player-meta"><b data-points="piyokichi">0</b> pt<span class="dq-sep">・</span><span data-today="piyokichi">きょうは まだ</span></span></label>
   <label class="dq-player is-piyomi"><input type="radio" name="player" value="piyomi"><img data-art="piyomi" alt="" width="84" height="104"><span class="dq-player-name">ぴよみ</span><span class="dq-player-grade">小学3年</span><span class="dq-player-meta"><b data-points="piyomi">0</b> pt<span class="dq-sep">・</span><span data-today="piyomi">きょうは まだ</span></span></label>
  </div></fieldset>
- <button type="button" class="dq-start" data-start disabled>きょうの算数を はじめる</button>
+ <button type="button" class="dq-start" data-start disabled>10もんチャレンジを はじめる</button>
  <p class="dq-start-note" data-start-note>だれが あそぶか えらんでね</p>
  <div class="dq-panels">
   <section class="dq-panel" aria-labelledby="dq-today-h"><h2 id="dq-today-h">きょうの記録 <small data-today-who></small></h2>
@@ -26,6 +26,17 @@
     <li class="dq-item" data-item="pudding"><span class="dq-item-icon" aria-hidden="true">🍮</span><span class="dq-item-name">プリン</span><span class="dq-item-state" data-item-state>はじめて クリアすると もらえるよ</span></li>
     <li class="dq-item is-locked"><span class="dq-item-icon" aria-hidden="true">？</span><span class="dq-item-name">つぎのごほうび</span><span class="dq-item-state">じゅんびちゅう</span></li>
    </ul>
+  </section>
+  <section class="dq-panel dq-cube-panel" aria-labelledby="dq-cube-h" data-cube-panel><h2 id="dq-cube-h">ピヨ探検 <small data-c="period">10/3〜10/31</small></h2>
+   <div class="dq-cube-sum"><span class="dq-pix" data-pix aria-hidden="true"></span>
+    <dl class="dq-today">
+     <div><dt>ピヨ探検pt</dt><dd><b data-c="pt">0</b></dd></div>
+     <div><dt>きょう</dt><dd><b data-c="plays">0</b>/3回</dd></div>
+     <div><dt>コンプ</dt><dd><b data-c="comp">0</b>%</dd></div>
+    </dl>
+   </div>
+   <p class="dq-cube-coin" data-c="coin"></p>
+   <button type="button" class="dq-btn is-cube" data-to-map disabled>マップを ひらく</button>
   </section>
  </div>
  <p class="dq-foot">ここで ためた チキンポイントは、この端末に きろくされます。戸棚の通帳に入れるのは、ちきんが たしかめてからだよ。</p>
@@ -66,6 +77,7 @@
  </div>
  <ul class="dq-breakdown" data-breakdown></ul>
  <div class="dq-reward" data-reward><span class="dq-reward-icon" aria-hidden="true">🍮</span><div><b data-reward-title>プリン</b><small data-reward-note></small></div></div>
+ <div class="dq-cube-result" data-cube-result hidden><p data-cube-line></p><p class="dq-cube-coin" data-cube-coin hidden></p><button type="button" class="dq-btn is-cube" data-to-map>ピヨ探検 マップへ</button></div>
  <div class="dq-actions">
   <button type="button" class="dq-btn is-display" data-display>おうちに かざる</button>
   <button type="button" class="dq-btn is-again" data-again>もういちど</button>
@@ -74,7 +86,27 @@
  <button type="button" class="dq-textbtn" data-to-home>クエストの トップへ</button>
 </section>
 
+ <section class="dq-screen dq-map" data-screen="map" hidden aria-labelledby="dq-map-h">
+ <div class="dq-map-head"><button type="button" class="dq-quit" data-map-back>もどる</button><div><h2 id="dq-map-h">ピヨ探検</h2><p class="dq-map-sub" data-map-sub></p></div><span class="dq-map-pt"><b data-map-pt>0</b><small>ピヨ探検pt</small></span></div>
+ <div class="dq-map-space" data-map-space>
+  <i class="dq-map-stars" aria-hidden="true"></i>
+  <svg class="dq-map-lines" data-map-lines viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
+  <div class="dq-map-nodes" data-map-nodes></div>
+ </div>
+ <div class="dq-map-detail" data-map-detail aria-live="polite"></div>
+ <div class="dq-map-comp"><span>コンプ</span><span class="dq-track" aria-hidden="true"><i data-map-comp-bar></i></span><b data-map-comp>0%</b></div>
+ <p class="dq-map-note" data-map-note></p>
+</section>
+
 </main>
+<section class="dq-cube-reveal" data-cube-reveal hidden aria-live="assertive" aria-label="ゲートが ひらいた">
+ <div class="dq-cube-rays" aria-hidden="true"></div>
+ <div class="dq-cube-box" aria-hidden="true"><i></i><i></i><i></i></div>
+ <p class="dq-cube-reveal-icon" data-reveal-icon aria-hidden="true"></p>
+ <p class="dq-cube-reveal-title" data-reveal-title></p>
+ <p class="dq-cube-reveal-note" data-reveal-note></p>
+ <p class="dq-fever-skip">タップで マップへ</p>
+</section>
 <section class="dq-fever" data-fever hidden aria-live="assertive" aria-label="プリンフィーバー">
  <div class="dq-fever-rays" aria-hidden="true"></div>
  <p class="dq-fever-title"><img class="fv-logo" src="./assets/drill/fever/pudding-fever-logo.png" alt="プリンフィーバー！" width="1774" height="887" decoding="async"></p>

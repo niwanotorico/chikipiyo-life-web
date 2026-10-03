@@ -1,6 +1,8 @@
-// ピヨドリル：算数の問題づくり（DOM なし・テスト可能）。
+// ピヨドリル：問題づくり（DOM なし・テスト可能）。算数はここで作り、国語・理科・社会は subjects/ の問題プールから選ぶ。
 // 答えはいつも「ひとつの数」。小数は 10 倍した整数で計算するので、浮動小数点の誤差が出ない。
 //   token: 文字列 | {frac:[分子,分母]}（null の側が □） | {box:true}（□）
+
+import {SUBJECT_BANKS} from './subjects/index.js';
 
 export const PLAYERS={
  piyokichi:{id:'piyokichi',name:'ぴよきち',grade:5,gradeLabel:'小学5年'},
@@ -131,6 +133,102 @@ const piyokichiPools={
  boss:['bossFrac','bossWord','bossBig'],
 };
 
+// ---------- 4教科シャッフル ----------
+// subjects/ に問題プールがあるプレイヤー（いまは ぴよみ）は、毎日「国語・算数・理科・社会」をまぜた10問。
+//   1〜3回目：その日・その人で決まった A・B・C（30問の中で同じ問題は出ない）。ページを開きなおしても同じ
+//   4回目以降：れんしゅう用に、問題プールから毎回つくりなおす
+// 難易度カーブ（秒殺3・ふつう4・ちょいムズ2・ボス1）はそのまま。ボスは算数。同じ教科は3問つづけない。
+export const MIX_PLANS=[
+ {算数:3,国語:3,理科:2,社会:2},   // A
+ {算数:3,国語:2,理科:3,社会:2},   // B
+ {算数:3,国語:2,理科:2,社会:3},   // C
+];
+export const FIXED_ROUNDS=MIX_PLANS.length;
+const ZONE_LEVEL={easy:'easy',normal:'normal',hard:'hard',boss:'hard'};
+const LEVEL_ORDER={easy:['easy','normal','hard'],normal:['normal','easy','hard'],hard:['hard','normal','easy']};
+
+// 10月教材の算数（ぴよみ：大きな数・かけ算の筆算）。4教科シャッフルのときだけ、いつもの算数にまぜる
+const piyomiOctMakers={
+ // 秒殺：何十×1けた、何百×1けた（30×4、300×4）
+ mulTens(rng){const a=int(rng,2,9)*10,b=int(rng,2,9);return q('mul','かけ算',eq(a,'×',b),a*b);},
+ mulHundreds(rng){const a=int(rng,2,9)*100,b=int(rng,2,9);return q('mul','かけ算',eq(a,'×',b),a*b);},
+ // ふつう：1000を いくつ 集めた数／1万の まとまりの たし算／10倍・10で わる
+ thousands(rng){const n=int(rng,12,99);return q('word','大きな数',[`1000を ${n}こ 集めた 数は？`],n*1000);},
+ manAdd(rng){const a=int(rng,1,6),b=int(rng,1,9-a);return q('bigAdd','大きな数',eq(a*10000,'+',b*10000),(a+b)*10000);},
+ tenTimes(rng){const a=int(rng,12,99)*10;return rng()<.5?q('word','大きな数',[`${a}を 10倍した 数は？`],a*10):q('word','大きな数',[`${a}を 10で わった 数は？`],a/10);},
+ // ちょいムズ：2けた×1けた／何百万の ひき算（700万−200万）
+ mul2x1(rng){const a=int(rng,12,49),b=int(rng,2,9);return q('mul','かけ算の筆算',eq(a,'×',b),a*b);},
+ manSub(rng){const a=int(rng,3,9),b=int(rng,1,a-1);return q('bigSub','大きな数',[`${a*100}万`,'−',`${b*100}万`,'=',{box:true}],(a-b)*100,{unit:'万'});},
+ // ボス：大きめの 2けた×1けた（58×6 くらい）
+ mul2x1Big(rng){const a=int(rng,51,98),b=int(rng,3,9);return q('mul','かけ算の筆算',eq(a,'×',b),a*b);},
+};
+// 4教科シャッフルの算数の枠で使う型（ゾーンごと）。いつもの算数 ＋ 10月教材
+export const MIX_MATH_POOLS={
+ piyomi:{makers:{...piyomiMakers,...piyomiOctMakers},pools:{
+  easy:[...piyomiPools.easy,'mulTens','mulHundreds'],
+  normal:[...piyomiPools.normal,'thousands','manAdd','tenTimes'],
+  hard:[...piyomiPools.hard,'mul2x1','manSub'],
+  boss:[...piyomiPools.boss,'mul2x1Big'],
+ }},
+ piyokichi:{makers:piyokichiMakers,pools:piyokichiPools},
+};
+
+// 文字列から乱数の種（その日・その人で同じ問題にするため）
+function hashSeed(text){let h=0x811c9dc5;for(const c of text){h^=c.codePointAt(0);h=Math.imul(h,0x01000193)>>>0;}return h;}
+const hasTriple=list=>list.some((s,i)=>i>=2&&s===list[i-1]&&s===list[i-2]);
+// 教科の並び：最後（ボス）は算数。同じ教科が3問つづかないように並べる
+function subjectOrder(plan,rng){
+ const rest=[];
+ for(const [subject,n] of Object.entries(plan))for(let i=0;i<(subject==='算数'?n-1:n);i++)rest.push(subject);
+ for(let t=0;t<500;t++){const order=[...shuffle(rng,rest),'算数'];if(!hasTriple(order))return order;}
+ throw new Error('subject order not found');
+}
+// その日の「まだ使っていない問題」の山（教科ごとにシャッフル）と、算数の重なりチェック
+function mixState(bank,rng){
+ const queues={};
+ for(const [subject,rows] of Object.entries(bank.banks))queues[subject]=shuffle(rng,rows.map((row,idx)=>({row,key:`${subject}-${idx}`})));
+ return {queues,used:new Set(),seen:new Set()};
+}
+function mixMath(player,zone,rng,seen){
+ const {makers,pools}=MIX_MATH_POOLS[player];
+ let item,tries=0;
+ do item=makers[pick(rng,pools[zone])](rng);while(seen.has(sameKey(item))&&++tries<30);
+ seen.add(sameKey(item));
+ return {...item,subject:'算数'};
+}
+function bankQuestion(subject,entry,rng){
+ const [level,text,answer,...wrong]=entry.row;
+ return {...q('choice',subject,[text],answer,{choices:shuffle(rng,[answer,...wrong])}),subject,level,bankKey:entry.key};
+}
+function buildMixSet(player,plan,rng,state){
+ return subjectOrder(plan,rng).map((subject,i)=>{
+  const zone=ZONES[i];
+  let item;
+  if(subject==='算数')item=mixMath(player,zone,rng,state.seen);
+  else{
+   const queue=state.queues[subject];
+   let entry=null;
+   for(const level of LEVEL_ORDER[ZONE_LEVEL[zone]]){entry=queue.find(e=>!state.used.has(e.key)&&e.row[0]===level);if(entry)break;}
+   if(!entry)throw new Error(`${subject} の問題が たりない`);
+   state.used.add(entry.key);
+   item=bankQuestion(subject,entry,rng);
+  }
+  return {...item,zone,id:`${player}-${i+1}`,text:questionText(item)};
+ });
+}
+export const hasSubjectMix=player=>!!SUBJECT_BANKS[player];
+// 戻り値 {set, motifRng} | null（4教科の問題プールがないプレイヤー・日付なし）
+function mixedSet(player,dayKey,round,rng){
+ const bank=SUBJECT_BANKS[player];
+ if(!bank||!dayKey)return null;
+ if(round<FIXED_ROUNDS){
+  const seed=hashSeed(`${player}|${dayKey}`),r=seededRandom(seed),state=mixState(bank,r);
+  let set;for(let k=0;k<=round;k++)set=buildMixSet(player,MIX_PLANS[k],r,state);   // A → B → C の順に作ると、毎回同じ・重なりなし
+  return {set,motifRng:seededRandom(seed+round+1)};
+ }
+ return {set:buildMixSet(player,MIX_PLANS[round%FIXED_ROUNDS],rng,mixState(bank,rng)),motifRng:rng};
+}
+
 // ---------- 日付で決まる 3択セット ----------
 // その日だけ、ランダムの計算問題のかわりに出す10問。並びは ZONES と同じ（秒殺3・ふつう4・ちょいムズ2・ボス1）
 // セットが複数ある日は、その日に何回目のプレイかで A → B → C …（全部終わったら A にもどる）
@@ -204,11 +302,52 @@ function sameKey(question){
  return questionText(question);
 }
 
+// ---------- ピヨ探検のごほうび：文章題のモチーフ ----------
+// motifs（Set か配列）：'usako' うさこが登場／'curry' カレーが登場／'toramana' トラマナちゃんが登場＋カレーが多め
+// 「ふつう」ゾーンの1問（トラマナちゃんがいれば2問）を、モチーフ入りの文章題にする。motifs が空なら何も変えない（乱数も使わない）
+export const MOTIFS=['usako','curry','toramana'];
+function motifWord(rng,player,m){
+ const who=[...(m.has('usako')?['うさこ']:[]),...(m.has('toramana')?['トラマナちゃん']:[])];
+ const name=who.length?pick(rng,who):pick(rng,['ちきん','ぴよきち','ぴよみ']);
+ const curry=m.has('curry')&&(rng()<(m.has('toramana')?.8:.5));
+ if(curry&&m.has('toramana')&&rng()<.4){   // トラマナちゃんのカレー屋さん
+  if(player==='piyomi'){const p=int(rng,2,9)*10,n=int(rng,2,5);return q('word','文章題',[`トラマナちゃんの カレー屋さんで、${p}円の カレーパンを ${n}こ 買いました。ぜんぶで 何円？`],p*n,{unit:'円'});}
+  const p=pick(rng,[380,450,520,640]),n=int(rng,3,6);return q('word','文章題',[`トラマナちゃんの カレー屋さんで、1さら ${p}円の カレーを ${n}さら たのみました。代金は 何円？`],p*n,{unit:'円'});
+ }
+ const item=curry?pick(rng,['カレーパン','じゃがいも','にんじん']):pick(rng,['クッキー','おにぎり','いちご']);
+ if(player==='piyomi'){
+  const t=int(rng,0,2);
+  if(t===0){const a=int(rng,25,60),b=int(rng,6,a-11);return q('word','文章題',[`${item}が ${a}こ あります。${name}が ${b}こ つかうと、のこりは 何こ？`],a-b,{unit:'こ'});}
+  if(t===1){const n=int(rng,2,9),k=int(rng,2,9);return q('word','文章題',[`${name}は ${n}人に ${item}を ${k}こずつ くばります。ぜんぶで 何こ いる？`],n*k,{unit:'こ'});}
+  const n=int(rng,2,9),c=int(rng,2,9);return q('word','文章題',[`${n*c}この ${item}を ${name}たち ${n}人で 同じ数ずつ 分けます。1人 何こ？`],c,{unit:'こ'});
+ }
+ const t=int(rng,0,2);
+ if(t===0){const p=pick(rng,[60,80,120,150,180,240]),n=int(rng,3,8);return q('word','文章題',[`${name}は 1こ ${p}円の ${item}を ${n}こ 買いました。代金は 何円？`],p*n,{unit:'円'});}
+ if(t===1){const n=int(rng,3,8),c=int(rng,6,24);return q('word','文章題',[`${n*c}この ${item}を ${name}たち ${n}人で 同じ数ずつ 分けます。1人 何こ？`],c,{unit:'こ'});}
+ const a=notRound(rng,11,49),n=int(rng,2,9);return q('word','文章題',[`${name}は ${item}を 1日に ${tenths(a)}kg つかいます。${n}日では 何kg？`],tenths(a*n),{unit:'kg',decimal:true});
+}
+function applyMotifs(list,rng,player,motifs){
+ const m=new Set([...(motifs??[])].filter(x=>MOTIFS.includes(x)));
+ if(!m.size)return list;
+ // 算数の問題（3択でない・ボス以外）だけをおきかえる。「ふつう」の枠を優先
+ const math=list.map((x,i)=>i).filter(i=>!list[i].choices&&list[i].zone!=='boss');
+ const want=m.has('toramana')?2:1;
+ let slots=shuffle(rng,math.filter(i=>list[i].zone==='normal')).slice(0,want);
+ if(slots.length<want)slots=[...slots,...shuffle(rng,math.filter(i=>list[i].zone!=='normal')).slice(0,want-slots.length)];
+ const out=[...list];
+ for(const i of slots){const item=motifWord(rng,player,m);out[i]={...item,...(out[i].subject?{subject:out[i].subject}:{}),zone:out[i].zone,id:out[i].id,text:questionText(item),motif:true};}
+ return out;
+}
+
 // round：その日に何回目のプレイか（0 から）。日付で決まるセットを選ぶのに使う
-export function makeQuestionSet(player,rng=Math.random,count=QUESTIONS_PER_SET,{dayKey,round=0}={}){
+// motifs：ピヨ探検でもらったモチーフ（上の applyMotifs）。日付で決まる3択セットの日は使わない
+export function makeQuestionSet(player,rng=Math.random,count=QUESTIONS_PER_SET,{dayKey,round=0,motifs}={}){
  if(!PLAYERS[player])throw new Error(`unknown player: ${player}`);
  const daily=dailySet(player,dayKey,round);
- if(daily)return daily.slice(0,count);
+ if(daily)return daily.slice(0,count);   // 1. 日付で決まる特別セット（10/2 など）が最優先
+ const mix=mixedSet(player,dayKey,round,rng);
+ if(mix)return applyMotifs(mix.set,mix.motifRng,player,motifs).slice(0,count);   // 2. 4教科シャッフル
+ // 3. 4教科の問題プールがないプレイヤーは、いつもの算数
  const makers=player==='piyomi'?piyomiMakers:piyokichiMakers;
  const plan=zonePlan(rng,player==='piyomi'?piyomiPools:piyokichiPools,count);
  const seen=new Set(),list=[];
@@ -218,7 +357,7 @@ export function makeQuestionSet(player,rng=Math.random,count=QUESTIONS_PER_SET,{
   seen.add(sameKey(item));
   list.push({...item,zone,id:`${player}-${list.length+1}`,text:questionText(item)});
  }
- return list;
+ return applyMotifs(list,rng,player,motifs);
 }
 
 // 入力のゆれをそろえる：全角数字、先頭の 0、小数点以下の余分な 0（"03" "2.50" ".5"）

@@ -358,9 +358,11 @@ test('10/2 ぴよみ：1回目A・2回目B・3回目C。30問の順番・科目�
  // 4回目以降は A → B → C をくり返す
  for(const round of [3,4,5])assert.equal(makeQuestionSet('piyomi',seededRandom(1),QUESTIONS_PER_SET,{dayKey:'2026-10-02',round})[0].text,OCT2[round%3][0][1]);
 });
-test('3択セットは 10/2 のぴよみだけ。ほかの日・ぴよきちはいつもの計算',()=>{
+test('日付の3択セットは 10/2 のぴよみだけ。ほかの日のぴよみは4教科シャッフル（drill-mix.test.js）。ぴよきちはいつもの計算',()=>{
  for(const round of [0,1,2,3]){
-  for(const q of makeQuestionSet('piyomi',seededRandom(round+1),QUESTIONS_PER_SET,{dayKey:'2026-10-03',round}))assert.equal(q.choices,undefined);
-  for(const q of makeQuestionSet('piyokichi',seededRandom(round+1),QUESTIONS_PER_SET,{dayKey:'2026-10-02',round}))assert.equal(q.choices,undefined);
+  const pm=makeQuestionSet('piyomi',seededRandom(round+1),QUESTIONS_PER_SET,{dayKey:'2026-10-03',round});
+  assert.notEqual(pm[0].text,OCT2[round%3][0][1]);
+  assert.ok(pm.some(q=>q.choices)&&pm.some(q=>!q.choices),'ほかの日のぴよみは 3択と計算がまざる');
+  for(const day of ['2026-10-02','2026-10-03'])for(const q of makeQuestionSet('piyokichi',seededRandom(round+1),QUESTIONS_PER_SET,{dayKey:day,round}))assert.equal(q.choices,undefined);
  }
 });

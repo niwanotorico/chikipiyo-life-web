@@ -7,6 +7,10 @@ import {Actor,POSE_URLS} from './actor.js';
 import {QuestAudio} from './audio.js';
 import {Particles,flyText,shake,replay,centerOf,prefersReducedMotion} from './fx.js';
 import {mountSiteNav} from '../nav/site-nav.js';
+import {CubeStore,localCubeAdapter,memoryCubeAdapter} from './cosmicube-store.js';
+import {createCubeMap,pixelChar,seasonPeriod} from './cosmicube-ui.js';
+import {pickTrack,trackElement} from './bgm-pool.js';
+import {isParentMode,parentLabel} from './parent-mode.js';
 
 const art={
  piyokichi:new URL('../../assets/points/piyokichi.png',import.meta.url).href,
@@ -25,6 +29,10 @@ const params=new URLSearchParams(location.search);
 const FORCE_EGG=params.get('egg')==='1';   // 確認用：?egg=1 で次の正解に目玉焼き（1プレイ1回）
 const NO_EGG=params.get('egg')==='0';      // 録画用：?egg=0 で目玉焼きを出さない
 const actor=new Actor($('[data-stage]'),{reduced:()=>reduced});
+// ピヨ探検（10月の報酬マップ）。保存は cosmicube-store.js だけが行う。親モード（仮）の判定は parent-mode.js
+const cube=new CubeStore({adapter:storage?localCubeAdapter(storage):memoryCubeAdapter()});
+const PARENT=isParentMode()?{label:parentLabel}:null;
+const cubeMap=createCubeMap({cube,audio,particles,flash:a=>flash(a),reduced:()=>reduced,getPlayer:()=>store.selected,today:()=>todayKey(),parent:PARENT});
 
 const lines={
  start:{piyokichi:'さくっと 10もん いこう！',piyomi:'よーし、いっしょに がんばろ！'},
@@ -84,7 +92,20 @@ function renderHome(){
  const pud=sel?store.players[sel].pudding:null,item=$('[data-item="pudding"]');
  item.classList.toggle('is-locked',!pud?.earned);
  $('[data-item-state]',item).textContent=!sel?'だれかを えらんでね':pud.earned?(pud.displayed?'おうちに かざってるよ':'もってるよ'):'はじめて クリアすると もらえるよ';
+ renderCubePanel(sel,today);
 }
+function renderCubePanel(sel,today){
+ cube.reload();   // 別タブでの記録も反映
+ const c=sel?cube.snapshot(sel,today):null;
+ $('[data-c="period"]').textContent=seasonPeriod();
+ $('[data-c="pt"]').textContent=c?c.cubePt:0;
+ $('[data-c="plays"]').textContent=c?c.playsToday:0;
+ $('[data-c="comp"]').textContent=c?c.completion.percent:0;
+ $('[data-c="coin"]').textContent=!c?'':c.coinToday?'🪙 きょうの コインミッション たっせい！':'🪙 きょう はじめて 10もん クリアすると、コインミッション たっせい';
+ $('[data-pix]').innerHTML=pixelChar(sel??'piyokichi');
+ $('[data-cube-panel] [data-to-map]').disabled=!sel;
+}
+function openMap(){if(!store.selected)return;audio.unlock();cubeMap.reset();cube.reload();cubeMap.render();show('map');}
 
 function showNotice(){
  const n=$('[data-notice]');
@@ -103,7 +124,8 @@ function startPlay(){
  clearTimers();particles.clear();
  const fresh=loadStore(storage);if(fresh.status==='ok')store=fresh.store;   // 別タブでの記録も反映
  const dayKey=todayKey();
- play={player,dayKey,sessionId:newSessionId(player),practice:sessionsLeft(store,player,dayKey)===0,run:createRun(makeQuestionSet(player,Math.random,undefined,{dayKey,round:dayInfo(store,player,dayKey).sessions})),input:'',feedback:null,committed:false,award:null,stage:0,token:Symbol('play')};
+ cube.reload();const effects=cube.effects(player);
+ play={player,dayKey,sessionId:newSessionId(player),practice:sessionsLeft(store,player,dayKey)===0,run:createRun(makeQuestionSet(player,Math.random,undefined,{dayKey,round:dayInfo(store,player,dayKey).sessions,motifs:effects})),input:'',feedback:null,committed:false,award:null,stage:0,token:Symbol('play')};
  $('[data-fever-img]').src=POSE_URLS[DUO.high];
  actor.preload();actor.setIdle(art[player]);
  play.eggUsed=false;
@@ -112,7 +134,8 @@ function startPlay(){
  $('[data-fever]').hidden=true;
  setHeat(0);
  show('play');
- audio.startMusic(0);
+ // 🎵 BGM ごほうび：いつもの曲と BGM プール（bgm-pool.js）からランダム
+ audio.startMusic(0,{track:trackElement(pickTrack(effects))});
  renderQuestion();
 }
 
@@ -335,6 +358,8 @@ function finish(){
  const res=commitResult(store,{sessionId:play.sessionId,player:play.player,dayKey:play.dayKey,oks:play.run.answers.map(a=>a.ok)});
  store=res.store;play.award=res.award;play.committed=true;
  persist();
+ // ピヨ探検：scoring.js で計算したポイントをキューブpt に入金（同じ回は二度入らない）
+ if(!res.duplicate)play.cube=cube.recordSession(play.player,{sessionId:play.sessionId,dayKey:play.dayKey,award:res.award});
 }
 
 // ---------- プリンフィーバー ----------
@@ -403,9 +428,19 @@ function showResult(){
  $('[data-reward-title]').textContent=award.puddingNew?'プリンを 手に入れた！':'プリン';
  $('[data-reward-note]').textContent=award.puddingNew?'はじめての クリアごほうび。コレクションに 入ったよ':pud.displayed?'おうちに かざってあるよ':'コレクションに あるよ';
  renderDisplayButton();
+ renderCubeResult();
  show('result');
  // フィーバーを Enter でとばしたあと、もう一度 Enter を押しても「もういちど」が始まらないよう、見出しにフォーカス
  const h=$('#dq-result-h');h.setAttribute('tabindex','-1');h.focus({preventScroll:true});
+}
+function renderCubeResult(){
+ const c=play.cube,box=$('[data-cube-result]');
+ box.hidden=!c;if(!c)return;
+ const bal=cube.snapshot(play.player,play.dayKey).cubePt;
+ const why={practice:'きょうの ピヨ探検pt は 3回 もらったよ',season:'ピヨ探検の 期間外だよ',limit:'きょうの ピヨ探検pt は 3回 もらったよ',duplicate:''}[c.reason];
+ $('[data-cube-line]').textContent=c.reason==='ok'?`🧊 +${c.cubePt} ピヨ探検pt（いま ${bal} pt）`:`🧊 ${why}（いま ${bal} pt）`;
+ const coin=$('[data-cube-coin]');coin.hidden=!c.coinNew;
+ coin.textContent='🪙 きょうの コインミッション たっせい！（ミッション1つぶん：赤・青コイン）';
 }
 function renderDisplayButton(){
  const pud=store.players[play.player].pudding,b=$('[data-display]');
@@ -437,6 +472,9 @@ function bind(){
  $('[data-display]').addEventListener('click',displayPudding);
  $('[data-to-home]').addEventListener('click',()=>{leavePlay();renderHome();show('home');});
  $('[data-fever]').addEventListener('click',skipFever);
+ for(const b of $$('[data-to-map]'))b.addEventListener('click',()=>{if(play)leavePlay();openMap();});
+ $('[data-map-back]').addEventListener('click',()=>{audio.tap();renderHome();show('home');});
+ cubeMap.bind();
  document.addEventListener('keydown',e=>{
   if(document.body.dataset.view!=='play'||e.ctrlKey||e.metaKey||e.altKey)return;
   const k=e.key;
@@ -464,6 +502,6 @@ function bind(){
 mountSiteNav($('[data-nav]'),'drill',{position:'afterbegin',variant:'floating'});
 for(const img of $$('[data-art]'))img.src=art[img.dataset.art];
 // 確認用（?debug=1）：残っているタイマー・演出の数を外から確かめる
-if(params.get('debug')==='1')window.__drill={timers:()=>timers.size,actorTimers:()=>actor.timers.size,actorBusy:()=>actor.busy,eggs:()=>document.querySelectorAll('.dq-egg').length,flies:()=>document.querySelectorAll('.dq-fly').length,stageImg:()=>actor.img.getAttribute('src')||'',stageKind:()=>actor.stage.dataset.kind,eggUsed:()=>!!play?.eggUsed};
+if(params.get('debug')==='1')window.__drill={cube:()=>cube.snapshotAll(todayKey()),bgm:()=>({trackOn:!!audio.trackOn,src:audio.trackEl?.src??'',paused:audio.trackEl?.paused??null}),timers:()=>timers.size,actorTimers:()=>actor.timers.size,actorBusy:()=>actor.busy,eggs:()=>document.querySelectorAll('.dq-egg').length,flies:()=>document.querySelectorAll('.dq-fly').length,stageImg:()=>actor.img.getAttribute('src')||'',stageKind:()=>actor.stage.dataset.kind,eggUsed:()=>!!play?.eggUsed};
 bind();renderSound();showNotice();renderHome();show('home');setHeat(0);
 if(status==='recovered')persist();
