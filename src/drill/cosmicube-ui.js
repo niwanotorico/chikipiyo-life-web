@@ -1,6 +1,6 @@
 // ピヨドリル：ピヨ探検のマップ画面と、ゲートが開くときの演出。保存は cube（CubeStore）にまかせる。
 import {PLAYERS} from './questions.js';
-import {SEASON,MAP,REWARDS,nodeById,mapView,season,cubeBalance,completion} from './cosmicube.js';
+import {SEASON,MAP,REWARDS,nodeById,mapView,season,cubeBalance,foundCount} from './cosmicube.js';
 
 // ---------- マップの現在地キャラ（ドット絵素材） ----------
 // 元素材：piyodrill/characters/*_ipad.png（100×115）。遊んでいる人の絵を出す
@@ -65,12 +65,11 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
 
  function render(){
   const player=getPlayer();if(!player)return;
-  const dayKey=today(),p=cube.player(player),s=season(p),view=mapView(s,{parent}),bal=cubeBalance(s),comp=completion(s);
+  const dayKey=today(),p=cube.player(player),s=season(p),view=mapView(s,{parent,dayKey}),bal=cubeBalance(s),foundN=foundCount(s);
   const stateOf=Object.fromEntries(view.map(v=>[v.node.id,v.state]));
   $('[data-map-pt]').textContent=bal;
   $('[data-map-sub]').textContent=`${PLAYERS[player].name}の マップ・${seasonPeriod()}${parent?'（親モード：ぜんぶ見えています）':''}`;
-  $('[data-map-comp]').textContent=`${comp.percent}%`;
-  $('[data-map-comp-bar]').style.width=`${comp.percent}%`;
+  $('[data-map-found]').textContent=`${foundN}こ`;
   $('[data-map-note]').textContent=dayKey>SEASON.end?`ピヨ探検pt を ためられるのは ${fmtDay(SEASON.end)} まで。のこりの pt で ゲートは ひらけるよ`
    :dayKey<SEASON.start?`ピヨ探検pt が たまるのは ${fmtDay(SEASON.start)} から`:'10もん クリアで ピヨ探検pt が たまるよ（1日3回まで）。ゲートは どの じゅんばんでも ぜんぶ ひらけるよ';
   // 線

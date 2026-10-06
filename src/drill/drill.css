@@ -533,8 +533,6 @@ body[data-view="map"] .dq-top{display:none}
 .dq-btn.is-open-gate{background:var(--gold);border-color:#d39b45;color:var(--gold-ink);box-shadow:0 4px 0 #d39b45}
 .dq-btn.is-open-gate:disabled{background:var(--gold-soft);box-shadow:none;cursor:default}
 .dq-map-comp{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:800}
-.dq-map-comp .dq-track{display:block;flex:1}
-.dq-map-comp .dq-track i{background:linear-gradient(90deg,var(--cube),var(--nebula))}
 .dq-map-comp b{font-family:var(--pop);font-weight:400;font-size:18px;min-width:3em;text-align:right}
 .dq-map-note{margin:0;font-size:12px;line-height:1.6;color:var(--ink-soft);text-align:center}
 .dq-map-note:empty{display:none}

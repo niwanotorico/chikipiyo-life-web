@@ -5,11 +5,14 @@
 //  - 10問クリア（ポイントがもらえる回＝1日3回まで）で、scoring.js のポイントをそのままピヨ探検pt（コード上は cubePt）として貯める
 //  - キューブpt は「もらった記録（earned）」の合計 − 「ひらいたゲートのコスト」の合計。残高そのものは保存しない
 //    （2台の iPad の記録を合わせるとき、記録どうしを足し合わせるだけで残高が自然に正しくなる）
-//  - ゲートは排他ではない。どの順番でも、最後はぜんぶ開けられる（コンプ 100%）
+//  - ゲートは排他ではない。どの順番でも、最後はぜんぶ開けられる
 //  - 見えかた：開いた場所・となり（❓）だけ見える。遠くは霧で見えない
 
 export const SEASON={id:'2026-10',start:'2026-10-03',end:'2026-10-31',title:'ピヨ探検',sub:'10月の ほしぞら マップ'};
 export const DAILY_CUBE_SESSIONS=3;   // キューブpt がもらえるのは1日3回まで（storage.js の DAILY_REWARD_SESSIONS と同じ）
+// マンガのゲートと ハロウィンの自動解放は、この日（端末の日付）から。それより前は いままでどおり ❓じゅんびちゅう。
+// 公開した時刻に関係なく 日付で切りかわる（画面を開いたまま 日付をまたいでも、つぎの表示から反映）。ポイントの計算は変えない
+export const UPDATE_FROM='2026-10-07';
 
 // ごほうび。effects はドリル側で読む効果。house:true をつけると、開けたときに「3DPハウス来訪待ち」フラグを保存する
 // （ハウス側は pendingHouseVisits() で読む想定。いまはフラグ保存のみ）
@@ -21,6 +24,12 @@ export const REWARDS={
  curry:{icon:'🍛',name:'カレー',note:'文章題に カレーが でてくる',effects:['curry']},
  toramana:{icon:'🐯',name:'トラマナちゃん',note:'もんだいに トラマナちゃんが でてくる／カレーが もっと でてくる／3DPハウスに あそびにくる',effects:['toramana','curry'],house:true},
  deep:{icon:'🌫️',name:'さいおくの ❓',note:'なにが あるかは まだ ひみつ。ひらいたら、おうちの人に つたえてね',secret:true},
+ // マンガ：manga に書いた話（src/manga/catalog.js の話ID）が、3DPハウスの本だなで よめるようになる。
+ // 1つのごほうびで「マイクラ本」「まったり日常本」が1話ずつ ふえる。話の順番は catalog.js の順（ひらいた順ではない）
+ 'manga-1':{icon:'📚',name:'マンガ「自動化の沼」「葉っぱの行き先」',note:'3DPハウスの 本だなで よめるよ',manga:['mc-01','daily-01'],effects:[]},
+ 'manga-2':{icon:'📚',name:'マンガ「寝る場所」「かげのせいくらべ」',note:'3DPハウスの 本だなで よめるよ',manga:['mc-02','daily-02'],effects:[]},
+ 'manga-3':{icon:'📚',name:'マンガ「宝さがし」「くものおやつ」',note:'3DPハウスの 本だなで よめるよ',manga:['mc-03','daily-03'],effects:[]},
+ 'manga-4':{icon:'📚',name:'マンガ「おともだち」「いしのひなた」',note:'3DPハウスの 本だなで よめるよ',manga:['mc-04','daily-04'],effects:[]},
 };
 
 // マップ。x,y はマップ上の位置（%）。requires は「ぜんぶ開いていれば挑戦できる」ゲート。
@@ -29,21 +38,23 @@ export const MAP={
  start:'start',
  nodes:[
   {id:'start',x:50,y:92,cost:0,reward:null,requires:[],label:'スタート'},
-  {id:'slot-left',x:24,y:70,cost:40,reward:null,requires:['start']},   // 左40pt：空きスロット（❓）。中身は未定
+  {id:'slot-left',x:24,y:70,cost:20,reward:'manga-1',requires:['start'],from:UPDATE_FROM},   // もと空きスロット（左40pt）→ マンガ 20pt（マンガ4つで80pt。マンガ込み合計390pt、うさこ40ptを足して430pt）
   {id:'curry',x:76,y:70,cost:50,reward:'curry',requires:['start']},
-  {id:'slot-a',x:12,y:52,cost:30,reward:null,requires:['slot-left']},
+  {id:'slot-a',x:12,y:52,cost:20,reward:'manga-2',requires:['slot-left'],from:UPDATE_FROM},
   {id:'bgm',x:34,y:42,cost:60,reward:'bgm',requires:['start']},       // 左40pt が空きのあいだも、最奥まで行けるようにスタートから
   {id:'toramana',x:66,y:42,cost:80,reward:'toramana',requires:['curry']},
-  {id:'slot-b',x:88,y:52,cost:30,reward:null,requires:['curry']},
-  {id:'slot-c',x:14,y:24,cost:40,reward:null,requires:['bgm']},
-  {id:'slot-d',x:86,y:24,cost:40,reward:null,requires:['toramana']},
+  {id:'slot-b',x:88,y:52,cost:20,reward:'manga-3',requires:['curry'],from:UPDATE_FROM},
+  {id:'slot-c',x:14,y:24,cost:20,reward:'manga-4',requires:['bgm'],from:UPDATE_FROM},   // もと40pt → マンガ 20pt
+  {id:'slot-d',x:86,y:24,cost:40,reward:null,requires:['toramana']},   // 空きスロット。うさこ（10月後半）用に残す
   {id:'deep',x:50,y:15,cost:120,reward:'deep',requires:['bgm','toramana']},
  ],
 };
 const NODE=Object.fromEntries(MAP.nodes.map(n=>[n.id,n]));
 export const nodeById=id=>NODE[id]??null;
-// ひらける（中身のある）ゲート。空きスロットはコンプ率に数えない
+// ひらける（中身のある）ゲート。空きスロットは数えない
 export const openableNodes=()=>MAP.nodes.filter(n=>n.id!==MAP.start&&n.reward&&REWARDS[n.reward]);
+// from のあるゲート（と おまけ）は、その日から（dayKey がわからないときは まだ）
+export const nodeActive=(node,dayKey)=>!node.from||(typeof dayKey==='string'&&dayKey>=node.from);
 
 export function inSeason(dayKey,season=SEASON){return typeof dayKey==='string'&&dayKey>=season.start&&dayKey<=season.end;}
 
@@ -98,6 +109,9 @@ export function cubeBalance(s){
 export function cubeEarnedTotal(s){return s.earned.reduce((a,e)=>a+e.pt,0);}
 export function playsOn(s,dayKey){return s.earned.filter(e=>e.day===dayKey).length;}
 export function cubeSessionsLeft(s,dayKey){return inSeason(dayKey)?Math.max(0,DAILY_CUBE_SESSIONS-playsOn(s,dayKey)):0;}
+// みつけた ごほうびの数（画面の「みつけた ごほうび ○こ」）＝ 中身のあるゲートを ひらいた数。総数は出さない（あとから ふえるため）
+// マンガのゲートは 2話ぶんでも 1こ。ハロウィンなどの 自動の おまけ（AUTO_MANGA）は 数えない
+export function foundCount(s){return Object.keys(s.gates).filter(id=>REWARDS[NODE[id]?.reward]).length;}
 export function completion(s){
  const list=openableNodes();
  const done=list.filter(n=>s.gates[n.id]).length;
@@ -110,6 +124,22 @@ export function effectsOf(player){
  for(const s of Object.values(player.seasons))for(const id of Object.keys(s.rewards))for(const e of REWARDS[id]?.effects??[])set.add(e);
  return set;
 }
+// マンガのごほうびで よめるようになった話ID（3DPハウスの本だなが読む。ハウスは読むだけで保存しない）
+// ひらいたゲートからも数える：マンガを知らない古いページ（キャッシュ）が保存すると rewards の manga-* は消えるが、
+// gates（slot-left など）は残るので、そこから取りもどせる
+// 自動でふえるマンガ：requires の ごほうびを ぜんぶ持っていれば、pt なし・ゲートなしで よめる。
+// 保存はしない（毎回 持っている ごほうびから決める）ので、条件を先に満たしていた子にも そのまま効く。最奥など ほかの ごほうびは変えない
+export const AUTO_MANGA=[
+ {id:'halloween',requires:['toramana','bgm'],manga:['season-01'],from:UPDATE_FROM},   // 季節の本「ハロウィン攻略法」
+];
+export function mangaOf(player,dayKey){
+ const owned=new Set();
+ for(const s of Object.values(player.seasons))for(const id of [...Object.keys(s.rewards),...Object.keys(s.gates).map(id=>NODE[id]?.reward)])if(id)owned.add(id);
+ const set=new Set();
+ for(const id of owned)for(const e of REWARDS[id]?.manga??[])set.add(e);
+ for(const a of AUTO_MANGA)if(nodeActive(a,dayKey)&&a.requires.every(id=>owned.has(id)))for(const e of a.manga)set.add(e);
+ return set;
+}
 
 // ノードの見えかた
 //   'open'   ひらいた
@@ -117,17 +147,17 @@ export function effectsOf(player){
 //   'near'   前のゲートの一部が開いた（まだ開けられない）→ ❓＋🔒
 //   'soon'   となりだけど、中身がまだない空きスロット → ❓ じゅんびちゅう
 //   'fog'    遠くて見えない
-export function nodeState(s,node){
+export function nodeState(s,node,dayKey){
  if(isOpen(s,node.id))return 'open';
  const met=node.requires.filter(id=>isOpen(s,id)).length;
  if(met===0)return 'fog';
- if(!node.reward||!REWARDS[node.reward])return 'soon';
+ if(!node.reward||!REWARDS[node.reward]||!nodeActive(node,dayKey))return 'soon';
  return met===node.requires.length?'ready':'near';
 }
-export function mapView(s,{parent=false}={}){
+export function mapView(s,{parent=false,dayKey}={}){
  return MAP.nodes.map(n=>{
-  const state=nodeState(s,n);
-  return {node:n,state:parent&&state==='fog'?(n.reward?'near':'soon'):state};
+  const state=nodeState(s,n,dayKey);
+  return {node:n,state:parent&&state==='fog'?(n.reward&&nodeActive(n,dayKey)?'near':'soon'):state};
  });
 }
 
@@ -160,7 +190,7 @@ export function openGate(player,nodeId,dayKey){
  if(!node||nodeId===MAP.start)return {player,ok:false,reason:'unknown'};
  const s0=season(player);
  if(s0.gates[nodeId])return {player,ok:false,reason:'open'};
- if(!node.reward||!REWARDS[node.reward])return {player,ok:false,reason:'empty'};
+ if(!node.reward||!REWARDS[node.reward]||!nodeActive(node,dayKey))return {player,ok:false,reason:'empty'};
  if(!node.requires.every(id=>isOpen(s0,id)))return {player,ok:false,reason:'locked'};
  if(cubeBalance(s0)<node.cost)return {player,ok:false,reason:'short'};
  const next=sanitizeCubePlayer(clone(player)),s=season(next);

@@ -1,5 +1,5 @@
 // ピヨドリル：ピヨ探検の保存。キューブpt・ゲート・ごほうび・マップ位置・その日の回数・
-// チキンコインミッション・コンプ率の保存と読み込みは、ぜんぶこのファイルだけで行う（ほかのファイルは localStorage に触らない）。
+// チキンコインミッション・みつけた ごほうびの数の保存と読み込みは、ぜんぶこのファイルだけで行う（ほかのファイルは localStorage に触らない）。
 //
 // 保存先は「アダプタ」で差し替えられる。いまは端末内（localStorage）だけ。
 //   adapter = { load(): object|null, save(data): boolean }
@@ -9,7 +9,7 @@
 // とすればよい。データはプレイヤーごとに独立した1かたまり（players[id]）なので、そのまま1ドキュメントにできる。
 // 兄弟ゲートは snapshotAll()（2人ぶんのまとめ）を見て判定する想定。
 import {playerIds} from './questions.js';
-import {SEASON,emptyCubePlayer,sanitizeCubePlayer,recordSession,openGate,mergeCubePlayer,season,cubeBalance,cubeEarnedTotal,playsOn,cubeSessionsLeft,completion,effectsOf,inSeason} from './cosmicube.js';
+import {SEASON,emptyCubePlayer,sanitizeCubePlayer,recordSession,openGate,mergeCubePlayer,season,cubeBalance,cubeEarnedTotal,playsOn,cubeSessionsLeft,completion,foundCount,effectsOf,inSeason} from './cosmicube.js';
 
 export const CUBE_KEY='chikipiyo-cosmicube:v1';
 export const CUBE_BROKEN_KEY=CUBE_KEY+':broken';
@@ -94,7 +94,7 @@ export class CubeStore{
    playsToday:playsOn(s,dayKey),sessionsLeft:cubeSessionsLeft(s,dayKey),
    gates:Object.keys(s.gates),rewards:Object.keys(s.rewards),position:s.position,
    coinToday:!!p.coin[dayKey],coinDays:Object.keys(p.coin),
-   completion:completion(s),effects:[...effectsOf(p)],updatedAt:p.updatedAt,
+   completion:completion(s),found:foundCount(s),effects:[...effectsOf(p)],updatedAt:p.updatedAt,
   };
  }
  snapshotAll(dayKey){return Object.fromEntries(playerIds.map(id=>[id,this.snapshot(id,dayKey)]));}

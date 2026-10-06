@@ -30,6 +30,8 @@ import {whenXRSupported,xrProfile} from './xr/xr-session.js';
 import {mountARButton,dockXRButton} from './ar/ar-dollhouse.js';
 import {installCupboard} from './world/cupboard.js';
 import {createPassbook} from './points/passbook.js';
+import {installBookshelf} from './world/bookshelf.js';
+import {createShelfEntry} from './manga/shelf-entry.js';
 const scene=new T.Scene();scene.background=new T.Color(0xeaf0e9);scene.fog=new T.Fog(0xeaf0e9,24,60);
 const camera=new T.PerspectiveCamera(36,1,.1,100);let controls;function resetCamera(){camera.position.set(13,12,17);controls?.target.set(0,.5,0);controls?.update();}resetCamera();
 scene.add(new T.HemisphereLight(0xfffaf1,0x8dafa4,2.5));const sun=new T.DirectionalLight(0xffe7c6,3.2);sun.position.set(-3,12,7);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-9,right:9,top:9,bottom:-9,near:.1,far:35});sun.shadow.normalBias=.035;sun.shadow.bias=-.0001;scene.add(sun);
@@ -45,6 +47,9 @@ const host=document.querySelector('#canvas-host');let renderer;
 const passbook=cupboard&&createPassbook(document.querySelector('.world'),host);
 // 戸棚を閉じたら通帳パネルも閉じる。
 cupboard?.onChange(open=>{if(!open)passbook.close();});
+// 戸棚の上の段に マンガの本（シリーズごとに1冊）。タップで大きなリーダー。ピヨドリルの記録は読むだけ。
+const bookshelf=installBookshelf(furniture.roomRoot);
+const shelf=bookshelf&&createShelfEntry(document.querySelector('.world'),host);
 try{renderer=new T.WebGLRenderer({antialias:true});}catch(error){host.innerHTML='<p class="webgl-error">3D表示を開始できませんでした。ブラウザのハードウェアアクセラレーションを有効にして再読み込みしてください。</p>';throw error;}
 renderer.localClippingEnabled=true;renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;host.appendChild(renderer.domElement);
 // モデリング用の画面・ホログラムのシェーダーを先にコンパイルしておく（初回表示のカクつき防止）。
@@ -73,7 +78,23 @@ renderer.domElement.addEventListener('pointerdown',e=>{
  drag={c,id:e.pointerId,active:false};controls.enabled=false;
  renderer.domElement.setPointerCapture(e.pointerId);e.stopImmediatePropagation();
 },{capture:true});
+// 本だな：PC で カーソルを合わせている あいだだけ ラベルを出し、本を すこし明るくする。
+// ボタンを おしたまま（カメラを回すドラッグなど）のときは 出さない。手前に 家具やキャラが あるときも 出さない。
+const shelfRay=new T.Raycaster(),shelfPointer=new T.Vector2();let shelfMove=null;
+function hoverShelf(){
+ const e=shelfMove;shelfMove=null;if(!e||!shelf)return;
+ const rect=host.getBoundingClientRect();
+ shelfPointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);shelfRay.setFromCamera(shelfPointer,camera);
+ let on=bookshelf.hit(shelfRay);
+ if(on){const front=visibleHit(shelfRay.intersectObjects([...furniture.map(f=>f.group),...characters.map(c=>c.root)],true));if(front&&front.distance<on.distance)on=null;}
+ shelf.setHover(!!on);bookshelf.highlight(on?.series??null);
+ renderer.domElement.style.cursor=on?.series?'pointer':'';
+}
 renderer.domElement.addEventListener('pointermove',e=>{
+ if(shelf&&e.pointerType==='mouse'&&!drag&&puddingPointer==null){
+  if(e.buttons===0){if(!shelfMove)requestAnimationFrame(hoverShelf);shelfMove=e;}
+  else{shelf.setHover(false);bookshelf.highlight(null);}
+ }
  if(puddingPointer===e.pointerId){aimPointer(e);movePudding(pudding,raycaster.ray);return;}
  if(!drag||e.pointerId!==drag.id)return;
  if(!drag.active&&Math.hypot(e.clientX-down[0],e.clientY-down[1])>6){simulation.beginDrag(drag.c);drag.active=true;}
@@ -96,6 +117,7 @@ const releaseDrag=(e,cancel=false)=>{
  if(renderer.domElement.hasPointerCapture(id))renderer.domElement.releasePointerCapture(id);
  return true;
 };
+renderer.domElement.addEventListener('pointerleave',e=>{if(shelf&&e.pointerType==='mouse'){shelfMove=null;shelf.setHover(false);bookshelf.highlight(null);}});
 renderer.domElement.addEventListener('pointercancel',e=>{releasePuddingPointer(e);releaseDrag(e,true);});
 renderer.domElement.addEventListener('lostpointercapture',e=>{releasePuddingPointer(e);releaseDrag(e,true);});
 renderer.domElement.addEventListener('pointerup',e=>{
@@ -106,6 +128,13 @@ renderer.domElement.addEventListener('pointerup',e=>{
  const hit=visibleHit(raycaster.intersectObjects(furniture.map(f=>f.group),true));
  // 戸棚の扉・通帳が家具より手前で当たったときだけ戸棚を優先する（上の棚のカメラ等はそのまま家具として選べる）。
  const cup=cupboard?.hit(raycaster);
+ // 本だなも同じ：家具や戸棚より手前で当たったときだけ。本なら その本を ひらく。本のない ところなら 本だなを えらぶ（ラベルを出す）。
+ // ほかの場所を タップしたら 本だなを えらぶのを やめる（ラベルを かくす）。
+ const book=shelf&&bookshelf.hit(raycaster);
+ const onShelf=!!book&&(!hit||book.distance<=hit.distance)&&(!cup||book.distance<=cup.distance);
+ if(onShelf&&book.series){shelf.open(book.series).catch(e=>console.warn('[manga]',e));return;}
+ shelf?.setSelected(onShelf);
+ if(onShelf)return;
  if(cup&&(!hit||cup.distance<=hit.distance)){if(cup.kind==='passbook')passbook.open();else cupboard.toggle();return;}
  if(hit)ui.selectFurniture(hit.object.userData.furnitureId);
 });
@@ -123,5 +152,14 @@ function placePassbookEntry(){
  const w=renderer.domElement.clientWidth,h=renderer.domElement.clientHeight;
  entryScreen.x=(entryPoint.x+1)/2*w;entryScreen.y=(1-entryPoint.y)/2*h;passbook.placeEntry(entryScreen);
 }
-const clock=new T.Clock();let uiElapsed=0;renderer.setAnimationLoop(()=>{const dt=Math.min(clock.getDelta(),.05);simulation.update(dt);characters.forEach(c=>animateCharacter(c,simulation.time));animateRoom(furniture,characters,simulation.time);animatePudding(pudding,dt);cupboard?.update(dt);placePassbookEntry();if(xr?.active)xr.update(dt);else controls.update();renderer.render(scene,camera);uiElapsed+=dt;if(uiElapsed>.2){ui.update();uiElapsed=0;}});
-window.__house={scene,camera,controls,renderer,characters,furniture,simulation,cupboard,passbook,get xr(){return xr;}};
+// 本だなの入口ラベル：本の上に重ねる。戸棚の裏側から見ているとき・VR 中・画面の外は出さない。
+const shelfPoint=new T.Vector3(),shelfScreen={x:0,y:0};
+function placeShelfEntry(){
+ if(!shelf)return;
+ if(renderer.xr.isPresenting||camera.position.z<bookshelf.front){shelf.placeEntry(null);return;}
+ shelfPoint.copy(bookshelf.entryAnchor()).project(camera);
+ if(shelfPoint.z>1||Math.abs(shelfPoint.x)>.95||Math.abs(shelfPoint.y)>.95){shelf.placeEntry(null);return;}
+ shelfScreen.x=(shelfPoint.x+1)/2*renderer.domElement.clientWidth;shelfScreen.y=(1-shelfPoint.y)/2*renderer.domElement.clientHeight;shelf.placeEntry(shelfScreen);
+}
+const clock=new T.Clock();let uiElapsed=0;renderer.setAnimationLoop(()=>{const dt=Math.min(clock.getDelta(),.05);simulation.update(dt);characters.forEach(c=>animateCharacter(c,simulation.time));animateRoom(furniture,characters,simulation.time);animatePudding(pudding,dt);cupboard?.update(dt);placePassbookEntry();placeShelfEntry();if(xr?.active)xr.update(dt);else controls.update();renderer.render(scene,camera);uiElapsed+=dt;if(uiElapsed>.2){ui.update();uiElapsed=0;}});
+window.__house={scene,camera,controls,renderer,characters,furniture,simulation,cupboard,passbook,bookshelf,shelf,get xr(){return xr;}};

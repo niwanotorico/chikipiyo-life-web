@@ -100,7 +100,7 @@ function renderCubePanel(sel,today){
  $('[data-c="period"]').textContent=seasonPeriod();
  $('[data-c="pt"]').textContent=c?c.cubePt:0;
  $('[data-c="plays"]').textContent=c?c.playsToday:0;
- $('[data-c="comp"]').textContent=c?c.completion.percent:0;
+ $('[data-c="found"]').textContent=c?c.found:0;
  $('[data-c="coin"]').textContent=!c?'':c.coinToday?'🪙 きょうの コインミッション たっせい！':'🪙 きょう はじめて 10もん クリアすると、コインミッション たっせい';
  $('[data-pix]').innerHTML=pixelChar(sel??'piyokichi');
  $('[data-cube-panel] [data-to-map]').disabled=!sel;

@@ -1,0 +1,33 @@
+/* 本だなの大きなマンガリーダー。画面いっぱいに重ねる。色は本（シリーズ）ごとに --book / --ink / --paper */
+.manga-reader{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:16px;background:#26332ccc;backdrop-filter:blur(6px);--book:#5c9a3c;--ink:#2f4a1f;--paper:#eef6e4}
+.manga-reader[hidden]{display:none}
+.manga-sheet{display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;gap:10px;width:min(760px,100%);height:min(1100px,calc(100dvh - 32px));padding:14px;border-radius:22px;background:var(--paper);box-shadow:0 24px 70px #0005;color:var(--ink)}
+.manga-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.manga-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.manga-books{display:flex;gap:6px;flex-wrap:wrap}
+.manga-books button,.manga-who button,.manga-episodes button,.manga-pager button,.manga-message button{min-height:40px;border:1px solid color-mix(in srgb,var(--ink) 18%,transparent);border-radius:20px;background:#fff;padding:7px 14px;font-size:14px;font-weight:700;color:var(--ink)}
+.manga-books button{display:flex;align-items:center;gap:7px}
+.manga-book-mark{width:12px;height:16px;border-radius:2px 3px 3px 2px;background:var(--book)}
+.manga-books button[aria-selected=true]{background:var(--book);color:#fff;border-color:var(--book)}
+.manga-books button[aria-selected=true] .manga-book-mark{background:#fff}
+.manga-who{display:flex;margin-left:auto;border-radius:20px;background:#fff;border:1px solid color-mix(in srgb,var(--ink) 18%,transparent);overflow:hidden}
+.manga-who button{border:0;border-radius:0;min-width:72px}
+.manga-who button[aria-pressed=true]{background:var(--ink);color:#fff}
+.manga-close{flex:none;width:40px;height:40px;padding:0;border:1px solid color-mix(in srgb,var(--ink) 18%,transparent);border-radius:50%;background:#fff;font-size:22px;line-height:1;color:var(--ink)}
+.manga-episodes{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+.manga-episodes:empty{display:none}
+.manga-episodes button{flex:none;font-weight:600}
+.manga-episodes button[aria-current=true]{background:var(--book);color:#fff;border-color:var(--book)}
+.manga-episodes button:disabled{opacity:.45;cursor:default}
+.manga-stage{position:relative;min-height:0;border-radius:14px;background:#fff;overflow:hidden;touch-action:pinch-zoom}
+.manga-page{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none}
+.manga-stage:not([data-state=ready]):not([data-state=loading]) .manga-page{display:none}
+.manga-stage[data-state=loading] .manga-page{opacity:.25}
+.manga-message{position:absolute;inset:auto 16px 50% 16px;transform:translateY(50%);text-align:center;font-size:15px;line-height:1.8;pointer-events:none}
+.manga-message:empty{display:none}
+.manga-message p{margin:0}
+.manga-message button{pointer-events:auto;margin-top:10px;background:var(--book);color:#fff;border-color:var(--book)}
+.manga-pager{display:flex;justify-content:space-between;gap:10px}
+.manga-pager button{min-width:120px;min-height:46px;font-size:15px}
+.manga-pager button:disabled{opacity:.45;cursor:default}
+@media(max-width:600px){.manga-reader{padding:0}.manga-sheet{border-radius:0;height:100dvh;padding:10px}.manga-who{margin-left:0}.manga-head .manga-close{margin-left:auto}.manga-books button{font-size:13px;padding:6px 10px}}

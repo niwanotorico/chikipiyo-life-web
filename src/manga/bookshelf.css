@@ -1,0 +1,7 @@
+/* 本だなの入口ラベル（本の まうえに重ねる。ふれている あいだだけ出る）。通帳の入口と同じ見た目。おうちの初期表示で読む軽い CSS */
+.bookshelf-entry{position:absolute;left:0;top:0;z-index:3;display:flex;align-items:center;gap:5px;padding:5px 6px 5px 10px;border:1px solid #cfe0bf;border-radius:16px;background:#fbfdf6f2;color:#3f5a35;font-size:11px;font-weight:700;letter-spacing:.04em;white-space:nowrap;box-shadow:0 4px 12px #3a4d4024;margin-top:-10px}
+.bookshelf-entry::after{content:'';position:absolute;left:50%;bottom:-6px;width:10px;height:10px;background:inherit;border-right:1px solid #cfe0bf;border-bottom:1px solid #cfe0bf;transform:translateX(-50%) rotate(45deg)}
+.bookshelf-entry-title{margin-right:2px}
+.bookshelf-entry button{min-height:32px;padding:4px 10px;border:0;border-radius:12px;background:var(--book);color:#fff;font-size:12px;font-weight:800;letter-spacing:.02em;box-shadow:inset 0 -2px 0 #0002}
+.bookshelf-entry button:hover{filter:brightness(1.06)}
+.bookshelf-entry[hidden]{display:none}
