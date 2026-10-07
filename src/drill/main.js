@@ -9,7 +9,7 @@ import {Particles,flyText,shake,replay,centerOf,prefersReducedMotion} from './fx
 import {mountSiteNav} from '../nav/site-nav.js';
 import {CubeStore,localCubeAdapter,memoryCubeAdapter} from './cosmicube-store.js';
 import {createCubeMap,pixelChar,seasonPeriod} from './cosmicube-ui.js';
-import {pickTrack,trackElement} from './bgm-pool.js';
+import {themeTrack,trackElement} from './bgm-pool.js';
 import {isParentMode,parentLabel} from './parent-mode.js';
 import * as festival from './festival.js';
 
@@ -55,6 +55,13 @@ function show(name){
  for(const s of $$('section[data-screen]'))s.hidden=s.dataset.screen!==name;
  document.body.dataset.view=name;
  window.scrollTo(0,0);
+ syncTheme();
+}
+// 🎵 テーマソング（ごほうび）：トップとマップでだけ流す。えらんでいる子が ごほうびを持っているときだけ。ゲーム中は流さない
+function syncTheme(){
+ const v=document.body.dataset.view,sel=store.selected;
+ const track=(v==='home'||v==='map')&&sel?themeTrack(cube.effects(sel)):null;
+ if(track&&!audio.muted)audio.playTheme(trackElement(track));else audio.stopTheme();
 }
 function persist(){saveStore(store,storage);}
 function setHeat(stage){document.body.dataset.heat=String(stage);}
@@ -68,7 +75,7 @@ function renderSound(){
   b.title=audio.muted?'おとを ならす':'おとを けす';
  }
 }
-function toggleSound(){audio.unlock();audio.setMuted(!audio.muted);renderSound();if(!audio.muted)audio.tap();}
+function toggleSound(){audio.unlock();audio.setMuted(!audio.muted);renderSound();syncTheme();if(!audio.muted)audio.tap();}
 
 // ---------- 演出モード（ふつう／おまつり） ----------
 function renderFxMode(){
@@ -149,8 +156,7 @@ function startPlay(){
  $('[data-fever]').hidden=true;
  setHeat(0);
  show('play');
- // 🎵 BGM ごほうび：いつもの曲と BGM プール（bgm-pool.js）からランダム
- audio.startMusic(0,{track:trackElement(pickTrack(effects))});
+ audio.startMusic(0);
  renderQuestion();
 }
 
@@ -482,7 +488,9 @@ function displayPudding(){
 
 // ---------- 入力 ----------
 function bind(){
- for(const r of $$('input[name="player"]'))r.addEventListener('change',()=>{store=selectPlayer(store,r.value);persist();renderHome();audio.unlock();audio.tap();});
+ for(const r of $$('input[name="player"]'))r.addEventListener('change',()=>{store=selectPlayer(store,r.value);persist();renderHome();audio.unlock();audio.tap();syncTheme();});
+ // 音の解禁は ユーザー操作の中だけ。トップでの最初のタップで テーマソングを流しはじめる
+ document.addEventListener('click',()=>{const v=document.body.dataset.view;if(v==='home'||v==='map'){audio.unlock();syncTheme();}},{once:true,capture:true});
  $('[data-start]').addEventListener('click',startPlay);
  for(const b of $$('[data-fxmode]'))b.addEventListener('click',()=>setFxMode(b.dataset.fxmode));
  for(const b of $$('[data-sound]'))b.addEventListener('click',toggleSound);
@@ -519,7 +527,7 @@ function bind(){
  // 拍に合わせてキャラと背景が脈打つ
  audio.onBeat=(delay,barStart)=>{setTimeout(()=>{if(document.body.dataset.view!=='play')return;actor.beat(barStart);replay($('.dq-bg'),'pulse');},delay);};
  // ページを離れたら音を止める
- document.addEventListener('visibilitychange',()=>{if(document.hidden){audio.suspend();document.getAnimations?.().forEach(a=>a.pause());}else if(document.body.dataset.view==='play'){audio.resume();document.getAnimations?.().forEach(a=>{if(a.playState==='paused')a.play();});}});
+ document.addEventListener('visibilitychange',()=>{if(document.hidden){audio.suspend();document.getAnimations?.().forEach(a=>a.pause());}else if(document.body.dataset.view==='play'){audio.resume();document.getAnimations?.().forEach(a=>{if(a.playState==='paused')a.play();});}else if(audio.themeOn)audio.resume();});
  addEventListener('pagehide',()=>{audio.stopMusic();audio.suspend();});
 }
 
@@ -527,6 +535,6 @@ function bind(){
 mountSiteNav($('[data-nav]'),'drill',{position:'afterbegin',variant:'floating'});
 for(const img of $$('[data-art]'))img.src=art[img.dataset.art];
 // 確認用（?debug=1）：残っているタイマー・演出の数を外から確かめる
-if(params.get('debug')==='1')window.__drill={cube:()=>cube.snapshotAll(todayKey()),bgm:()=>({trackOn:!!audio.trackOn,src:audio.trackEl?.src??'',paused:audio.trackEl?.paused??null}),timers:()=>timers.size,actorTimers:()=>actor.timers.size,actorBusy:()=>actor.busy,eggs:()=>document.querySelectorAll('.dq-egg').length,flies:()=>document.querySelectorAll('.dq-fly').length,stageImg:()=>actor.img.getAttribute('src')||'',stageKind:()=>actor.stage.dataset.kind,eggUsed:()=>!!play?.eggUsed};
+if(params.get('debug')==='1')window.__drill={cube:()=>cube.snapshotAll(todayKey()),theme:()=>({on:audio.themeOn,src:audio.themeEl?.src??''}),timers:()=>timers.size,actorTimers:()=>actor.timers.size,actorBusy:()=>actor.busy,eggs:()=>document.querySelectorAll('.dq-egg').length,flies:()=>document.querySelectorAll('.dq-fly').length,stageImg:()=>actor.img.getAttribute('src')||'',stageKind:()=>actor.stage.dataset.kind,eggUsed:()=>!!play?.eggUsed};
 bind();renderSound();renderFxMode();showNotice();renderHome();show('home');setHeat(0);
 if(status==='recovered')persist();

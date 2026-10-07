@@ -1,15 +1,10 @@
-// ピヨドリル：ピヨ探検 🎵 ごほうびの「ランダムBGMプール」。音源ファイルを扱うのはこのファイルだけ。
-// ふだんの曲は audio.js がその場で合成する。ごほうびを開けると、ここの曲が抽選に加わる。
-// 曲を足すときは BGM_TRACKS に1行追加して、web/bgm/ に音源を置くだけ。
-export const BGM_TRACKS=[
- {id:'usako',url:new URL('../../bgm/usako.mp3',import.meta.url).href},
-];
+// ピヨドリル：ピヨ探検 🎵 ごほうびの「テーマソング」。音源ファイルを扱うのはこのファイルだけ。
+// テーマソングは トップ（待機画面）と ピヨ探検マップで流す。ゲーム中は audio.js がその場で合成する いつもの曲だけ。
+export const THEME={id:'usako',url:new URL('../../bgm/usako.mp3',import.meta.url).href};
 
-// effects：cube.effects(player)。'bgm' があれば「合成の曲（null）＋ BGM_TRACKS」から等確率で1つ
-export function pickTrack(effects,rng=Math.random){
- if(!effects?.has?.('bgm'))return null;
- const pool=[null,...BGM_TRACKS];
- return pool[Math.floor(rng()*pool.length)];
+// effects：cube.effects(player)。'bgm'（🎵 テーマソングのごほうび）があれば THEME、なければ null
+export function themeTrack(effects){
+ return effects?.has?.('bgm')?THEME:null;
 }
 
 // 再生用の <audio>（1つを使いまわす。Web Audio へは audio.js がつなぐ）

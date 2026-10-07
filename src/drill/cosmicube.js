@@ -20,7 +20,7 @@ export const UPDATE_FROM='2026-10-07';
 export const REWARDS={
  // うさこ：10月後半に別のごほうびとして追加予定。いまはマップのどこにも置かない（定義だけ残す）
  usako:{icon:'🐰',name:'うさこ',note:'もんだいに うさこが でてくる',effects:['usako']},   // 3DPハウス来訪は GLB ができたら house:true を足す
- bgm:{icon:'🎵',name:'BGM',note:'あたらしい きょく「うさこ」が ランダムで ながれる',effects:['bgm']},
+ bgm:{icon:'🎵',name:'テーマソング',note:'トップで「テーマソング」が ながれる',effects:['bgm']},
  curry:{icon:'🍛',name:'カレー',note:'文章題に カレーが でてくる',effects:['curry']},
  toramana:{icon:'🐯',name:'トラマナちゃん',note:'もんだいに トラマナちゃんが でてくる／カレーが もっと でてくる／3DPハウスに あそびにくる',effects:['toramana','curry'],house:true},
  deep:{icon:'🌫️',name:'さいおくの ❓',note:'なにが あるかは まだ ひみつ。ひらいたら、おうちの人に つたえてね',secret:true},

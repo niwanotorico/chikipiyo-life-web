@@ -39,7 +39,7 @@ export class QuestAudio{
   this.ctx=null;this.stage=0;this.trans=0;this.bpm=tempo(0);this.layers=layersFor(0);
   this.playing=false;this.reach=false;this.step=0;this.nextTime=0;this.timer=0;this.reachStart=0;
   this.onBeat=null;   // (delayMs, isBarStart) => void
-  this.trackOn=false;this.trackEl=null;
+  this.themeEl=null;
  }
  get available(){return !!this.AudioCtx;}
  get stepDur(){return 60/this.bpm/4;}
@@ -181,35 +181,41 @@ export class QuestAudio{
   this.stage=stage;this.layers=layersFor(stage);
   this.bpm=tempo(stage);this.trans=keyShift(stage);
  }
- // track：<audio> 要素（ピヨ探検の BGM ごほうび。bgm-pool.js が用意する）。指定すると合成の曲のかわりにそれを流す。
- // 拍（onBeat）・リーチでこもる・まちがいでしずむ・ミュートは、合成の曲と同じように効く
- startMusic(stage=0,{track=null}={}){
+ startMusic(stage=0){
   this.unlock();this.setStage(stage);
   if(!this.ctx||this.playing)return;
   this.playing=true;this.step=0;this.nextTime=this.now()+.08;
   if(this.music){const g=this.music.gain,t=this.now();g.cancelScheduledValues(t);g.setValueAtTime(.5,t);}
-  this.trackOn=!!track&&this.playTrack(track);
   this.timer=setInterval(()=>this.tick(),25);this.tick();
- }
- playTrack(el){
-  try{
-   if(this.trackEl!==el){
-    // 1つの要素につなげるのは1回だけ（createMediaElementSource の制約）
-    this.trackEl=el;
-    this.trackSrc=this.ctx.createMediaElementSource(el);
-    if(!this.trackGain){this.trackGain=this.ctx.createGain();this.trackGain.gain.value=1.3;this.trackGain.connect(this.music);}
-    this.trackSrc.connect(this.trackGain);
-   }
-   this.trackEl.currentTime=0;
-   this.trackEl.play()?.catch?.(()=>{});
-   return true;
-  }catch{return false;}
  }
  stopMusic(fade=0){
   this.playing=false;clearInterval(this.timer);this.timer=0;this.setReach(false,{silent:true});
   if(this.ctx&&fade){const g=this.music.gain,t=this.now();g.cancelScheduledValues(t);g.setValueAtTime(g.value,t);g.linearRampToValueAtTime(.0001,t+fade);}
-  if(this.trackEl){const el=this.trackEl;clearTimeout(this.trackStop);this.trackStop=setTimeout(()=>{if(!this.trackOn)el.pause();},fade*1000+50);}
-  this.trackOn=false;
+ }
+
+ // ---------- テーマソング（トップ・マップで流す <audio>。bgm-pool.js が用意する） ----------
+ // AudioContext は作らない（unlock はユーザー操作の中で main.js が呼ぶ）。ミュート中は流さない
+ get themeOn(){return !!this.themeEl&&!this.themeEl.paused;}
+ playTheme(el){
+  if(!this.ctx||!el||this.muted)return false;
+  try{
+   if(this.themeEl!==el){
+    // 1つの要素につなげるのは1回だけ（createMediaElementSource の制約）
+    this.themeEl=el;
+    const src=this.ctx.createMediaElementSource(el);
+    this.themeGain=this.ctx.createGain();src.connect(this.themeGain);this.themeGain.connect(this.master);
+   }
+   clearTimeout(this.themeStop);
+   const g=this.themeGain.gain,t=this.now();g.cancelScheduledValues(t);g.setValueAtTime(.65,t);
+   if(el.paused)el.play()?.catch?.(()=>{});
+   return true;
+  }catch{return false;}
+ }
+ stopTheme(fade=.4){
+  const el=this.themeEl;
+  if(!el||el.paused)return;
+  const g=this.themeGain.gain,t=this.now();g.cancelScheduledValues(t);g.setValueAtTime(g.value,t);g.linearRampToValueAtTime(.0001,t+fade);
+  clearTimeout(this.themeStop);this.themeStop=setTimeout(()=>{el.pause();el.currentTime=0;},fade*1000+50);
  }
  tick(){
   if(!this.playing||!this.ctx)return;
@@ -231,7 +237,6 @@ export class QuestAudio{
    if(s===0&&bar%2===0)this.pad(t,[ch.bass+k,ch.bass+7+k],sd*32,.03,420);  // 低いうなり
    return;
   }
-  if(this.trackOn)return;   // 音源ファイルを流している間は、合成の楽器は鳴らさない（拍だけ数える）
   if(L.has('toy')&&s%2===0){const i=TOY[(s/2)%8];this.toy(t,ch.tones[i]+12+k,.075,i===1?.3:-.3);}
   if(L.has('arp')){const i=ARP[s%8],m=i===3?ch.tones[0]+12:ch.tones[i];this.pluck(t,m+12+k+(this.stage>=4&&s>=8?12:0),.04,s%2?.3:-.3);}
   if(L.has('shaker'))this.shaker(t,s%2?.045:.025);

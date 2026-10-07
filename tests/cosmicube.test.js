@@ -202,13 +202,11 @@ test('マップ定義：ノードIDは重複なし・requires は存在するノ
  for(const n of openableNodes())assert.ok(REWARDS[n.reward]);
 });
 
-test('BGM プール：ごほうびがなければ いつもの曲だけ。あれば usako.mp3 も抽選に入る', async ()=>{
- const {pickTrack,BGM_TRACKS}=await import('../src/drill/bgm-pool.js');
- assert.equal(pickTrack(new Set()),null);
- assert.ok(BGM_TRACKS.some(t=>t.url.endsWith('/bgm/usako.mp3')));
- const rng=seededRandom(3),got=new Set();
- for(let i=0;i<50;i++)got.add(pickTrack(new Set(['bgm']),rng)?.id??'synth');
- assert.deepEqual([...got].sort(),['synth','usako']);
+test('テーマソング：ごほうびがなければ なし。あれば usako.mp3', async ()=>{
+ const {themeTrack,THEME}=await import('../src/drill/bgm-pool.js');
+ assert.equal(themeTrack(new Set()),null);
+ assert.equal(themeTrack(new Set(['bgm'])),THEME);
+ assert.ok(THEME.url.endsWith('/bgm/usako.mp3'));
  const {existsSync}=await import('node:fs');
  assert.ok(existsSync(new URL('../bgm/usako.mp3',import.meta.url)));
 });
