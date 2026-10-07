@@ -554,3 +554,30 @@ body[data-view="map"] .dq-top{display:none}
 .dq-cube-reveal-note{position:relative;margin:0;max-width:30em;padding:6px 14px;border-radius:14px;background:#ffffffd9;color:var(--cube-ink);font-size:14px;font-weight:700;line-height:1.6}
 .dq-cube-reveal .dq-fever-skip{color:#fff}
 @media(prefers-reduced-motion:reduce){.dq-map-stars,.dq-node.is-ready,.dq-pix.hop{animation:none}}
+
+/* ---------- 演出モード「おまつり」（演出だけの切り替え。ふつうの見た目は変えない。festival.js） ---------- */
+.dq-fxmode{display:flex;align-items:center;justify-content:center;gap:8px;margin:14px 0 0}
+.dq-fxmode-lbl{font-size:13px;font-weight:700;color:var(--ink-soft)}
+.dq-fxmode button{min-height:44px;padding:0 18px;border:2.5px solid var(--line);border-radius:999px;background:var(--paper);color:var(--ink);font:inherit;font-size:15px;font-weight:800;cursor:pointer;touch-action:manipulation}
+.dq-fxmode button[aria-pressed="true"]{background:var(--green);border-color:var(--green);color:#fff}
+.dq-fxmode button[data-fxmode="festival"][aria-pressed="true"]{background:#ee7462;border-color:#ee7462}
+.dq-fxmode button:focus-visible{outline:3px solid #95cf8c;outline-offset:2px}
+
+/* 飛び上がるキャラの層：ふだんは問題・ボタンの後ろ（.dq-main の下）、フィーバー中だけ手前。タッチは通す */
+.dq-fest-layer{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.dq-fest-layer.is-front{z-index:26}
+.dq-fest-dancer{position:absolute;left:0;top:0;height:auto;pointer-events:none;will-change:transform}
+/* 正解の波紋：細い線だけ */
+.dq-fest-wave{position:fixed;z-index:27;border-radius:50%;border:6px solid #ffc94d;outline:5px dotted #ee7462;outline-offset:6px;pointer-events:none;box-sizing:border-box}
+/* 段階アップの大きな文字（上のほう。問題・答え・ボタンの上には出さない） */
+.dq-fest-stage{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 11vh);z-index:28;max-width:94vw;white-space:nowrap;pointer-events:none;
+ font-family:var(--pop,'Mochiy Pop One','Zen Maru Gothic',sans-serif);font-size:clamp(30px,10vw,46px);color:#fffefa;
+ -webkit-text-stroke:.14em #ee7462;paint-order:stroke fill;
+ filter:drop-shadow(2px 0 0 #fffefa) drop-shadow(-2px 0 0 #fffefa) drop-shadow(0 2px 0 #fffefa) drop-shadow(0 4px 0 #e6c3a2)}
+/* +pt をラボ風に派手に（数字は実際のpt。見た目だけ） */
+.dq-fly.is-fest{padding:5px 16px;font-size:20px;font-family:var(--pop,'Mochiy Pop One','Zen Maru Gothic',sans-serif);font-weight:400;background:#ffc94d;border-color:#ee7462;color:#fffefa;-webkit-text-stroke:.1em #ee7462;paint-order:stroke fill;box-shadow:0 4px 0 #e6c3a2,0 0 0 4px #fffefa}
+/* さいごの1もん（おまつり）：まわりをもうすこし暗く、カードの光を強く。問題・ボタンは暗くしない */
+body[data-fx="festival"].is-reach .dq-bg::after{background:radial-gradient(ellipse 58% 42% at 50% 38%,transparent 26%,#7a5238a6 100%)}
+body[data-fx="festival"].is-reach .dq-card:not(.is-ok):not(.is-miss){box-shadow:0 0 0 6px #ffd3c8,0 0 50px 10px #ffe6a3e6;animation:dq-fest-tremble 2.4s ease-in-out infinite}
+@keyframes dq-fest-tremble{0%,100%{transform:scale(1.02)}50%{transform:scale(1.035)}}
+@media (prefers-reduced-motion:reduce){.dq-fest-layer{display:none}body[data-fx="festival"].is-reach .dq-card:not(.is-ok):not(.is-miss){animation:none}}

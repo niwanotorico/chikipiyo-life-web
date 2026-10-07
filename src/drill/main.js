@@ -11,6 +11,7 @@ import {CubeStore,localCubeAdapter,memoryCubeAdapter} from './cosmicube-store.js
 import {createCubeMap,pixelChar,seasonPeriod} from './cosmicube-ui.js';
 import {pickTrack,trackElement} from './bgm-pool.js';
 import {isParentMode,parentLabel} from './parent-mode.js';
+import * as festival from './festival.js';
 
 const art={
  piyokichi:new URL('../../assets/points/piyokichi.png',import.meta.url).href,
@@ -28,6 +29,9 @@ try{matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',e=>
 const params=new URLSearchParams(location.search);
 const FORCE_EGG=params.get('egg')==='1';   // 確認用：?egg=1 で次の正解に目玉焼き（1プレイ1回）
 const NO_EGG=params.get('egg')==='0';      // 録画用：?egg=0 で目玉焼きを出さない
+// 演出モード（ふつう／おまつり）。演出だけを切り替える。初回は「ふつう」、あとは最後に選んだほうを覚える（festival.js の専用キー）。
+// ?fx=normal|festival は確認用（保存はしない。ホームで押したときだけ保存）
+let fxMode=['normal','festival'].includes(params.get('fx'))?params.get('fx'):festival.loadFxMode(storage);
 const actor=new Actor($('[data-stage]'),{reduced:()=>reduced});
 // ピヨ探検（10月の報酬マップ）。保存は cosmicube-store.js だけが行う。親モード（仮）の判定は parent-mode.js
 const cube=new CubeStore({adapter:storage?localCubeAdapter(storage):memoryCubeAdapter()});
@@ -65,6 +69,17 @@ function renderSound(){
  }
 }
 function toggleSound(){audio.unlock();audio.setMuted(!audio.muted);renderSound();if(!audio.muted)audio.tap();}
+
+// ---------- 演出モード（ふつう／おまつり） ----------
+function renderFxMode(){
+ document.body.dataset.fx=fxMode;
+ for(const b of $$('[data-fxmode]'))b.setAttribute('aria-pressed',String(b.dataset.fxmode===fxMode));
+}
+function setFxMode(mode){
+ if(mode===fxMode)return;
+ fxMode=mode;festival.saveFxMode(storage,mode);renderFxMode();
+ audio.unlock();audio.tap();
+}
 
 // ---------- ホーム ----------
 function renderHome(){
@@ -128,7 +143,7 @@ function startPlay(){
  play={player,dayKey,sessionId:newSessionId(player),practice:sessionsLeft(store,player,dayKey)===0,run:createRun(makeQuestionSet(player,Math.random,undefined,{dayKey,round:dayInfo(store,player,dayKey).sessions,motifs:effects})),input:'',feedback:null,committed:false,award:null,stage:0,token:Symbol('play')};
  $('[data-fever-img]').src=POSE_URLS[DUO.high];
  actor.preload();actor.setIdle(art[player]);
- play.eggUsed=false;
+ play.eggUsed=false;play.fx=fxMode;festival.clear();   // その回の演出モードは、はじめた時点のもので固定
  react(play.practice?'きょうは れんしゅう。ポイントは なしだよ':lines.start[player],'');
  const q=$('[data-quit]');q.textContent='やめる';delete q.dataset.confirm;
  $('[data-fever]').hidden=true;
@@ -263,7 +278,9 @@ function judge(){
 function celebrate(fb,index,done){
  const last=done;
  const stage=last?FEVER:stageFor({combo:fb.combo,index:index+1});
- const v=visuals(last?4:stage,{reduced});   // 最後の正解はフィーバーの前ぶれ（大爆発はフィーバー側で）
+ const fest=play.fx==='festival';
+ let v=visuals(last?4:stage,{reduced});   // 最後の正解はフィーバーの前ぶれ（大爆発はフィーバー側で）
+ if(fest)v=festival.festivalVisuals(v,{q:index+1,combo:fb.combo,reduced});   // おまつり：ラボ100%の量を上乗せ（ふつうの値は変えない）
  play.stage=stage;
  const card=$('[data-card]'),readout=$('[data-readout]');
  card.classList.add('is-ok');replay(card,'pop');
@@ -281,6 +298,10 @@ function celebrate(fb,index,done){
  const cr=card.getBoundingClientRect(),er=Math.min(32,cr.width*.09)*(1+Math.min(4,stage)*.06);
  particles.bigEgg(cr.left+er*.95,cr.top+er*.15,er);
  if(v.bigEggs>1)particles.bigEgg(cr.right-er*.95,cr.top+er*.15,er);
+ if(fest){   // おまつり：波紋・飛び上がるキャラ（問題・答え・ボタンは隠さない）
+  festival.wave(c.x,c.y,Math.min(cr.width,cr.height)*.55,{reduced});
+  if(!last)for(let i=0;i<festival.festivalDancerCount(index+1);i++)later(i*110,()=>festival.dancers(1,{reduced}));
+ }
  if(v.hopEggs)later(90,()=>particles.hopEggs(v.hopEggs));
  if(v.rain)later(150,()=>particles.rain({count:v.rain,kinds:['fried','omu','heart'],life:1.6}));
  shake([card,$('.dq-bar')],v.shake);
@@ -288,13 +309,14 @@ function celebrate(fb,index,done){
  // +pt がポイント表示へ飛ぶ → 届いたら音とポップ
  if(fb.gained>0&&!play.practice){
   const text=fb.comboBonus?`+${fb.gained} pt ボーナス！`:`+${fb.gained} pt`;
-  flyText(text,readout,$('.dq-chip.is-pts'),{duration:reduced?300:540,onArrive:()=>{audio.point();replay($('.dq-chip.is-pts'),'bump');}});
+  flyText(text,readout,$('.dq-chip.is-pts'),{duration:reduced?300:540,className:fest?'dq-fly is-fest':'dq-fly',onArrive:()=>{audio.point();replay($('.dq-chip.is-pts'),'bump');}});
  }
- const ms=comboMilestone(fb.combo);
+ const ms=fest?festival.festivalCombo(fb.combo):comboMilestone(fb.combo);   // おまつりは2コンボ以上 毎回
  if(ms&&!last){cutin(ms.text,ms.size);audio.comboUp(ms.size);replay($('[data-combo-chip]'),'burst');}
  react(egg?'わっ、目玉焼き！？':last?'やったー！！':fb.comboBonus?`${fb.combo}れんぞく！ ボーナス +1`:stage>=3?pickLine(lines.hot):pickLine(lines.ok),'ok');
  if(last){later(300,fever);return;}   // 最後の正解を見せてから、フィーバーへ
  setHeat(stage);audio.setStage(stage);
+ if(fest){const t=festival.festivalStageText(index+2);if(t)later(350,()=>festival.stageText(t,{reduced}));}
  later(egg?EGG_NEXT_DELAY:nextDelay(stage),next);
 }
 
@@ -366,6 +388,7 @@ function finish(){
 // 順番：最後の正解 →（0.3秒）2人が飛び込む → BGM 解放 → 粒子とフラッシュ → プリン登場 → 「プリン ゲット！」→ 結果
 function fever(){
  play.inFever=true;play.feverAt=performance.now();
+ const fest=play.fx==='festival';
  document.body.classList.remove('is-reach');
  const perfect=play.award?.perfect,isNew=play.award?.puddingNew;
  const ov=$('[data-fever]');
@@ -386,7 +409,8 @@ function fever(){
  later(1200,()=>audio.fanfare());                                                // プリン登場（CSS：1.15秒から落ちてくる）
  later(1700,()=>{audio.jiggle();replay($('[data-fever-pudding]'),'jiggle');});   // 着地して ぷるん
  later(FEVER_SKIP_AFTER,()=>{$('[data-fever-skip]').hidden=false;});
- later(FEVER_MS,endFever);
+ if(fest)festival.feverShow({later,particles,reduced});   // おまつり：拍ごとの卵跳ね・飛び回るキャラ
+ later(fest?festival.FEST_FEVER_MS:FEVER_MS,endFever);
 }
 function skipFever(){if(play?.inFever&&performance.now()-play.feverAt>=FEVER_SKIP_AFTER)endFever();}
 function endFever(){
@@ -401,7 +425,7 @@ function quit(){
  if(!b.dataset.confirm){b.dataset.confirm='1';b.textContent='ほんとに やめる？';setTimeout(()=>{if(b.dataset.confirm){delete b.dataset.confirm;b.textContent='やめる';}},3000);return;}
  leavePlay();renderHome();show('home');
 }
-function leavePlay(){clearTimers();actor.reset();for(const el of $$('.dq-hero-ans'))el.remove();audio.stopMusic(.3);particles.clear();play=null;setHeat(0);document.body.classList.remove('is-reach');$('[data-fever]').hidden=true;}
+function leavePlay(){clearTimers();actor.reset();for(const el of $$('.dq-hero-ans'))el.remove();audio.stopMusic(.3);particles.clear();festival.clear();play=null;setHeat(0);document.body.classList.remove('is-reach');$('[data-fever]').hidden=true;}
 
 // ---------- けっか ----------
 function showResult(){
@@ -460,6 +484,7 @@ function displayPudding(){
 function bind(){
  for(const r of $$('input[name="player"]'))r.addEventListener('change',()=>{store=selectPlayer(store,r.value);persist();renderHome();audio.unlock();audio.tap();});
  $('[data-start]').addEventListener('click',startPlay);
+ for(const b of $$('[data-fxmode]'))b.addEventListener('click',()=>setFxMode(b.dataset.fxmode));
  for(const b of $$('[data-sound]'))b.addEventListener('click',toggleSound);
  // pointerdown で鳴らすと指を置いた瞬間に音が出る（click は離したとき）。二重にならないよう click 側は判定だけ
  const pad=$('[data-pad]');
@@ -503,5 +528,5 @@ mountSiteNav($('[data-nav]'),'drill',{position:'afterbegin',variant:'floating'})
 for(const img of $$('[data-art]'))img.src=art[img.dataset.art];
 // 確認用（?debug=1）：残っているタイマー・演出の数を外から確かめる
 if(params.get('debug')==='1')window.__drill={cube:()=>cube.snapshotAll(todayKey()),bgm:()=>({trackOn:!!audio.trackOn,src:audio.trackEl?.src??'',paused:audio.trackEl?.paused??null}),timers:()=>timers.size,actorTimers:()=>actor.timers.size,actorBusy:()=>actor.busy,eggs:()=>document.querySelectorAll('.dq-egg').length,flies:()=>document.querySelectorAll('.dq-fly').length,stageImg:()=>actor.img.getAttribute('src')||'',stageKind:()=>actor.stage.dataset.kind,eggUsed:()=>!!play?.eggUsed};
-bind();renderSound();showNotice();renderHome();show('home');setHeat(0);
+bind();renderSound();renderFxMode();showNotice();renderHome();show('home');setHeat(0);
 if(status==='recovered')persist();
