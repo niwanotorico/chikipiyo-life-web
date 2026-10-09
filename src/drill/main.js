@@ -23,7 +23,7 @@ const $$=(sel,root=document)=>[...root.querySelectorAll(sel)];
 const storage=safeStorage();
 let {store,status}=loadStore(storage);
 let play=null;   // {player, dayKey, sessionId, practice, run, input, feedback, committed, award, stage, token}
-const audio=new QuestAudio({storage});
+const audio=new QuestAudio({storage,lite:new URLSearchParams(location.search).get('lite')==='1'});   // ?lite=1：古い端末むけの軽い音（audio.js）
 const particles=new Particles($('[data-fx]'));
 let reduced=prefersReducedMotion();
 try{matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',e=>{reduced=e.matches;});}catch{}

@@ -33,8 +33,10 @@ function readMuted(storage){try{return storage?.getItem(SOUND_KEY)==='off';}catc
 function safeStorage(){try{return typeof localStorage!=='undefined'?localStorage:null;}catch{return null;}}
 
 export class QuestAudio{
- constructor({storage=safeStorage(),AudioCtx=globalThis.AudioContext||globalThis.webkitAudioContext}={}){
+ // lite：古い端末むけの軽い設定（先読みを長く・音の作り置きを大きく・残響を短く）。効果音がわずかに遅れることがある
+ constructor({storage=safeStorage(),AudioCtx=globalThis.AudioContext||globalThis.webkitAudioContext,lite=false}={}){
   this.storage=storage;this.AudioCtx=AudioCtx;
+  this.lite=lite;this.ahead=lite?.3:.12;
   this.muted=readMuted(storage);
   this.ctx=null;this.stage=0;this.trans=0;this.bpm=tempo(0);this.layers=layersFor(0);
   this.playing=false;this.reach=false;this.step=0;this.nextTime=0;this.timer=0;this.reachStart=0;
@@ -49,7 +51,7 @@ export class QuestAudio{
  unlock(){
   if(!this.AudioCtx)return null;
   if(!this.ctx){
-   try{this.ctx=new this.AudioCtx({latencyHint:'interactive'});}catch{this.AudioCtx=null;return null;}
+   try{this.ctx=new this.AudioCtx({latencyHint:this.lite?'playback':'interactive'});}catch{this.AudioCtx=null;return null;}
    this.build();
   }
   if(this.ctx.state==='suspended')this.ctx.resume().catch(()=>{});
@@ -62,7 +64,7 @@ export class QuestAudio{
   this.master.connect(comp);comp.connect(c.destination);
   this.output=comp; // 録画用に外から拾えるように
   // 残響（自作のノイズ減衰インパルス）
-  const len=Math.floor(c.sampleRate*1.3),ir=c.createBuffer(2,len,c.sampleRate);
+  const len=Math.floor(c.sampleRate*(this.lite?.6:1.3)),ir=c.createBuffer(2,len,c.sampleRate);
   for(let ch=0;ch<2;ch++){const d=ir.getChannelData(ch);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*(1-i/len)**3.2;}
   this.reverb=c.createConvolver();this.reverb.buffer=ir;
   const wet=c.createGain();wet.gain.value=.22;this.reverb.connect(wet);wet.connect(this.master);
@@ -221,7 +223,7 @@ export class QuestAudio{
   if(!this.playing||!this.ctx)return;
   const now=this.now();
   if(this.nextTime<now-.2)this.nextTime=now+.02; // タブ復帰などで遅れたら追いつかせずに今から
-  while(this.nextTime<now+.12){this.scheduleStep(this.step,this.nextTime);this.nextTime+=this.stepDur;this.step++;}
+  while(this.nextTime<now+this.ahead){this.scheduleStep(this.step,this.nextTime);this.nextTime+=this.stepDur;this.step++;}
  }
  // 次の小節の頭へ跳ぶ（リーチ解放・フィーバー突入の「ドン」）
  downbeat(){this.step=Math.ceil(this.step/16)*16;this.nextTime=this.now()+.005;}
