@@ -37,31 +37,44 @@ export const REWARDS={
  'manga-8':{icon:'📚',name:'マンガ「かぜのかくれんぼ」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-08'],effects:[]},
  'manga-9':{icon:'📚',name:'マンガ「ねこの指定席」',note:'3DPハウスの 本だなで よめるよ',manga:['mc-08'],effects:[]},
  'manga-10':{icon:'📚',name:'マンガ「くものいす」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-09'],effects:[]},
+ // もと「まいにちの みち」で とどける予定だった マンガ（10/10 から マップへ）
+ 'manga-11':{icon:'📚',name:'マンガ「近道」',note:'3DPハウスの 本だなで よめるよ',manga:['mc-05'],effects:[]},
+ 'manga-12':{icon:'📚',name:'マンガ「かたつむりのかさ」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-05'],effects:[]},
+ 'manga-13':{icon:'📚',name:'マンガ「みずたまりのそら」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-06'],effects:[]},
+ // シール（ドット絵。シールちょうに はる）。仮の マスの 中身
+ 'st-dj':{icon:'🏷️',name:'シール「DJ」',label:'DJ',note:'シールちょうに はったよ',sticker:'dj',effects:[]},
+ 'st-headphones':{icon:'🏷️',name:'シール「ヘッドホン」',label:'ヘッドホン',note:'シールちょうに はったよ',sticker:'headphones',effects:[]},
 };
 
 // マップ。x,y はマップ上の位置（%）。requires は「ぜんぶ開いていれば挑戦できる」ゲート。
-// small：大きいゲートの手前の 小さいマス（10/9〜。マンガ1話ずつ）。大きいゲートの pt を そのぶん下げたので、道の合計 pt は もとのまま（中身のあるゲート 合計390pt）。
+// 1マス 20pt（カレーだけ 50pt）。1日1〜2回 あそべば、だいたい 毎日 なにかが ひらく（10/10〜）。
+// small：大きいゲートの手前の 小さいマス。大きいゲートの pt を そのぶん下げたので、道の合計 pt は もとのまま（中身のあるゲート 合計390pt ＋ 仮の slot-d 20pt）。
+// 中身が まだ きまっていない マスは「仮」で シールを入れてある（あとで かえられる）。
 // before：その先の 大きいゲート。もう ひらいている子は、手前の 小さいマスを pt なしで ひらける（もう とおった道。costOf）
 // reward:null は小ネタ用の空きスロット（中身を REWARDS に足して reward を書けば、そのまま開けられるようになる）
 export const MAP={
  start:'start',
  nodes:[
   {id:'start',x:50,y:93,cost:0,reward:null,requires:[],label:'スタート'},
-  {id:'slot-left',x:22,y:75,cost:20,reward:'manga-1',requires:['start'],from:UPDATE_FROM},   // もと空きスロット（左40pt）→ マンガ 20pt（マンガ4つで80pt。マンガ込み合計390pt、うさこ40ptを足して430pt）
-  {id:'curry',x:78,y:75,cost:50,reward:'curry',requires:['start']},
-  {id:'slot-a',x:10,y:57,cost:20,reward:'manga-2',requires:['slot-left'],from:UPDATE_FROM},
-  {id:'step-bgm-1',x:41,y:79,cost:20,reward:'manga-5',requires:['start'],small:true,before:'bgm'},
-  {id:'step-bgm-2',x:37,y:63,cost:20,reward:'manga-6',requires:['step-bgm-1'],small:true,before:'bgm'},
-  {id:'bgm',x:30,y:47,cost:20,reward:'bgm',requires:['step-bgm-2']},       // もと 60pt（スタートから）→ マンガの小さいマス 20pt×2 ＋ 20pt
-  {id:'step-tora-1',x:62,y:62,cost:20,reward:'manga-7',requires:['curry'],small:true,before:'toramana'},
-  {id:'step-tora-2',x:66,y:52,cost:20,reward:'manga-8',requires:['step-tora-1'],small:true,before:'toramana'},
-  {id:'toramana',x:70,y:40,cost:40,reward:'toramana',requires:['step-tora-2']},   // もと 80pt（カレーから）→ 20pt×2 ＋ 40pt
-  {id:'slot-b',x:90,y:57,cost:20,reward:'manga-3',requires:['curry'],from:UPDATE_FROM},
-  {id:'slot-c',x:12,y:28,cost:20,reward:'manga-4',requires:['bgm'],from:UPDATE_FROM},   // もと40pt → マンガ 20pt
-  {id:'slot-d',x:88,y:24,cost:40,reward:null,requires:['toramana']},   // 空きスロット。うさこ（10月後半）用に残す
-  {id:'step-deep-1',x:50,y:35,cost:20,reward:'manga-9',requires:['bgm','toramana'],small:true,before:'deep'},
-  {id:'step-deep-2',x:50,y:24,cost:20,reward:'manga-10',requires:['step-deep-1'],small:true,before:'deep'},
-  {id:'deep',x:50,y:12,cost:80,reward:'deep',requires:['step-deep-2']},   // もと 120pt → 20pt×2 ＋ 80pt
+  {id:'slot-left',x:22,y:76,cost:20,reward:'manga-1',requires:['start'],from:UPDATE_FROM},
+  {id:'curry',x:78,y:76,cost:50,reward:'curry',requires:['start']},   // カレーは 50pt のまま（もう ひらいた子が おおいので）
+  {id:'slot-a',x:9,y:60,cost:20,reward:'manga-2',requires:['slot-left'],from:UPDATE_FROM},
+  {id:'step-bgm-1',x:42,y:81,cost:20,reward:'manga-5',requires:['start'],small:true,before:'bgm'},
+  {id:'step-bgm-2',x:38,y:66,cost:20,reward:'manga-6',requires:['step-bgm-1'],small:true,before:'bgm'},
+  {id:'bgm',x:28,y:52,cost:20,reward:'bgm',requires:['step-bgm-2']},
+  {id:'step-tora-1',x:66,y:64,cost:20,reward:'manga-7',requires:['curry'],small:true,before:'toramana'},
+  {id:'step-tora-2',x:54,y:55,cost:20,reward:'manga-8',requires:['step-tora-1'],small:true,before:'toramana'},
+  {id:'step-tora-3',x:62,y:45,cost:20,reward:'manga-11',requires:['step-tora-2'],small:true,before:'toramana'},
+  {id:'toramana',x:78,y:35,cost:20,reward:'toramana',requires:['step-tora-3']},
+  {id:'slot-b',x:91,y:60,cost:20,reward:'manga-3',requires:['curry'],from:UPDATE_FROM},
+  {id:'slot-c',x:12,y:36,cost:20,reward:'manga-4',requires:['bgm'],from:UPDATE_FROM},
+  {id:'slot-d',x:90,y:22,cost:20,reward:'st-headphones',requires:['toramana']},   // 仮：シール。うさこ（10月後半）が きまったら 中身を かえる
+  {id:'step-deep-1',x:48,y:42,cost:20,reward:'manga-9',requires:['bgm','toramana'],small:true,before:'deep'},
+  {id:'step-deep-2',x:36,y:33,cost:20,reward:'manga-10',requires:['step-deep-1'],small:true,before:'deep'},
+  {id:'step-deep-3',x:24,y:24,cost:20,reward:'manga-12',requires:['step-deep-2'],small:true,before:'deep'},
+  {id:'step-deep-4',x:30,y:12,cost:20,reward:'manga-13',requires:['step-deep-3'],small:true,before:'deep'},
+  {id:'step-deep-5',x:44,y:20,cost:20,reward:'st-dj',requires:['step-deep-4'],small:true,before:'deep'},   // 仮：シール
+  {id:'deep',x:62,y:12,cost:20,reward:'deep',requires:['step-deep-5']},
  ],
 };
 const NODE=Object.fromEntries(MAP.nodes.map(n=>[n.id,n]));
@@ -149,17 +162,17 @@ export function effectsOf(player){
 // おとどけリストの つぎの 1こが とどく。点数には 関係なし。ピヨ探検pt・ゲートとは べつ。
 // 新しい保存データは 足さない：10/9 からの coin の日を じゅんばんに数えて、n日目に リストの n こ目、と毎回きめる
 // （古いページが保存しても coin は のこるので、ごほうびも 消えない）。リストの最後まで とどいたら、それ以上は なし（あとから 足せる）
-export const GIFT_FROM='2026-10-09';
+// 10/9 の 1日だけで おわり（10/10 からは マップの マスが こまかくなったので、まいにちの みちは やめた）。
+// 10/9 に とどいた シール（おんぷダンス）は そのまま のこす。のこりの マンガ3話は マップへ。シールは マップの 仮の マスへ
+export const GIFT_FROM='2026-10-09',GIFT_TO='2026-10-09';
 export const DAILY_GIFTS=[
  {id:'st-onpu',sticker:'onpu',name:'おんぷダンス'},
- {id:'st-dj',sticker:'dj',name:'DJ'},
- {id:'mg-mc-05',manga:['mc-05'],name:'マンガ「近道」'},
- {id:'st-headphones',sticker:'headphones',name:'ヘッドホン'},
+];
+// まだ どこにも つかっていない シール（あとで マップの 仮の マスなどに つかえる）
+export const SPARE_STICKERS=[
  {id:'st-banzai',sticker:'banzai',name:'バンザイ'},
- {id:'mg-daily-05',manga:['daily-05'],name:'マンガ「かたつむりのかさ」'},
  {id:'st-duo',sticker:'duo',name:'ふたりでダンス'},
  {id:'st-radio',sticker:'radio',name:'ラジカセ'},
- {id:'mg-daily-06',manga:['daily-06'],name:'マンガ「みずたまりのそら」'},
  {id:'st-wink',sticker:'wink',name:'ウインクダンス'},
  {id:'st-kurutto',sticker:'kurutto',name:'くるっと'},
  {id:'st-batsu1',sticker:'batsu1',name:'×その1'},
@@ -170,12 +183,18 @@ export const DAILY_GIFTS=[
 ];
 // とどいた ごほうび [{day, ...ごほうび}]（とどいた じゅん）
 export function giftsOf(player){
- const days=Object.keys(player.coin??{}).filter(d=>d>=GIFT_FROM&&d<=SEASON.end).sort();
+ const days=Object.keys(player.coin??{}).filter(d=>d>=GIFT_FROM&&d<=GIFT_TO).sort();
  return days.slice(0,DAILY_GIFTS.length).map((day,i)=>({day,...DAILY_GIFTS[i]}));
+}
+// シールちょうに はる シール [{id, sticker, name}]：10/9 の 毎日の ごほうび ＋ マップで ひらいた シールの マス
+export function stickersOf(player){
+ const list=giftsOf(player).filter(g=>g.sticker).map(g=>({id:g.id,sticker:g.sticker,name:g.name}));
+ for(const s of Object.values(player.seasons))for(const id of Object.keys(s.gates)){const r=REWARDS[NODE[id]?.reward];if(r?.sticker)list.push({id:NODE[id].reward,sticker:r.sticker,name:r.label});}
+ return list;
 }
 export const giftOn=(player,dayKey)=>giftsOf(player).find(g=>g.day===dayKey)??null;
 // きょう まだ もらっていなくて、クリアすれば もらえるか
-export const giftAvailable=(player,dayKey)=>typeof dayKey==='string'&&dayKey>=GIFT_FROM&&dayKey<=SEASON.end&&!player.coin?.[dayKey]&&giftsOf(player).length<DAILY_GIFTS.length;
+export const giftAvailable=(player,dayKey)=>typeof dayKey==='string'&&dayKey>=GIFT_FROM&&dayKey<=GIFT_TO&&!player.coin?.[dayKey]&&giftsOf(player).length<DAILY_GIFTS.length;
 
 // 自動でふえるマンガ：requires の ごほうびを ぜんぶ持っていれば、pt なし・ゲートなしで よめる。
 // 保存はしない（毎回 持っている ごほうびから決める）ので、条件を先に満たしていた子にも そのまま効く。最奥など ほかの ごほうびは変えない

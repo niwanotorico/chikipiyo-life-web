@@ -5,7 +5,7 @@ import {SERIES,allEpisodes,episodeById,episodePages,readableEpisodes,MANGA_PLAYE
 import {MANGA_PAGES} from '../src/manga/pages.js';
 import {readUnlocks,readShelf,writeShelf,defaultPlayer,CUBE_KEY,QUEST_KEY,SHELF_KEY} from '../src/manga/unlocks.js';
 import {withPages,clampPosition,stepPosition,pageAt,createPageWindow} from '../src/manga/reading.js';
-import {REWARDS,MAP,SEASON,costOf,nodeById,openableNodes,emptyCubePlayer,recordSession,openGate,mergeCubePlayer,mangaOf,season,cubeBalance,effectsOf,sanitizeCubePlayer,completion,AUTO_MANGA,foundCount,UPDATE_FROM,nodeState,mapView,GIFT_FROM,DAILY_GIFTS,giftsOf,giftOn,giftAvailable} from '../src/drill/cosmicube.js';
+import {REWARDS,MAP,SEASON,costOf,nodeById,openableNodes,emptyCubePlayer,recordSession,openGate,mergeCubePlayer,mangaOf,season,cubeBalance,effectsOf,sanitizeCubePlayer,completion,AUTO_MANGA,foundCount,UPDATE_FROM,nodeState,mapView,GIFT_FROM,GIFT_TO,DAILY_GIFTS,SPARE_STICKERS,giftsOf,giftOn,giftAvailable,stickersOf} from '../src/drill/cosmicube.js';
 import {CubeStore,memoryCubeAdapter,CUBE_KEY as DRILL_CUBE_KEY} from '../src/drill/cosmicube-store.js';
 import {STORE_KEY} from '../src/drill/storage.js';
 import {PLAYERS} from '../src/drill/questions.js';
@@ -52,19 +52,20 @@ test('ごほうび：マンガの話は どれか1つの ごほうび（ゲー�
 });
 
 test('マップ：マンガは もとの空き枠と、大きいゲートの手前の 小さいマス（1話ずつ）。道の合計 pt は もとのまま', ()=>{
- const expect={curry:[50,['start']],bgm:[20,['step-bgm-2']],toramana:[40,['step-tora-2']],deep:[80,['step-deep-2']]};
+ const expect={curry:[50,['start']],bgm:[20,['step-bgm-2']],toramana:[20,['step-tora-3']],deep:[20,['step-deep-5']]};
  for(const [id,[cost,req]] of Object.entries(expect)){const n=nodeById(id);assert.equal(n.reward,id);assert.equal(n.cost,cost);assert.deepEqual(n.requires,req);}
  const manga=MAP.nodes.filter(n=>REWARDS[n.reward]?.manga);
  assert.deepEqual(manga.filter(n=>!n.small).map(n=>n.id),['slot-left','slot-a','slot-b','slot-c']);
- assert.deepEqual(manga.filter(n=>n.small).map(n=>[n.id,n.before,REWARDS[n.reward].manga.length]),[['step-bgm-1','bgm',1],['step-bgm-2','bgm',1],['step-tora-1','toramana',1],['step-tora-2','toramana',1],['step-deep-1','deep',1],['step-deep-2','deep',1]]);
+ assert.deepEqual(MAP.nodes.filter(n=>n.small).map(n=>[n.id,n.before]),[['step-bgm-1','bgm'],['step-bgm-2','bgm'],['step-tora-1','toramana'],['step-tora-2','toramana'],['step-tora-3','toramana'],['step-deep-1','deep'],['step-deep-2','deep'],['step-deep-3','deep'],['step-deep-4','deep'],['step-deep-5','deep']]);
+ assert.ok(manga.filter(n=>n.small).every(n=>REWARDS[n.reward].manga.length===1),'小さいマスの マンガは 1話ずつ');
+ // 1マス 20pt（カレーだけ 50pt）
+ assert.deepEqual(openableNodes().filter(n=>n.cost!==20).map(n=>n.id),['curry']);
  // 道の合計：テーマソングまで 60・カレーから トラマナちゃんまで 80・最奥まで 120（もとと同じ）
  const path=id=>MAP.nodes.filter(n=>n.before===id).reduce((a,n)=>a+n.cost,nodeById(id).cost);
  assert.deepEqual([path('bgm'),path('toramana'),path('deep')],[60,80,120]);
  assert.ok(manga.every(n=>n.cost===20));
- // 合計：マンガ込み 390pt（うさこ 40pt を slot-d に足すと 430pt）
- assert.equal(openableNodes().reduce((a,n)=>a+n.cost,0),390);
- // slot-d は うさこ（10月後半）用に空けておく
- assert.equal(nodeById('slot-d').reward,null);
+ // 合計：390pt ＋ 仮の slot-d 20pt
+ assert.equal(openableNodes().reduce((a,n)=>a+n.cost,0),410);
  assert.ok(MAP.nodes.every(n=>n.reward!=='usako'));
 });
 
@@ -103,17 +104,17 @@ test('ハロウィン：トラマナちゃんと BGM の両方で、pt なし・
  const has=p=>mangaOf(p,D).has('season-01');
  let p=emptyCubePlayer();
  for(let i=0;i<20;i++)p=recordSession(p,{sessionId:'s'+i,dayKey:`2026-10-${String(3+Math.floor(i/3)).padStart(2,'0')}`,award:award(19)}).player;
- for(const id of ['curry','step-tora-1','step-tora-2','toramana','step-bgm-1','step-bgm-2'])p=openGate(p,id,D).player;
+ for(const id of ['curry','step-tora-1','step-tora-2','step-tora-3','toramana','step-bgm-1','step-bgm-2'])p=openGate(p,id,D).player;
  assert.equal(has(p),false);   // 片方だけでは ふえない
  const before=cubeBalance(season(p));
  const r=openGate(p,'bgm',D);p=r.player;
  assert.equal(has(p),true);
  assert.equal(cubeBalance(season(p)),before-20);   // BGM のぶんだけ。ハロウィンに pt はかからない
  assert.ok(!('halloween' in season(p).rewards)&&!('season-01' in season(p).rewards),'保存はしない');
- assert.equal(completion(season(p)).total,14);     // ハロウィンは コンプ率の母数に 入れない
- // 最奥は 手前の 小さいマス2つの あとで 開けられる
+ assert.equal(completion(season(p)).total,19);     // ハロウィンは コンプ率の母数に 入れない
+ // 最奥は 手前の 小さいマス5つの あとで 開けられる
  assert.equal(nodeById('deep').reward,'deep');
- for(const id of ['step-deep-1','step-deep-2'])p=openGate(p,id,D).player;
+ for(const id of ['step-deep-1','step-deep-2','step-deep-3','step-deep-4','step-deep-5'])p=openGate(p,id,D).player;
  assert.equal(openGate(p,'deep',D).ok,true);
 });
 
@@ -278,14 +279,14 @@ test('みつけた ごほうび：中身のあるゲートを ひらいた数。
  let p=emptyCubePlayer();
  for(let i=0;i<24;i++)p=recordSession(p,{sessionId:'s'+i,dayKey:`2026-10-${String(3+Math.floor(i/3)).padStart(2,'0')}`,award:award(19)}).player;
  assert.equal(foundCount(season(p)),0);
- for(const id of ['slot-left','curry','step-tora-1','step-tora-2','toramana'])p=openGate(p,id,D).player;
- assert.equal(foundCount(season(p)),5);           // マンガ（2話ぶん）でも 1こ。小さいマスも 1こ
+ for(const id of ['slot-left','curry','step-tora-1','step-tora-2','step-tora-3','toramana'])p=openGate(p,id,D).player;
+ assert.equal(foundCount(season(p)),6);           // マンガ（2話ぶん）でも 1こ。小さいマスも 1こ
  for(const id of ['step-bgm-1','step-bgm-2','bgm'])p=openGate(p,id,D).player;
  assert.ok(mangaOf(p,D).has('season-01'));
- assert.equal(foundCount(season(p)),8);           // ハロウィンは ふえても 数えない
+ assert.equal(foundCount(season(p)),9);           // ハロウィンは ふえても 数えない
  // 古いページが rewards を消しても、ゲートから数える
  const old=JSON.parse(JSON.stringify(p));delete old.seasons[SEASON.id].rewards['manga-1'];
- assert.equal(foundCount(season(old)),8);
+ assert.equal(foundCount(season(old)),9);
 });
 
 test('10/7 から切りかえ：6日までは マンガのゲートは ❓じゅんびちゅうで ひらけず、ハロウィンも まだ。7日になると そのまま反映', ()=>{
@@ -326,46 +327,40 @@ test('ドリルの画面：コンプ率（%）ではなく「みつけた ごほ
 // ---------- 毎日の ごほうび（10/9 から） ----------
 const coinDays=(...days)=>{const p=emptyCubePlayer();for(const d of days)p.coin[d]='s-'+d;return p;};
 
-test('毎日の ごほうび：10/9 から、その日はじめて 10もん クリアした日に リストの じゅんばんで 1こ。8日までの分は 数えない', ()=>{
- assert.equal(GIFT_FROM,'2026-10-09');
+test('毎日の ごほうび：10/9 の 1日だけ（おんぷダンス）。10/10 からは なし（マップの マスへ）', ()=>{
+ assert.equal(GIFT_FROM,'2026-10-09');assert.equal(GIFT_TO,'2026-10-09');
+ assert.deepEqual(DAILY_GIFTS.map(g=>g.id),['st-onpu']);
  const p=coinDays('2026-10-07','2026-10-08','2026-10-09','2026-10-11','2026-10-12');
- assert.deepEqual(giftsOf(p).map(g=>[g.day,g.id]),[['2026-10-09',DAILY_GIFTS[0].id],['2026-10-11',DAILY_GIFTS[1].id],['2026-10-12',DAILY_GIFTS[2].id]]);
- assert.equal(giftOn(p,'2026-10-10'),null);   // あそばなかった日は なし（あとで まとめて もらえない）
- assert.equal(giftOn(p,'2026-10-12').name,'マンガ「近道」');
- assert.deepEqual([...mangaOf(p,'2026-10-12')],['mc-05']);   // マンガの ごほうびは 本だなへ
- assert.equal(giftAvailable(p,'2026-10-13'),true);
- assert.equal(giftAvailable(p,'2026-10-12'),false);           // きょうは もう もらった
- assert.equal(giftAvailable(p,'2026-10-08'),false);           // 9日より前は なし
- assert.equal(giftAvailable(p,'2026-11-01'),false);           // 期間のあと
+ assert.deepEqual(giftsOf(p).map(g=>[g.day,g.id]),[['2026-10-09','st-onpu']]);
+ assert.equal(giftOn(p,'2026-10-12'),null);
+ assert.equal(giftAvailable(emptyCubePlayer(),'2026-10-09'),true);
+ assert.equal(giftAvailable(emptyCubePlayer(),'2026-10-10'),false);   // 9日に あそばなかった子も、10日からは なし
+ assert.equal(giftAvailable(p,'2026-10-13'),false);
+ assert.equal(giftAvailable(p,'2026-10-08'),false);
 });
 
-test('毎日の ごほうび：保存データは ふやさない。クリアの記録（コインの日）だけから きまるので、古いページが保存しても 消えない', ()=>{
+test('毎日の ごほうび：保存データは ふやさない。10/9 に とどいた シールは 古いページが保存しても 消えない', ()=>{
  let p=emptyCubePlayer();
  const r=recordSession(p,{sessionId:'a',dayKey:'2026-10-09',award:award(5)});
  assert.equal(r.coinNew,true);
  assert.deepEqual(Object.keys(r.player).sort(),['coin','seasons','updatedAt']);
- assert.equal(giftOn(r.player,'2026-10-09').id,DAILY_GIFTS[0].id);
- // 2回目・れんしゅう（4回目）では ふえない
+ assert.equal(giftOn(r.player,'2026-10-09').id,'st-onpu');
  const r2=recordSession(r.player,{sessionId:'b',dayKey:'2026-10-09',award:{...award(5),practice:true}});
  assert.equal(giftsOf(r2.player).length,1);
- // 点数に 関係なし（0pt の回でも クリアすれば とどく）
  const r3=recordSession(r2.player,{sessionId:'c',dayKey:'2026-10-10',award:award(0)});
- assert.equal(giftsOf(r3.player).length,2);
- assert.equal(giftsOf(sanitizeCubePlayer(JSON.parse(JSON.stringify(r3.player)))).length,2);
+ assert.equal(giftsOf(r3.player).length,1);
+ assert.equal(giftsOf(sanitizeCubePlayer(JSON.parse(JSON.stringify(r3.player)))).length,1);
 });
 
-test('毎日の ごほうび：リストの さいごまで とどいたら それ以上は なし。シールの絵は ぜんぶ ある', async ()=>{
- const days=[];for(let d=9;d<=31;d++)days.push(`2026-10-${String(d).padStart(2,'0')}`);
- const p=coinDays(...days);
- assert.equal(giftsOf(p).length,DAILY_GIFTS.length);
- assert.equal(giftAvailable(p,'2026-10-31'),false);
- assert.equal(new Set(DAILY_GIFTS.map(g=>g.id)).size,DAILY_GIFTS.length);
- assert.ok(DAILY_GIFTS.every(g=>g.sticker||g.manga?.length));
- const {STICKER_ART}=await import('../src/drill/cosmicube-ui.js');
- for(const g of DAILY_GIFTS.filter(g=>g.sticker)){
+test('シールの絵は ぜんぶ ある（10/9 の ごほうび・マップの シールの マス・まだ つかっていない シール）', async ()=>{
+ const {STICKER_ART,REWARD_ART}=await import('../src/drill/cosmicube-ui.js');
+ const all=[...DAILY_GIFTS,...SPARE_STICKERS,...Object.values(REWARDS).filter(r=>r.sticker)];
+ for(const g of all){
   assert.ok(STICKER_ART[g.sticker],g.sticker);
   assert.ok(existsSync(new URL(STICKER_ART[g.sticker])),g.sticker);
  }
+ for(const [id,r] of Object.entries(REWARDS))if(r.sticker)assert.equal(REWARD_ART[id],STICKER_ART[r.sticker],id);
+ const ids=all.map(g=>g.sticker);assert.equal(new Set(ids).size,ids.length,'おなじ シールを 2かい つかわない');
 });
 
 test('ドリルの画面：ホームに「🎁 きょうの ごほうび」、結果に とどいたもの、マップに シールちょう', ()=>{
@@ -375,24 +370,24 @@ test('ドリルの画面：ホームに「🎁 きょうの ごほうび」、�
  assert.match(main,/giftOn\(cube\.player\(play\.player\),play\.dayKey\)/,'ごほうびの日は その回を はじめた日');
 });
 
-test('まいにちの みち：マップの下に 帯。ひらいた マス＋つぎの 1マスだけ（ぜんぶの数は 出さない）。ひらく演出は 1日1回', ()=>{
+test('まいにちの みちは やめた：マップの下の 帯は ない。シールちょうには マップで ひらいた シールも ならぶ', ()=>{
  const html=readFileSync(new URL('../drill.html',import.meta.url),'utf8');
- assert.match(html,/<section class="dq-daily" data-daily hidden[^>]*><h3[^>]*>まいにちの みち<\/h3><ol class="dq-daily-path" data-daily-path><\/ol>/);
- assert.ok(html.indexOf('data-daily ')>html.indexOf('data-map-space'),'星空マップの すぐ下');
+ assert.ok(!/data-daily/.test(html));
  const ui=readFileSync(new URL('../src/drill/cosmicube-ui.js',import.meta.url),'utf8');
- assert.match(ui,/renderDaily\(player,p,dayKey\)/);
- assert.match(ui,/if\(avail\)items\.push\(step\('is-next','❓','10もんで ひらく'\)\)/);
- assert.match(ui,/todayGift&&!dailySeen\.has\(key\)/);
- assert.ok(!/localStorage/.test(ui),'演出を見せたかどうかは 保存しない');
+ assert.ok(!/renderDaily|dailySeen/.test(ui));
+ let p=coinDays('2026-10-09');
+ p=sanitizeCubePlayer({...p,seasons:{[SEASON.id]:{earned:[{id:'z',day:'2026-10-10',pt:500}],gates:{},rewards:{},position:'start'}}});
+ for(const id of ['curry','step-tora-1','step-tora-2','step-tora-3','toramana','slot-d'])p=openGate(p,id,'2026-10-10').player;
+ assert.deepEqual(stickersOf(p).map(s=>s.name),['おんぷダンス','ヘッドホン']);
 });
 
-test('小さいマス：ぴよみ（カレーまで・のこり43pt）は トラマナちゃんの手前の 2マスを すぐ ひらける。そのあと トラマナちゃんは あと37pt', ()=>{
+test('小さいマス：ぴよみ（カレーまで・のこり43pt）は トラマナちゃんの手前の 2マスを すぐ ひらける。つぎの マスは あと17pt', ()=>{
  let p=sanitizeCubePlayer({seasons:{[SEASON.id]:{earned:[{id:'a',day:'2026-10-05',pt:50},{id:'b',day:'2026-10-08',pt:43}],gates:{curry:{on:'2026-10-06',cost:50}},rewards:{curry:{on:'2026-10-06'}},position:'curry'}}});
  assert.equal(cubeBalance(season(p)),43);
  for(const id of ['step-tora-1','step-tora-2']){const r=openGate(p,id,'2026-10-09');assert.equal(r.ok,true,id);p=r.player;}
  assert.equal(cubeBalance(season(p)),3);
- assert.equal(openGate(p,'toramana','2026-10-09').reason,'short');
- assert.equal(nodeById('toramana').cost-cubeBalance(season(p)),37);
+ assert.equal(openGate(p,'step-tora-3','2026-10-09').reason,'short');
+ assert.equal(nodeById('step-tora-3').cost-cubeBalance(season(p)),17);
  assert.ok(mangaOf(p,'2026-10-09').has('mc-07')&&mangaOf(p,'2026-10-09').has('daily-08'));
 });
 
