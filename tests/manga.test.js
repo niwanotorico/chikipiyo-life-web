@@ -56,7 +56,7 @@ test('マップ：マンガは もとの空き枠と、大きいゲートの手�
  for(const [id,[cost,req]] of Object.entries(expect)){const n=nodeById(id);assert.equal(n.reward,id);assert.equal(n.cost,cost);assert.deepEqual(n.requires,req);}
  const manga=MAP.nodes.filter(n=>REWARDS[n.reward]?.manga);
  assert.deepEqual(manga.filter(n=>!n.small).map(n=>n.id),['slot-left','slot-a','slot-b','slot-c']);
- assert.deepEqual(MAP.nodes.filter(n=>n.small).map(n=>[n.id,n.before]),[['step-bgm-1','bgm'],['step-bgm-2','bgm'],['step-tora-1','toramana'],['step-tora-2','toramana'],['step-tora-3','toramana'],['step-deep-1','deep'],['step-deep-2','deep'],['step-deep-3','deep'],['step-deep-4','deep'],['step-deep-5','deep']]);
+ assert.deepEqual(MAP.nodes.filter(n=>n.before).map(n=>[n.id,n.before]),[['step-bgm-1','bgm'],['step-bgm-2','bgm'],['step-tora-1','toramana'],['step-tora-2','toramana'],['step-tora-3','toramana'],['step-deep-1','deep'],['step-deep-2','deep'],['step-deep-3','deep'],['step-deep-4','deep'],['step-deep-5','deep']]);
  assert.ok(manga.filter(n=>n.small).every(n=>REWARDS[n.reward].manga.length===1),'小さいマスの マンガは 1話ずつ');
  // 1マス 20pt（カレーだけ 50pt）
  assert.deepEqual(openableNodes().filter(n=>n.cost!==20).map(n=>n.id),['curry']);
@@ -64,8 +64,8 @@ test('マップ：マンガは もとの空き枠と、大きいゲートの手�
  const path=id=>MAP.nodes.filter(n=>n.before===id).reduce((a,n)=>a+n.cost,nodeById(id).cost);
  assert.deepEqual([path('bgm'),path('toramana'),path('deep')],[60,80,120]);
  assert.ok(manga.every(n=>n.cost===20));
- // 合計：390pt ＋ 仮の slot-d 20pt
- assert.equal(openableNodes().reduce((a,n)=>a+n.cost,0),410);
+ // 合計：390pt ＋ 仮の slot-d 20pt ＋ ハロウィンの slot-e 20pt
+ assert.equal(openableNodes().reduce((a,n)=>a+n.cost,0),430);
  assert.ok(MAP.nodes.every(n=>n.reward!=='usako'));
 });
 
@@ -99,30 +99,27 @@ test('ゲートを開ける前のデータ（マンガなし）は、そのま�
  assert.equal(mangaOf(p,D).size,0);
 });
 
-test('ハロウィン：トラマナちゃんと BGM の両方で、pt なし・ゲートなしで 季節の本に ふえる。最奥はそのまま', ()=>{
- assert.deepEqual(AUTO_MANGA,[{id:'halloween',requires:['toramana','bgm'],manga:['season-01'],from:'2026-10-07'}]);
- const has=p=>mangaOf(p,D).has('season-01');
+test('ハロウィン：トラマナちゃんとは べつ。マンガ3（slot-b）の となりの ふつうの マス（20pt）で 季節の本に ふえる', ()=>{
+ assert.deepEqual(AUTO_MANGA,[]);
+ const n=nodeById('slot-e');
+ assert.deepEqual([n.cost,n.requires,REWARDS[n.reward].manga],[20,['slot-b'],['season-01']]);
  let p=emptyCubePlayer();
- for(let i=0;i<20;i++)p=recordSession(p,{sessionId:'s'+i,dayKey:`2026-10-${String(3+Math.floor(i/3)).padStart(2,'0')}`,award:award(19)}).player;
- for(const id of ['curry','step-tora-1','step-tora-2','step-tora-3','toramana','step-bgm-1','step-bgm-2'])p=openGate(p,id,D).player;
- assert.equal(has(p),false);   // 片方だけでは ふえない
+ for(let i=0;i<9;i++)p=recordSession(p,{sessionId:'s'+i,dayKey:`2026-10-${String(3+Math.floor(i/3)).padStart(2,'0')}`,award:award(19)}).player;
+ for(const id of ['curry','slot-b'])p=openGate(p,id,D).player;
+ assert.equal(mangaOf(p,D).has('season-01'),false);
  const before=cubeBalance(season(p));
- const r=openGate(p,'bgm',D);p=r.player;
- assert.equal(has(p),true);
- assert.equal(cubeBalance(season(p)),before-20);   // BGM のぶんだけ。ハロウィンに pt はかからない
- assert.ok(!('halloween' in season(p).rewards)&&!('season-01' in season(p).rewards),'保存はしない');
- assert.equal(completion(season(p)).total,19);     // ハロウィンは コンプ率の母数に 入れない
- // 最奥は 手前の 小さいマス5つの あとで 開けられる
- assert.equal(nodeById('deep').reward,'deep');
- for(const id of ['step-deep-1','step-deep-2','step-deep-3','step-deep-4','step-deep-5'])p=openGate(p,id,D).player;
- assert.equal(openGate(p,'deep',D).ok,true);
+ p=openGate(p,'slot-e',D).player;
+ assert.equal(mangaOf(p,D).has('season-01'),true);
+ assert.equal(cubeBalance(season(p)),before-20);
+ // トラマナちゃん・テーマソングを もっていても、それだけでは ふえない
+ const old={seasons:{'2026-10':{earned:[{id:'m',day:'2026-10-03',pt:200}],gates:{curry:{on:'2026-10-03',cost:50},toramana:{on:'2026-10-05',cost:80},bgm:{on:'2026-10-06',cost:60}},rewards:{},position:'bgm'}},coin:{},updatedAt:3};
+ assert.equal(mangaOf(sanitizeCubePlayer(old),D).has('season-01'),false);
 });
 
-test('ハロウィン：変更前から 両方を持っている子（保存データに季節の本の記録なし）にも効く', ()=>{
- const old={seasons:{'2026-10':{earned:[{id:'m',day:'2026-10-03',pt:200}],gates:{curry:{on:'2026-10-03',cost:50},toramana:{on:'2026-10-05',cost:80},bgm:{on:'2026-10-06',cost:60}},rewards:{curry:{on:'2026-10-03',house:false},toramana:{on:'2026-10-05',house:true},bgm:{on:'2026-10-06',house:false}},position:'bgm'}},coin:{},updatedAt:3};
- assert.deepEqual([...mangaOf(sanitizeCubePlayer(old),D)],['season-01']);
+test('ハロウィン：本だなは マップで ひらいた子だけ よめる', ()=>{
+ const old={seasons:{'2026-10':{earned:[{id:'m',day:'2026-10-03',pt:200}],gates:{curry:{on:'2026-10-03',cost:50},'slot-b':{on:'2026-10-07',cost:20},'slot-e':{on:'2026-10-10',cost:20}},rewards:{},position:'slot-e'}},coin:{},updatedAt:3};
  const u=readUnlocks(fakeStorage({[CUBE_KEY]:{version:1,players:{piyomi:old}}}),D);
- assert.deepEqual([...u.piyomi],['season-01']);assert.equal(u.piyokichi.size,0);
+ assert.equal(u.piyokichi.size,0);
  assert.deepEqual(readableEpisodes('season',u.piyomi).map(e=>e.title),['ハロウィン攻略法']);
 });
 
@@ -282,8 +279,7 @@ test('みつけた ごほうび：中身のあるゲートを ひらいた数。
  for(const id of ['slot-left','curry','step-tora-1','step-tora-2','step-tora-3','toramana'])p=openGate(p,id,D).player;
  assert.equal(foundCount(season(p)),6);           // マンガ（2話ぶん）でも 1こ。小さいマスも 1こ
  for(const id of ['step-bgm-1','step-bgm-2','bgm'])p=openGate(p,id,D).player;
- assert.ok(mangaOf(p,D).has('season-01'));
- assert.equal(foundCount(season(p)),9);           // ハロウィンは ふえても 数えない
+ assert.equal(foundCount(season(p)),9);
  // 古いページが rewards を消しても、ゲートから数える
  const old=JSON.parse(JSON.stringify(p));delete old.seasons[SEASON.id].rewards['manga-1'];
  assert.equal(foundCount(season(old)),9);
@@ -304,7 +300,7 @@ test('10/7 から切りかえ：6日までは マンガのゲートは ❓じゅ
  // 7日：記録は そのまま（再計算しない）で、マンガとハロウィンが使えるようになる
  assert.equal(cubeBalance(season(p)),bal);
  assert.equal(nodeState(season(p),nodeById('slot-left'),D),'ready');
- assert.deepEqual([...mangaOf(p,D)],['season-01']);
+ assert.deepEqual([...mangaOf(p,D)],[]);   // ハロウィンは もう 自動では ふえない（マップの マス）
  const r=openGate(p,'slot-left',D);assert.equal(r.ok,true);assert.equal(cubeBalance(season(r.player)),bal-20);
  // 6日に はじめた1回を 7日に終えても、6日ぶんとして入る（ポイントの日は はじめた日。いままでどおり）
  const late=recordSession(p,{sessionId:'late',dayKey:D6,award:award(19)});

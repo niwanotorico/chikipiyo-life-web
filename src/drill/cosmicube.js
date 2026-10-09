@@ -10,7 +10,7 @@
 
 export const SEASON={id:'2026-10',start:'2026-10-03',end:'2026-10-31',title:'ピヨ探検',sub:'10月の ほしぞら マップ'};
 export const DAILY_CUBE_SESSIONS=3;   // キューブpt がもらえるのは1日3回まで（storage.js の DAILY_REWARD_SESSIONS と同じ）
-// マンガのゲートと ハロウィンの自動解放は、この日（端末の日付）から。それより前は いままでどおり ❓じゅんびちゅう。
+// マンガのゲートは、この日（端末の日付）から。それより前は いままでどおり ❓じゅんびちゅう。
 // 公開した時刻に関係なく 日付で切りかわる（画面を開いたまま 日付をまたいでも、つぎの表示から反映）。ポイントの計算は変えない
 export const UPDATE_FROM='2026-10-07';
 
@@ -42,6 +42,7 @@ export const REWARDS={
  'manga-12':{icon:'📚',name:'マンガ「かたつむりのかさ」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-05'],effects:[]},
  'manga-13':{icon:'📚',name:'マンガ「みずたまりのそら」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-06'],effects:[]},
  // シール（ドット絵。シールちょうに はる）。仮の マスの 中身
+ 'manga-14':{icon:'🎃',name:'マンガ「ハロウィン攻略法」',note:'3DPハウスの 本だなで よめるよ',manga:['season-01'],effects:[]},
  'st-dj':{icon:'🏷️',name:'シール「DJ」',label:'DJ',note:'シールちょうに はったよ',sticker:'dj',effects:[]},
  'st-headphones':{icon:'🏷️',name:'シール「ヘッドホン」',label:'ヘッドホン',note:'シールちょうに はったよ',sticker:'headphones',effects:[]},
 };
@@ -67,6 +68,7 @@ export const MAP={
   {id:'step-tora-3',x:62,y:45,cost:20,reward:'manga-11',requires:['step-tora-2'],small:true,before:'toramana'},
   {id:'toramana',x:78,y:35,cost:20,reward:'toramana',requires:['step-tora-3']},
   {id:'slot-b',x:91,y:60,cost:20,reward:'manga-3',requires:['curry'],from:UPDATE_FROM},
+  {id:'slot-e',x:93,y:46,cost:20,reward:'manga-14',requires:['slot-b'],small:true},   // ハロウィンの マンガ（トラマナちゃんとは べつの道）
   {id:'slot-c',x:12,y:36,cost:20,reward:'manga-4',requires:['bgm'],from:UPDATE_FROM},
   {id:'slot-d',x:90,y:22,cost:20,reward:'st-headphones',requires:['toramana']},   // 仮：シール。うさこ（10月後半）が きまったら 中身を かえる
   {id:'step-deep-1',x:48,y:42,cost:20,reward:'manga-9',requires:['bgm','toramana'],small:true,before:'deep'},
@@ -138,7 +140,7 @@ export function cubeEarnedTotal(s){return s.earned.reduce((a,e)=>a+e.pt,0);}
 export function playsOn(s,dayKey){return s.earned.filter(e=>e.day===dayKey).length;}
 export function cubeSessionsLeft(s,dayKey){return inSeason(dayKey)?Math.max(0,DAILY_CUBE_SESSIONS-playsOn(s,dayKey)):0;}
 // みつけた ごほうびの数（画面の「みつけた ごほうび ○こ」）＝ 中身のあるゲートを ひらいた数。総数は出さない（あとから ふえるため）
-// マンガのゲートは 2話ぶんでも 1こ。ハロウィンなどの 自動の おまけ（AUTO_MANGA）は 数えない
+// マンガのゲートは 2話ぶんでも 1こ。自動の おまけ（AUTO_MANGA）が あっても 数えない
 export function foundCount(s){return Object.keys(s.gates).filter(id=>REWARDS[NODE[id]?.reward]).length;}
 export function completion(s){
  const list=openableNodes();
@@ -199,7 +201,7 @@ export const giftAvailable=(player,dayKey)=>typeof dayKey==='string'&&dayKey>=GI
 // 自動でふえるマンガ：requires の ごほうびを ぜんぶ持っていれば、pt なし・ゲートなしで よめる。
 // 保存はしない（毎回 持っている ごほうびから決める）ので、条件を先に満たしていた子にも そのまま効く。最奥など ほかの ごほうびは変えない
 export const AUTO_MANGA=[
- {id:'halloween',requires:['toramana','bgm'],manga:['season-01'],from:UPDATE_FROM},   // 季節の本「ハロウィン攻略法」
+ // いまは なし（ハロウィンの マンガは 10/10 から マップの ふつうの マス slot-e に した）
 ];
 export function mangaOf(player,dayKey){
  const owned=new Set();

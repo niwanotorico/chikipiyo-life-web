@@ -29,9 +29,9 @@ export const SERIES=[
    {id:'daily-08',no:8,title:'かぜのかくれんぼ'},
    {id:'daily-09',no:9,title:'くものいす'},
   ]},
- // 季節の本：イベントの話。ピヨ探検のゲートではなく、条件を満たすと自動で ふえる（cosmicube.js の AUTO_MANGA）
+ // 季節の本：イベントの話。ピヨ探検の マップの マス（ハロウィンは slot-e）で ふえる
  {id:'season',title:'季節の本',folder:'03_event',color:'#e8893a',ink:'#4a2d5c',paper:'#fbf0e2',
-  hint:'ピヨ探検を すすめると、いつのまにか この本が ふえるかも？',   // 条件（トラマナちゃん＋BGM）は 子どもには ひみつ
+  hint:'ピヨ探検の マップで みつかるかも？',
   episodes:[
    {id:'season-01',no:1,title:'ハロウィン攻略法'},
   ]},

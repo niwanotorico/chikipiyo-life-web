@@ -74,10 +74,10 @@ test('pt が足りないと開かない', ()=>{
 test('分岐は排他ではない：どの順番でも、ぜんぶ開けて 100%', ()=>{
  const total=openableNodes().reduce((a,n)=>a+n.cost,0);
  const BGM=['step-bgm-1','step-bgm-2','bgm'],TORA=['step-tora-1','step-tora-2','step-tora-3','toramana'],DEEP=['step-deep-1','step-deep-2','step-deep-3','step-deep-4','step-deep-5','deep'];
- for(const order of [[...BGM,'curry',...TORA,...DEEP,'slot-left','slot-a','slot-b','slot-c','slot-d'],['slot-left','slot-a','curry','slot-b',...TORA,'slot-d',...BGM,'slot-c',...DEEP],['curry',...BGM,'slot-c',...TORA,...DEEP,'slot-d','slot-b','slot-left','slot-a']]){
+ for(const order of [[...BGM,'curry',...TORA,...DEEP,'slot-left','slot-a','slot-b','slot-e','slot-c','slot-d'],['slot-left','slot-a','curry','slot-b','slot-e',...TORA,'slot-d',...BGM,'slot-c',...DEEP],['curry',...BGM,'slot-c',...TORA,...DEEP,'slot-d','slot-b','slot-e','slot-left','slot-a']]){
   let p=richPlayer(total);
   for(const id of order){const r=openGate(p,id,D7);assert.equal(r.ok,true,`${order}: ${id} ${r.reason}`);p=r.player;}
-  assert.deepEqual(completion(season(p)),{done:19,total:19,percent:100});
+  assert.deepEqual(completion(season(p)),{done:20,total:20,percent:100});
   assert.equal(cubeBalance(season(p)),richPlayer(total).seasons[SEASON.id].earned.reduce((a,e)=>a+e.pt,0)-total);
  }
 });
