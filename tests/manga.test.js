@@ -5,7 +5,7 @@ import {SERIES,allEpisodes,episodeById,episodePages,readableEpisodes,MANGA_PLAYE
 import {MANGA_PAGES} from '../src/manga/pages.js';
 import {readUnlocks,readShelf,writeShelf,defaultPlayer,CUBE_KEY,QUEST_KEY,SHELF_KEY} from '../src/manga/unlocks.js';
 import {withPages,clampPosition,stepPosition,pageAt,createPageWindow} from '../src/manga/reading.js';
-import {REWARDS,MAP,SEASON,nodeById,openableNodes,emptyCubePlayer,recordSession,openGate,mergeCubePlayer,mangaOf,season,cubeBalance,effectsOf,sanitizeCubePlayer,completion,AUTO_MANGA,foundCount,UPDATE_FROM,nodeState,mapView} from '../src/drill/cosmicube.js';
+import {REWARDS,MAP,SEASON,nodeById,openableNodes,emptyCubePlayer,recordSession,openGate,mergeCubePlayer,mangaOf,season,cubeBalance,effectsOf,sanitizeCubePlayer,completion,AUTO_MANGA,foundCount,UPDATE_FROM,nodeState,mapView,GIFT_FROM,DAILY_GIFTS,giftsOf,giftOn,giftAvailable} from '../src/drill/cosmicube.js';
 import {CubeStore,memoryCubeAdapter,CUBE_KEY as DRILL_CUBE_KEY} from '../src/drill/cosmicube-store.js';
 import {STORE_KEY} from '../src/drill/storage.js';
 import {PLAYERS} from '../src/drill/questions.js';
@@ -32,17 +32,17 @@ test('本だな：キーとプレイヤーは ピヨドリルと同じ', ()=>{
  assert.deepEqual(MANGA_PLAYERS.map(p=>[p.id,p.name]),Object.values(PLAYERS).map(p=>[p.id,p.name]));
 });
 
-test('本だな：本はシリーズごとに1冊（マイクラ本・まったり日常本 各4話・季節の本）', ()=>{
+test('本だな：本はシリーズごとに1冊（マイクラ本・まったり日常本・季節の本）', ()=>{
  assert.deepEqual(SERIES.map(s=>s.title),['マイクラ本','まったり日常本','季節の本']);
  assert.deepEqual(SERIES[2].episodes.map(e=>e.title),['ハロウィン攻略法']);
- assert.deepEqual(SERIES[0].episodes.map(e=>e.title),['自動化の沼','寝る場所','宝さがし','おともだち']);
- assert.deepEqual(SERIES[1].episodes.map(e=>e.title),['葉っぱの行き先','かげのせいくらべ','くものおやつ','いしのひなた']);
+ assert.deepEqual(SERIES[0].episodes.map(e=>e.title),['自動化の沼','寝る場所','宝さがし','おともだち','近道']);
+ assert.deepEqual(SERIES[1].episodes.map(e=>e.title),['葉っぱの行き先','かげのせいくらべ','くものおやつ','いしのひなた','かたつむりのかさ','みずたまりのそら']);
  const ids=allEpisodes().map(e=>e.id);assert.equal(new Set(ids).size,ids.length);
 });
 
-test('ごほうび：マンガの話は どれか1つの ごほうび（または自動解放）にだけ入る。話IDは catalog にある', ()=>{
+test('ごほうび：マンガの話は どれか1つの ごほうび（ゲート・自動解放・毎日の ごほうび）にだけ入る。話IDは catalog にある', ()=>{
  const seen=new Map();
- for(const [id,r] of [...Object.entries(REWARDS),...AUTO_MANGA.map(a=>[a.id,a])])for(const ep of r.manga??[]){
+ for(const [id,r] of [...Object.entries(REWARDS),...AUTO_MANGA.map(a=>[a.id,a]),...DAILY_GIFTS.map(g=>[g.id,g])])for(const ep of r.manga??[]){
   assert.ok(episodeById(ep),`${id} → ${ep}`);
   assert.ok(!seen.has(ep),`${ep} が ${seen.get(ep)} と ${id} の両方にある`);seen.set(ep,id);
  }
@@ -315,4 +315,56 @@ test('ドリルの画面：コンプ率（%）ではなく「みつけた ごほ
  const ui=readFileSync(new URL('../src/drill/cosmicube-ui.js',import.meta.url),'utf8');
  assert.match(ui,/\$\('\[data-map-found\]'\)\.textContent=`\$\{foundN\}こ`/);
  assert.ok(!/percent/.test(ui));
+});
+
+// ---------- 毎日の ごほうび（10/9 から） ----------
+const coinDays=(...days)=>{const p=emptyCubePlayer();for(const d of days)p.coin[d]='s-'+d;return p;};
+
+test('毎日の ごほうび：10/9 から、その日はじめて 10もん クリアした日に リストの じゅんばんで 1こ。8日までの分は 数えない', ()=>{
+ assert.equal(GIFT_FROM,'2026-10-09');
+ const p=coinDays('2026-10-07','2026-10-08','2026-10-09','2026-10-11','2026-10-12');
+ assert.deepEqual(giftsOf(p).map(g=>[g.day,g.id]),[['2026-10-09',DAILY_GIFTS[0].id],['2026-10-11',DAILY_GIFTS[1].id],['2026-10-12',DAILY_GIFTS[2].id]]);
+ assert.equal(giftOn(p,'2026-10-10'),null);   // あそばなかった日は なし（あとで まとめて もらえない）
+ assert.equal(giftOn(p,'2026-10-12').name,'マンガ「近道」');
+ assert.deepEqual([...mangaOf(p,'2026-10-12')],['mc-05']);   // マンガの ごほうびは 本だなへ
+ assert.equal(giftAvailable(p,'2026-10-13'),true);
+ assert.equal(giftAvailable(p,'2026-10-12'),false);           // きょうは もう もらった
+ assert.equal(giftAvailable(p,'2026-10-08'),false);           // 9日より前は なし
+ assert.equal(giftAvailable(p,'2026-11-01'),false);           // 期間のあと
+});
+
+test('毎日の ごほうび：保存データは ふやさない。クリアの記録（コインの日）だけから きまるので、古いページが保存しても 消えない', ()=>{
+ let p=emptyCubePlayer();
+ const r=recordSession(p,{sessionId:'a',dayKey:'2026-10-09',award:award(5)});
+ assert.equal(r.coinNew,true);
+ assert.deepEqual(Object.keys(r.player).sort(),['coin','seasons','updatedAt']);
+ assert.equal(giftOn(r.player,'2026-10-09').id,DAILY_GIFTS[0].id);
+ // 2回目・れんしゅう（4回目）では ふえない
+ const r2=recordSession(r.player,{sessionId:'b',dayKey:'2026-10-09',award:{...award(5),practice:true}});
+ assert.equal(giftsOf(r2.player).length,1);
+ // 点数に 関係なし（0pt の回でも クリアすれば とどく）
+ const r3=recordSession(r2.player,{sessionId:'c',dayKey:'2026-10-10',award:award(0)});
+ assert.equal(giftsOf(r3.player).length,2);
+ assert.equal(giftsOf(sanitizeCubePlayer(JSON.parse(JSON.stringify(r3.player)))).length,2);
+});
+
+test('毎日の ごほうび：リストの さいごまで とどいたら それ以上は なし。シールの絵は ぜんぶ ある', async ()=>{
+ const days=[];for(let d=9;d<=31;d++)days.push(`2026-10-${String(d).padStart(2,'0')}`);
+ const p=coinDays(...days);
+ assert.equal(giftsOf(p).length,DAILY_GIFTS.length);
+ assert.equal(giftAvailable(p,'2026-10-31'),false);
+ assert.equal(new Set(DAILY_GIFTS.map(g=>g.id)).size,DAILY_GIFTS.length);
+ assert.ok(DAILY_GIFTS.every(g=>g.sticker||g.manga?.length));
+ const {STICKER_ART}=await import('../src/drill/cosmicube-ui.js');
+ for(const g of DAILY_GIFTS.filter(g=>g.sticker)){
+  assert.ok(STICKER_ART[g.sticker],g.sticker);
+  assert.ok(existsSync(new URL(STICKER_ART[g.sticker])),g.sticker);
+ }
+});
+
+test('ドリルの画面：ホームに「🎁 きょうの ごほうび」、結果に とどいたもの、マップに シールちょう', ()=>{
+ const html=readFileSync(new URL('../drill.html',import.meta.url),'utf8');
+ assert.match(html,/data-c="gift"/);assert.match(html,/data-cube-gift hidden/);assert.match(html,/data-stickers hidden/);assert.match(html,/シールちょう/);
+ const main=readFileSync(new URL('../src/drill/main.js',import.meta.url),'utf8');
+ assert.match(main,/giftOn\(cube\.player\(play\.player\),play\.dayKey\)/,'ごほうびの日は その回を はじめた日');
 });

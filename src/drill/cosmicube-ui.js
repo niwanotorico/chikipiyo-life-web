@@ -1,6 +1,6 @@
 // ピヨドリル：ピヨ探検のマップ画面と、ゲートが開くときの演出。保存は cube（CubeStore）にまかせる。
 import {PLAYERS} from './questions.js';
-import {SEASON,MAP,REWARDS,nodeById,mapView,season,cubeBalance,foundCount} from './cosmicube.js';
+import {SEASON,MAP,REWARDS,nodeById,mapView,season,cubeBalance,foundCount,giftsOf} from './cosmicube.js';
 
 // ---------- マップの現在地キャラ（ドット絵素材） ----------
 // 元素材：piyodrill/characters/*_ipad.png（100×115）。遊んでいる人の絵を出す
@@ -15,6 +15,20 @@ export const MAP_CHAR={
 export const REWARD_ART={
  toramana:new URL('../../assets/drill/characters/toramana_jump.png',import.meta.url).href,
 };
+// 毎日の ごほうびの シール（ドット絵）。元素材：piyodrill/stickers/（01_music は 黄色いひよこの音楽スプライト集 から切り出し）
+const sticker=name=>new URL(`../../assets/drill/stickers/${name}.png`,import.meta.url).href;
+export const STICKER_ART={
+ onpu:sticker('onpu'),wink:sticker('wink'),dj:sticker('dj'),banzai:sticker('banzai'),headphones:sticker('headphones'),
+ duo:sticker('duo'),batsu1:sticker('batsu1'),batsu2:sticker('batsu2'),radio:sticker('radio'),kurutto:sticker('kurutto'),
+ piyokichi:MAP_CHAR.piyokichi,piyomi:MAP_CHAR.piyomi,toramana:REWARD_ART.toramana,
+};
+// ごほうびの 見せかた（ホーム・結果・シールちょう で共通）
+export const giftLabel=g=>g.sticker?`シール「${g.name}」`:`${g.name}（3DPハウスの 本だなで よめるよ）`;
+export function giftImg(g,className){
+ if(!g.sticker||!STICKER_ART[g.sticker])return null;
+ const img=document.createElement('img');img.className=className;img.src=STICKER_ART[g.sticker];img.alt=g.name;img.decoding='async';
+ return img;
+}
 function artImg(rewardId,className){
  const img=document.createElement('img');
  img.className=className;img.src=REWARD_ART[rewardId];img.alt='';img.decoding='async';
@@ -107,6 +121,19 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
    box.append(el);
   }
   renderDetail(player,s,bal,stateOf);
+  renderStickers(p);
+ }
+
+ // シールちょう：もらった シールだけ ならべる（まだの数・ぜんぶの数は 出さない）
+ function renderStickers(p){
+  const got=giftsOf(p).filter(g=>g.sticker);
+  const box=$('[data-stickers]');if(!box)return;
+  box.hidden=!got.length;
+  $('[data-sticker-list]').replaceChildren(...got.map(g=>{
+   const fig=document.createElement('figure');fig.className='dq-sticker';
+   const cap=document.createElement('figcaption');cap.textContent=g.name;
+   fig.append(giftImg(g,'dq-sticker-img'),cap);return fig;
+  }));
  }
 
  function renderDetail(player,s,bal,stateOf){

@@ -12,6 +12,7 @@ export const SERIES=[
    {id:'mc-02',no:2,title:'寝る場所'},
    {id:'mc-03',no:3,title:'宝さがし'},
    {id:'mc-04',no:4,title:'おともだち'},
+   {id:'mc-05',no:5,title:'近道'},
   ]},
  {id:'daily',title:'まったり日常本',folder:'02_slowlife',color:'#e7a6a0',ink:'#6b3f3a',paper:'#fdf3ea',
   episodes:[
@@ -19,6 +20,8 @@ export const SERIES=[
    {id:'daily-02',no:2,title:'かげのせいくらべ'},
    {id:'daily-03',no:3,title:'くものおやつ'},
    {id:'daily-04',no:4,title:'いしのひなた'},
+   {id:'daily-05',no:5,title:'かたつむりのかさ'},
+   {id:'daily-06',no:6,title:'みずたまりのそら'},
   ]},
  // 季節の本：イベントの話。ピヨ探検のゲートではなく、条件を満たすと自動で ふえる（cosmicube.js の AUTO_MANGA）
  {id:'season',title:'季節の本',folder:'03_event',color:'#e8893a',ink:'#4a2d5c',paper:'#fbf0e2',

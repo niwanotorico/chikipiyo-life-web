@@ -127,6 +127,39 @@ export function effectsOf(player){
 // マンガのごほうびで よめるようになった話ID（3DPハウスの本だなが読む。ハウスは読むだけで保存しない）
 // ひらいたゲートからも数える：マンガを知らない古いページ（キャッシュ）が保存すると rewards の manga-* は消えるが、
 // gates（slot-left など）は残るので、そこから取りもどせる
+// ---------- 毎日の ごほうび（10/9 から） ----------
+// その日はじめて 10もん クリアした日（＝チキンコインミッションを たっせいした日。player.coin に もう保存されている）に、
+// おとどけリストの つぎの 1こが とどく。点数には 関係なし。ピヨ探検pt・ゲートとは べつ。
+// 新しい保存データは 足さない：10/9 からの coin の日を じゅんばんに数えて、n日目に リストの n こ目、と毎回きめる
+// （古いページが保存しても coin は のこるので、ごほうびも 消えない）。リストの最後まで とどいたら、それ以上は なし（あとから 足せる）
+export const GIFT_FROM='2026-10-09';
+export const DAILY_GIFTS=[
+ {id:'st-onpu',sticker:'onpu',name:'おんぷダンス'},
+ {id:'st-dj',sticker:'dj',name:'DJ'},
+ {id:'mg-mc-05',manga:['mc-05'],name:'マンガ「近道」'},
+ {id:'st-headphones',sticker:'headphones',name:'ヘッドホン'},
+ {id:'st-banzai',sticker:'banzai',name:'バンザイ'},
+ {id:'mg-daily-05',manga:['daily-05'],name:'マンガ「かたつむりのかさ」'},
+ {id:'st-duo',sticker:'duo',name:'ふたりでダンス'},
+ {id:'st-radio',sticker:'radio',name:'ラジカセ'},
+ {id:'mg-daily-06',manga:['daily-06'],name:'マンガ「みずたまりのそら」'},
+ {id:'st-wink',sticker:'wink',name:'ウインクダンス'},
+ {id:'st-kurutto',sticker:'kurutto',name:'くるっと'},
+ {id:'st-batsu1',sticker:'batsu1',name:'×その1'},
+ {id:'st-batsu2',sticker:'batsu2',name:'×その2'},
+ {id:'st-piyokichi',sticker:'piyokichi',name:'iPadの ぴよきち'},
+ {id:'st-piyomi',sticker:'piyomi',name:'iPadの ぴよみ'},
+ {id:'st-toramana',sticker:'toramana',name:'トラマナちゃん'},
+];
+// とどいた ごほうび [{day, ...ごほうび}]（とどいた じゅん）
+export function giftsOf(player){
+ const days=Object.keys(player.coin??{}).filter(d=>d>=GIFT_FROM&&d<=SEASON.end).sort();
+ return days.slice(0,DAILY_GIFTS.length).map((day,i)=>({day,...DAILY_GIFTS[i]}));
+}
+export const giftOn=(player,dayKey)=>giftsOf(player).find(g=>g.day===dayKey)??null;
+// きょう まだ もらっていなくて、クリアすれば もらえるか
+export const giftAvailable=(player,dayKey)=>typeof dayKey==='string'&&dayKey>=GIFT_FROM&&dayKey<=SEASON.end&&!player.coin?.[dayKey]&&giftsOf(player).length<DAILY_GIFTS.length;
+
 // 自動でふえるマンガ：requires の ごほうびを ぜんぶ持っていれば、pt なし・ゲートなしで よめる。
 // 保存はしない（毎回 持っている ごほうびから決める）ので、条件を先に満たしていた子にも そのまま効く。最奥など ほかの ごほうびは変えない
 export const AUTO_MANGA=[
@@ -138,6 +171,7 @@ export function mangaOf(player,dayKey){
  const set=new Set();
  for(const id of owned)for(const e of REWARDS[id]?.manga??[])set.add(e);
  for(const a of AUTO_MANGA)if(nodeActive(a,dayKey)&&a.requires.every(id=>owned.has(id)))for(const e of a.manga)set.add(e);
+ for(const g of giftsOf(player))for(const e of g.manga??[])set.add(e);   // 毎日の ごほうびの マンガ
  return set;
 }
 

@@ -8,7 +8,8 @@ import {QuestAudio} from './audio.js';
 import {Particles,flyText,shake,replay,centerOf,prefersReducedMotion} from './fx.js';
 import {mountSiteNav} from '../nav/site-nav.js';
 import {CubeStore,localCubeAdapter,memoryCubeAdapter} from './cosmicube-store.js';
-import {createCubeMap,pixelChar,seasonPeriod} from './cosmicube-ui.js';
+import {createCubeMap,pixelChar,seasonPeriod,giftLabel,giftImg} from './cosmicube-ui.js';
+import {giftOn,giftAvailable} from './cosmicube.js';
 import {themeTrack,trackElement} from './bgm-pool.js';
 import {isParentMode,parentLabel} from './parent-mode.js';
 import * as festival from './festival.js';
@@ -124,6 +125,9 @@ function renderCubePanel(sel,today){
  $('[data-c="plays"]').textContent=c?c.playsToday:0;
  $('[data-c="found"]').textContent=c?c.found:0;
  $('[data-c="coin"]').textContent=!c?'':c.coinToday?'🪙 きょうの コインミッション たっせい！':'🪙 きょう はじめて 10もん クリアすると、コインミッション たっせい';
+ // 🎁 毎日の ごほうび（その日はじめて 10もん クリアした日に 1こ）
+ const gp=sel&&cube.player(sel),gift=gp&&giftOn(gp,today);
+ $('[data-c="gift"]').textContent=!gp?'':gift?`🎁 きょうの ごほうび：${giftLabel(gift)}`:giftAvailable(gp,today)?'🎁 きょう はじめて 10もん クリアすると、ごほうびが 1こ とどくよ':'';
  $('[data-pix]').innerHTML=pixelChar(sel??'piyokichi');
  $('[data-cube-panel] [data-to-map]').disabled=!sel;
 }
@@ -471,6 +475,10 @@ function renderCubeResult(){
  $('[data-cube-line]').textContent=c.reason==='ok'?`🧊 +${c.cubePt} ピヨ探検pt（いま ${bal} pt）`:`🧊 ${why}（いま ${bal} pt）`;
  const coin=$('[data-cube-coin]');coin.hidden=!c.coinNew;
  coin.textContent='🪙 きょうの コインミッション たっせい！（ミッション1つぶん：赤・青コイン）';
+ // 🎁 毎日の ごほうび：その日はじめての クリアで とどいた 1こ
+ const gift=c.coinNew&&giftOn(cube.player(play.player),play.dayKey),gbox=$('[data-cube-gift]');
+ gbox.hidden=!gift;
+ if(gift){const art=giftImg(gift,'dq-gift-img');$('[data-cube-gift-art]').replaceChildren(...(art?[art]:[document.createTextNode('📚')]));$('[data-cube-gift-line]').textContent=`🎁 きょうの ごほうび：${giftLabel(gift)}`;}
 }
 function renderDisplayButton(){
  const pud=store.players[play.player].pudding,b=$('[data-display]');
