@@ -1,6 +1,6 @@
 // ピヨドリル：ピヨ探検のマップ画面と、ゲートが開くときの演出。保存は cube（CubeStore）にまかせる。
 import {PLAYERS} from './questions.js';
-import {SEASON,MAP,REWARDS,nodeById,mapView,season,cubeBalance,foundCount,giftsOf} from './cosmicube.js';
+import {SEASON,MAP,REWARDS,nodeById,mapView,season,cubeBalance,foundCount,giftsOf,giftOn,giftAvailable,DAILY_GIFTS} from './cosmicube.js';
 
 // ---------- マップの現在地キャラ（ドット絵素材） ----------
 // 元素材：piyodrill/characters/*_ipad.png（100×115）。遊んでいる人の絵を出す
@@ -76,6 +76,7 @@ export const seasonPeriod=()=>`${fmtDay(SEASON.start)}〜${fmtDay(SEASON.end)}`;
 export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,today,parent=null}){
  const $=(sel,root=document)=>root.querySelector(sel);
  let selected=null,revealAt=0;
+ const dailySeen=new Set();   // 「まいにちの みち」の ひらく演出を 見せた日（このページを ひらいている あいだだけ おぼえる。保存はしない）
 
  function render(){
   const player=getPlayer();if(!player)return;
@@ -121,7 +122,31 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
    box.append(el);
   }
   renderDetail(player,s,bal,stateOf);
+  renderDaily(player,p,dayKey);
   renderStickers(p);
+ }
+
+ // まいにちの みち：その日はじめて 10もん クリアすると、つぎの マスが pt なしで ひらく（中身は 毎日の ごほうび）。
+ // ひらいた マスと、つぎの 1マスだけ 見せる（ぜんぶで 何マスかは 出さない）
+ function renderDaily(player,p,dayKey){
+  const box=$('[data-daily]');if(!box)return;
+  const got=giftsOf(p),avail=giftAvailable(p,dayKey),todayGift=giftOn(p,dayKey),done=got.length>=DAILY_GIFTS.length;
+  box.hidden=!got.length&&!avail;
+  if(box.hidden)return;
+  const step=(cls,icon,label)=>{
+   const li=document.createElement('li');li.className=`dq-daily-step ${cls}`;
+   const i=document.createElement('span');i.className='dq-daily-icon';if(typeof icon==='string')i.textContent=icon;else i.append(icon);
+   const t=document.createElement('small');t.textContent=label;li.append(i,t);return li;
+  };
+  const items=got.map(g=>step(g.day===dayKey?'is-open is-today':'is-open',giftImg(g,'dq-daily-img')??'📚',g.name));
+  if(avail)items.push(step('is-next','❓','10もんで ひらく'));
+  else if(done&&!todayGift)items.push(step('is-soon','❓','じゅんびちゅう'));
+  const path=$('[data-daily-path]');path.replaceChildren(...items);
+  path.scrollLeft=path.scrollWidth;
+  $('[data-daily-note]').textContent=todayGift?'きょうの マスが ひらいたよ！ また あした':avail?'きょう はじめて 10もん クリアすると、つぎの マスが ひらくよ':'つぎの マスは じゅんびちゅう';
+  // きょう ひらいた マスは、マップを ひらいたときに 1回だけ 演出
+  const key=`${player}:${dayKey}`;
+  if(todayGift&&!dailySeen.has(key)){dailySeen.add(key);revealFace(giftImg(todayGift,'dq-reveal-art')??'📚',`${todayGift.sticker?`シール「${todayGift.name}」`:todayGift.name} を 手に入れた！`,todayGift.sticker?'シールちょうに はったよ':'3DPハウスの 本だなで よめるよ');}
  }
 
  // シールちょう：もらった シールだけ ならべる（まだの数・ぜんぶの数は 出さない）
@@ -176,11 +201,15 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
 
  // 派手な非ドット演出：キューブがほどけて、光の中からごほうび
  function reveal(player,rewardId){
-  const f=rewardFace(rewardId,player,parent),ov=$('[data-cube-reveal]');
-  const icon=$('[data-reveal-icon]');
-  if(REWARD_ART[rewardId])icon.replaceChildren(artImg(rewardId,'dq-reveal-art'));else icon.textContent=f.icon;
-  $('[data-reveal-title]').textContent=`${f.name} を 手に入れた！`;
-  $('[data-reveal-note]').textContent=f.note;
+  const f=rewardFace(rewardId,player,parent);
+  revealFace(REWARD_ART[rewardId]?artImg(rewardId,'dq-reveal-art'):f.icon,`${f.name} を 手に入れた！`,f.note);
+ }
+ // icon：絵（img）か 文字。ゲートの ごほうびと、まいにちの みちで 共通
+ function revealFace(iconArt,title,note){
+  const ov=$('[data-cube-reveal]'),icon=$('[data-reveal-icon]');
+  if(typeof iconArt==='string')icon.textContent=iconArt;else icon.replaceChildren(iconArt);
+  $('[data-reveal-title]').textContent=title;
+  $('[data-reveal-note]').textContent=note;
   ov.classList.remove('go');ov.hidden=false;void ov.offsetWidth;ov.classList.add('go');
   revealAt=performance.now();
   audio.whoosh();

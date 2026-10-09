@@ -368,3 +368,14 @@ test('ドリルの画面：ホームに「🎁 きょうの ごほうび」、�
  const main=readFileSync(new URL('../src/drill/main.js',import.meta.url),'utf8');
  assert.match(main,/giftOn\(cube\.player\(play\.player\),play\.dayKey\)/,'ごほうびの日は その回を はじめた日');
 });
+
+test('まいにちの みち：マップの下に 帯。ひらいた マス＋つぎの 1マスだけ（ぜんぶの数は 出さない）。ひらく演出は 1日1回', ()=>{
+ const html=readFileSync(new URL('../drill.html',import.meta.url),'utf8');
+ assert.match(html,/<section class="dq-daily" data-daily hidden[^>]*><h3[^>]*>まいにちの みち<\/h3><ol class="dq-daily-path" data-daily-path><\/ol>/);
+ assert.ok(html.indexOf('data-daily ')>html.indexOf('data-map-space'),'星空マップの すぐ下');
+ const ui=readFileSync(new URL('../src/drill/cosmicube-ui.js',import.meta.url),'utf8');
+ assert.match(ui,/renderDaily\(player,p,dayKey\)/);
+ assert.match(ui,/if\(avail\)items\.push\(step\('is-next','❓','10もんで ひらく'\)\)/);
+ assert.match(ui,/todayGift&&!dailySeen\.has\(key\)/);
+ assert.ok(!/localStorage/.test(ui),'演出を見せたかどうかは 保存しない');
+});
