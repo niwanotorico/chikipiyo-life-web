@@ -30,23 +30,38 @@ export const REWARDS={
  'manga-2':{icon:'📚',name:'マンガ「寝る場所」「かげのせいくらべ」',note:'3DPハウスの 本だなで よめるよ',manga:['mc-02','daily-02'],effects:[]},
  'manga-3':{icon:'📚',name:'マンガ「宝さがし」「くものおやつ」',note:'3DPハウスの 本だなで よめるよ',manga:['mc-03','daily-03'],effects:[]},
  'manga-4':{icon:'📚',name:'マンガ「おともだち」「いしのひなた」',note:'3DPハウスの 本だなで よめるよ',manga:['mc-04','daily-04'],effects:[]},
+ // 小さいマスの マンガ（1話ずつ）
+ 'manga-5':{icon:'📚',name:'マンガ「人気者」',note:'3DPハウスの 本だなで よめるよ',manga:['mc-06'],effects:[]},
+ 'manga-6':{icon:'📚',name:'マンガ「おなかのおへんじ」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-07'],effects:[]},
+ 'manga-7':{icon:'📚',name:'マンガ「いいながめ」',note:'3DPハウスの 本だなで よめるよ',manga:['mc-07'],effects:[]},
+ 'manga-8':{icon:'📚',name:'マンガ「かぜのかくれんぼ」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-08'],effects:[]},
+ 'manga-9':{icon:'📚',name:'マンガ「ねこの指定席」',note:'3DPハウスの 本だなで よめるよ',manga:['mc-08'],effects:[]},
+ 'manga-10':{icon:'📚',name:'マンガ「くものいす」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-09'],effects:[]},
 };
 
 // マップ。x,y はマップ上の位置（%）。requires は「ぜんぶ開いていれば挑戦できる」ゲート。
+// small：大きいゲートの手前の 小さいマス（10/9〜。マンガ1話ずつ）。大きいゲートの pt を そのぶん下げたので、道の合計 pt は もとのまま（中身のあるゲート 合計390pt）。
+// before：その先の 大きいゲート。もう ひらいている子は、手前の 小さいマスを pt なしで ひらける（もう とおった道。costOf）
 // reward:null は小ネタ用の空きスロット（中身を REWARDS に足して reward を書けば、そのまま開けられるようになる）
 export const MAP={
  start:'start',
  nodes:[
-  {id:'start',x:50,y:92,cost:0,reward:null,requires:[],label:'スタート'},
-  {id:'slot-left',x:24,y:70,cost:20,reward:'manga-1',requires:['start'],from:UPDATE_FROM},   // もと空きスロット（左40pt）→ マンガ 20pt（マンガ4つで80pt。マンガ込み合計390pt、うさこ40ptを足して430pt）
-  {id:'curry',x:76,y:70,cost:50,reward:'curry',requires:['start']},
-  {id:'slot-a',x:12,y:52,cost:20,reward:'manga-2',requires:['slot-left'],from:UPDATE_FROM},
-  {id:'bgm',x:34,y:42,cost:60,reward:'bgm',requires:['start']},       // 左40pt が空きのあいだも、最奥まで行けるようにスタートから
-  {id:'toramana',x:66,y:42,cost:80,reward:'toramana',requires:['curry']},
-  {id:'slot-b',x:88,y:52,cost:20,reward:'manga-3',requires:['curry'],from:UPDATE_FROM},
-  {id:'slot-c',x:14,y:24,cost:20,reward:'manga-4',requires:['bgm'],from:UPDATE_FROM},   // もと40pt → マンガ 20pt
-  {id:'slot-d',x:86,y:24,cost:40,reward:null,requires:['toramana']},   // 空きスロット。うさこ（10月後半）用に残す
-  {id:'deep',x:50,y:15,cost:120,reward:'deep',requires:['bgm','toramana']},
+  {id:'start',x:50,y:93,cost:0,reward:null,requires:[],label:'スタート'},
+  {id:'slot-left',x:22,y:75,cost:20,reward:'manga-1',requires:['start'],from:UPDATE_FROM},   // もと空きスロット（左40pt）→ マンガ 20pt（マンガ4つで80pt。マンガ込み合計390pt、うさこ40ptを足して430pt）
+  {id:'curry',x:78,y:75,cost:50,reward:'curry',requires:['start']},
+  {id:'slot-a',x:10,y:57,cost:20,reward:'manga-2',requires:['slot-left'],from:UPDATE_FROM},
+  {id:'step-bgm-1',x:41,y:79,cost:20,reward:'manga-5',requires:['start'],small:true,before:'bgm'},
+  {id:'step-bgm-2',x:37,y:63,cost:20,reward:'manga-6',requires:['step-bgm-1'],small:true,before:'bgm'},
+  {id:'bgm',x:30,y:47,cost:20,reward:'bgm',requires:['step-bgm-2']},       // もと 60pt（スタートから）→ マンガの小さいマス 20pt×2 ＋ 20pt
+  {id:'step-tora-1',x:62,y:62,cost:20,reward:'manga-7',requires:['curry'],small:true,before:'toramana'},
+  {id:'step-tora-2',x:66,y:52,cost:20,reward:'manga-8',requires:['step-tora-1'],small:true,before:'toramana'},
+  {id:'toramana',x:70,y:40,cost:40,reward:'toramana',requires:['step-tora-2']},   // もと 80pt（カレーから）→ 20pt×2 ＋ 40pt
+  {id:'slot-b',x:90,y:57,cost:20,reward:'manga-3',requires:['curry'],from:UPDATE_FROM},
+  {id:'slot-c',x:12,y:28,cost:20,reward:'manga-4',requires:['bgm'],from:UPDATE_FROM},   // もと40pt → マンガ 20pt
+  {id:'slot-d',x:88,y:24,cost:40,reward:null,requires:['toramana']},   // 空きスロット。うさこ（10月後半）用に残す
+  {id:'step-deep-1',x:50,y:35,cost:20,reward:'manga-9',requires:['bgm','toramana'],small:true,before:'deep'},
+  {id:'step-deep-2',x:50,y:24,cost:20,reward:'manga-10',requires:['step-deep-1'],small:true,before:'deep'},
+  {id:'deep',x:50,y:12,cost:80,reward:'deep',requires:['step-deep-2']},   // もと 120pt → 20pt×2 ＋ 80pt
  ],
 };
 const NODE=Object.fromEntries(MAP.nodes.map(n=>[n.id,n]));
@@ -118,6 +133,8 @@ export function completion(s){
  return {done,total:list.length,percent:list.length?Math.floor(done/list.length*100):0};
 }
 export const isOpen=(s,id)=>id===MAP.start||!!s.gates[id];
+// いま ひらくのに いる pt。その先の 大きいゲートを もう ひらいていれば、手前の 小さいマスは 0pt
+export const costOf=(s,node)=>node.before&&isOpen(s,node.before)?0:node.cost;
 // 全プレイヤー共通で、ごほうびが持つ効果（usako / curry / toramana / bgm）
 export function effectsOf(player){
  const set=new Set();
@@ -226,9 +243,10 @@ export function openGate(player,nodeId,dayKey){
  if(s0.gates[nodeId])return {player,ok:false,reason:'open'};
  if(!node.reward||!REWARDS[node.reward]||!nodeActive(node,dayKey))return {player,ok:false,reason:'empty'};
  if(!node.requires.every(id=>isOpen(s0,id)))return {player,ok:false,reason:'locked'};
- if(cubeBalance(s0)<node.cost)return {player,ok:false,reason:'short'};
+ const cost=costOf(s0,node);
+ if(cubeBalance(s0)<cost)return {player,ok:false,reason:'short'};
  const next=sanitizeCubePlayer(clone(player)),s=season(next);
- s.gates[nodeId]={on:dayKey,cost:node.cost};
+ s.gates[nodeId]={on:dayKey,cost};
  s.rewards[node.reward]={on:dayKey,house:!!REWARDS[node.reward].house};
  s.position=nodeId;
  next.seasons[SEASON.id]=sanitizeSeason(s);

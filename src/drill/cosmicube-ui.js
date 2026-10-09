@@ -1,6 +1,6 @@
 // ピヨドリル：ピヨ探検のマップ画面と、ゲートが開くときの演出。保存は cube（CubeStore）にまかせる。
 import {PLAYERS} from './questions.js';
-import {SEASON,MAP,REWARDS,nodeById,mapView,season,cubeBalance,foundCount,giftsOf,giftOn,giftAvailable,DAILY_GIFTS} from './cosmicube.js';
+import {SEASON,MAP,REWARDS,nodeById,mapView,season,cubeBalance,costOf,foundCount,giftsOf,giftOn,giftAvailable,DAILY_GIFTS} from './cosmicube.js';
 
 // ---------- マップの現在地キャラ（ドット絵素材） ----------
 // 元素材：piyodrill/characters/*_ipad.png（100×115）。遊んでいる人の絵を出す
@@ -101,17 +101,18 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
   const box=$('[data-map-nodes]');box.replaceChildren();
   for(const {node,state} of view){
    const el=document.createElement(state==='fog'?'span':'button');
-   el.className=`dq-node is-${state}`;el.style.left=`${node.x}%`;el.style.top=`${node.y}%`;
+   el.className=`dq-node is-${state}${node.small?' is-small':''}`;el.style.left=`${node.x}%`;el.style.top=`${node.y}%`;
    let icon='❓',label='',tag='';
    if(state==='fog'){icon='🌫️';el.setAttribute('aria-hidden','true');}
    else{
     el.type='button';el.dataset.node=node.id;el.setAttribute('aria-pressed',String(selected===node.id));
     if(node.id===MAP.start){icon='⭐';label=node.label;}
-    else if(node.reward&&(state==='open'||parent)){const f=rewardFace(node.reward,player,parent);icon=f.icon;label=f.name;}
+    else if(node.reward&&(state==='open'||parent)){const f=rewardFace(node.reward,player,parent);icon=f.icon;label=node.small?'':f.name;}   // 小さいマスは 絵だけ（名前は タップで）
     else if(state==='soon'){label='じゅんびちゅう';}
-    if(state==='ready')tag=`${node.cost}pt`;
+    const cost=costOf(s,node);
+    if(state==='ready')tag=`${cost}pt`;
     if(state==='near')tag='🔒';
-    el.setAttribute('aria-label',state==='open'?label:state==='ready'?`なにかが ある ゲート。${node.cost} ピヨ探検pt で ひらく`:state==='near'?'まだ ひらけない ゲート':'じゅんびちゅう');
+    el.setAttribute('aria-label',state==='open'?label:state==='ready'?`なにかが ある ゲート。${cost} ピヨ探検pt で ひらく`:state==='near'?'まだ ひらけない ゲート':'じゅんびちゅう');
    }
    el.innerHTML=`<span class="dq-node-icon"></span>${label?'<span class="dq-node-label"></span>':''}${tag?'<span class="dq-node-cost"></span>':''}`;
    if(state==='open'&&REWARD_ART[node.reward])$('.dq-node-icon',el).append(artImg(node.reward,'dq-node-art'));
@@ -176,9 +177,10 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
   }
   else if(st==='ready'){
    h.textContent=parent&&node.reward?`❓ ${rewardFace(node.reward,player,parent).name}`:'❓ なにが でるかな？';
-   p.textContent=bal>=node.cost?`${node.cost} ピヨ探検pt で ひらけるよ。`:`ひらくには ${node.cost} ピヨ探検pt。あと ${node.cost-bal} pt！`;
+   const cost=costOf(s,node);
+   p.textContent=cost===0?'もう とおった みち だから、pt なしで ひらけるよ。':bal>=cost?`${cost} ピヨ探検pt で ひらけるよ。`:`ひらくには ${cost} ピヨ探検pt。あと ${cost-bal} pt！`;
    const b=document.createElement('button');b.type='button';b.className='dq-btn is-open-gate';b.dataset.openGate=node.id;
-   b.textContent=`ひらく（${node.cost} pt）`;b.disabled=bal<node.cost;parts.push(b);
+   b.textContent=`ひらく（${cost} pt）`;b.disabled=bal<cost;parts.push(b);
   }
   else if(st==='near'){
    const need=node.requires.filter(id=>!s.gates[id]&&id!==MAP.start).map(id=>{const n=nodeById(id);return stateOf[id]==='open'||parent?rewardFace(n.reward,player,parent).name:'となりの ❓';});

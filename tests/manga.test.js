@@ -5,7 +5,7 @@ import {SERIES,allEpisodes,episodeById,episodePages,readableEpisodes,MANGA_PLAYE
 import {MANGA_PAGES} from '../src/manga/pages.js';
 import {readUnlocks,readShelf,writeShelf,defaultPlayer,CUBE_KEY,QUEST_KEY,SHELF_KEY} from '../src/manga/unlocks.js';
 import {withPages,clampPosition,stepPosition,pageAt,createPageWindow} from '../src/manga/reading.js';
-import {REWARDS,MAP,SEASON,nodeById,openableNodes,emptyCubePlayer,recordSession,openGate,mergeCubePlayer,mangaOf,season,cubeBalance,effectsOf,sanitizeCubePlayer,completion,AUTO_MANGA,foundCount,UPDATE_FROM,nodeState,mapView,GIFT_FROM,DAILY_GIFTS,giftsOf,giftOn,giftAvailable} from '../src/drill/cosmicube.js';
+import {REWARDS,MAP,SEASON,costOf,nodeById,openableNodes,emptyCubePlayer,recordSession,openGate,mergeCubePlayer,mangaOf,season,cubeBalance,effectsOf,sanitizeCubePlayer,completion,AUTO_MANGA,foundCount,UPDATE_FROM,nodeState,mapView,GIFT_FROM,DAILY_GIFTS,giftsOf,giftOn,giftAvailable} from '../src/drill/cosmicube.js';
 import {CubeStore,memoryCubeAdapter,CUBE_KEY as DRILL_CUBE_KEY} from '../src/drill/cosmicube-store.js';
 import {STORE_KEY} from '../src/drill/storage.js';
 import {PLAYERS} from '../src/drill/questions.js';
@@ -35,8 +35,8 @@ test('本だな：キーとプレイヤーは ピヨドリルと同じ', ()=>{
 test('本だな：本はシリーズごとに1冊（マイクラ本・まったり日常本・季節の本）', ()=>{
  assert.deepEqual(SERIES.map(s=>s.title),['マイクラ本','まったり日常本','季節の本']);
  assert.deepEqual(SERIES[2].episodes.map(e=>e.title),['ハロウィン攻略法']);
- assert.deepEqual(SERIES[0].episodes.map(e=>e.title),['自動化の沼','寝る場所','宝さがし','おともだち','近道']);
- assert.deepEqual(SERIES[1].episodes.map(e=>e.title),['葉っぱの行き先','かげのせいくらべ','くものおやつ','いしのひなた','かたつむりのかさ','みずたまりのそら']);
+ assert.deepEqual(SERIES[0].episodes.map(e=>e.title),['自動化の沼','寝る場所','宝さがし','おともだち','近道','人気者','いいながめ','ねこの指定席']);
+ assert.deepEqual(SERIES[1].episodes.map(e=>e.title),['葉っぱの行き先','かげのせいくらべ','くものおやつ','いしのひなた','かたつむりのかさ','みずたまりのそら','おなかのおへんじ','かぜのかくれんぼ','くものいす']);
  const ids=allEpisodes().map(e=>e.id);assert.equal(new Set(ids).size,ids.length);
 });
 
@@ -51,11 +51,15 @@ test('ごほうび：マンガの話は どれか1つの ごほうび（ゲー�
  for(const [id,r] of Object.entries(REWARDS))if(r.manga){assert.deepEqual(r.effects,[],id);assert.ok(!r.house,id);assert.ok(!r.secret,id);}
 });
 
-test('マップ：マンガは もとの空き枠だけに置く。ほかの ごほうびの場所・コスト・つながりは そのまま', ()=>{
- const expect={curry:[50,['start']],bgm:[60,['start']],toramana:[80,['curry']],deep:[120,['bgm','toramana']]};
+test('マップ：マンガは もとの空き枠と、大きいゲートの手前の 小さいマス（1話ずつ）。道の合計 pt は もとのまま', ()=>{
+ const expect={curry:[50,['start']],bgm:[20,['step-bgm-2']],toramana:[40,['step-tora-2']],deep:[80,['step-deep-2']]};
  for(const [id,[cost,req]] of Object.entries(expect)){const n=nodeById(id);assert.equal(n.reward,id);assert.equal(n.cost,cost);assert.deepEqual(n.requires,req);}
  const manga=MAP.nodes.filter(n=>REWARDS[n.reward]?.manga);
- assert.deepEqual(manga.map(n=>n.id),['slot-left','slot-a','slot-b','slot-c']);
+ assert.deepEqual(manga.filter(n=>!n.small).map(n=>n.id),['slot-left','slot-a','slot-b','slot-c']);
+ assert.deepEqual(manga.filter(n=>n.small).map(n=>[n.id,n.before,REWARDS[n.reward].manga.length]),[['step-bgm-1','bgm',1],['step-bgm-2','bgm',1],['step-tora-1','toramana',1],['step-tora-2','toramana',1],['step-deep-1','deep',1],['step-deep-2','deep',1]]);
+ // 道の合計：テーマソングまで 60・カレーから トラマナちゃんまで 80・最奥まで 120（もとと同じ）
+ const path=id=>MAP.nodes.filter(n=>n.before===id).reduce((a,n)=>a+n.cost,nodeById(id).cost);
+ assert.deepEqual([path('bgm'),path('toramana'),path('deep')],[60,80,120]);
  assert.ok(manga.every(n=>n.cost===20));
  // 合計：マンガ込み 390pt（うさこ 40pt を slot-d に足すと 430pt）
  assert.equal(openableNodes().reduce((a,n)=>a+n.cost,0),390);
@@ -99,16 +103,17 @@ test('ハロウィン：トラマナちゃんと BGM の両方で、pt なし・
  const has=p=>mangaOf(p,D).has('season-01');
  let p=emptyCubePlayer();
  for(let i=0;i<20;i++)p=recordSession(p,{sessionId:'s'+i,dayKey:`2026-10-${String(3+Math.floor(i/3)).padStart(2,'0')}`,award:award(19)}).player;
- p=openGate(p,'curry',D).player;p=openGate(p,'toramana',D).player;
+ for(const id of ['curry','step-tora-1','step-tora-2','toramana','step-bgm-1','step-bgm-2'])p=openGate(p,id,D).player;
  assert.equal(has(p),false);   // 片方だけでは ふえない
  const before=cubeBalance(season(p));
  const r=openGate(p,'bgm',D);p=r.player;
  assert.equal(has(p),true);
- assert.equal(cubeBalance(season(p)),before-60);   // BGM のぶんだけ。ハロウィンに pt はかからない
+ assert.equal(cubeBalance(season(p)),before-20);   // BGM のぶんだけ。ハロウィンに pt はかからない
  assert.ok(!('halloween' in season(p).rewards)&&!('season-01' in season(p).rewards),'保存はしない');
- assert.equal(completion(season(p)).total,8);      // コンプ率の母数は変えない
- // 最奥 120pt はそのまま開けられる
- assert.equal(nodeById('deep').cost,120);assert.equal(nodeById('deep').reward,'deep');
+ assert.equal(completion(season(p)).total,14);     // ハロウィンは コンプ率の母数に 入れない
+ // 最奥は 手前の 小さいマス2つの あとで 開けられる
+ assert.equal(nodeById('deep').reward,'deep');
+ for(const id of ['step-deep-1','step-deep-2'])p=openGate(p,id,D).player;
  assert.equal(openGate(p,'deep',D).ok,true);
 });
 
@@ -273,27 +278,28 @@ test('みつけた ごほうび：中身のあるゲートを ひらいた数。
  let p=emptyCubePlayer();
  for(let i=0;i<24;i++)p=recordSession(p,{sessionId:'s'+i,dayKey:`2026-10-${String(3+Math.floor(i/3)).padStart(2,'0')}`,award:award(19)}).player;
  assert.equal(foundCount(season(p)),0);
- for(const id of ['slot-left','curry','toramana'])p=openGate(p,id,D).player;
- assert.equal(foundCount(season(p)),3);           // マンガ（2話ぶん）でも 1こ
- p=openGate(p,'bgm',D).player;
+ for(const id of ['slot-left','curry','step-tora-1','step-tora-2','toramana'])p=openGate(p,id,D).player;
+ assert.equal(foundCount(season(p)),5);           // マンガ（2話ぶん）でも 1こ。小さいマスも 1こ
+ for(const id of ['step-bgm-1','step-bgm-2','bgm'])p=openGate(p,id,D).player;
  assert.ok(mangaOf(p,D).has('season-01'));
- assert.equal(foundCount(season(p)),4);           // BGM で 1こ。ハロウィンは ふえても 数えない
+ assert.equal(foundCount(season(p)),8);           // ハロウィンは ふえても 数えない
  // 古いページが rewards を消しても、ゲートから数える
  const old=JSON.parse(JSON.stringify(p));delete old.seasons[SEASON.id].rewards['manga-1'];
- assert.equal(foundCount(season(old)),4);
+ assert.equal(foundCount(season(old)),8);
 });
 
 test('10/7 から切りかえ：6日までは マンガのゲートは ❓じゅんびちゅうで ひらけず、ハロウィンも まだ。7日になると そのまま反映', ()=>{
  assert.equal(UPDATE_FROM,'2026-10-07');
  let p=emptyCubePlayer();
  for(let i=0;i<12;i++)p=recordSession(p,{sessionId:'s'+i,dayKey:`2026-10-0${3+Math.floor(i/3)}`,award:award(19)}).player;   // 10/3〜10/6
- for(const id of ['curry','toramana','bgm'])p=openGate(p,id,D6).player;   // 6日までに開けた（いまの公開版でもできる）
+ // 6日までに開けた（そのころの公開版の 記録の形。カレー50・トラマナちゃん80・BGM60）
+ p=sanitizeCubePlayer({...p,seasons:{[SEASON.id]:{...season(p),gates:{curry:{on:D6,cost:50},toramana:{on:D6,cost:80},bgm:{on:D6,cost:60}},rewards:{curry:{on:D6},toramana:{on:D6,house:true},bgm:{on:D6}},position:'bgm'}}});
  const bal=cubeBalance(season(p));
  // 6日：見た目も動きも いままでどおり
  assert.equal(nodeState(season(p),nodeById('slot-left'),D6),'soon');
  assert.equal(openGate(p,'slot-left',D6).reason,'empty');
  assert.equal(mangaOf(p,D6).size,0);
- assert.ok(mapView(season(p),{dayKey:D6}).filter(v=>REWARDS[v.node.reward]?.manga).every(v=>v.state==='soon'||v.state==='fog'));
+ assert.ok(mapView(season(p),{dayKey:D6}).filter(v=>REWARDS[v.node.reward]?.manga&&!v.node.small).every(v=>v.state==='soon'||v.state==='fog'));
  // 7日：記録は そのまま（再計算しない）で、マンガとハロウィンが使えるようになる
  assert.equal(cubeBalance(season(p)),bal);
  assert.equal(nodeState(season(p),nodeById('slot-left'),D),'ready');
@@ -378,4 +384,27 @@ test('まいにちの みち：マップの下に 帯。ひらいた マス＋�
  assert.match(ui,/if\(avail\)items\.push\(step\('is-next','❓','10もんで ひらく'\)\)/);
  assert.match(ui,/todayGift&&!dailySeen\.has\(key\)/);
  assert.ok(!/localStorage/.test(ui),'演出を見せたかどうかは 保存しない');
+});
+
+test('小さいマス：ぴよみ（カレーまで・のこり43pt）は トラマナちゃんの手前の 2マスを すぐ ひらける。そのあと トラマナちゃんは あと37pt', ()=>{
+ let p=sanitizeCubePlayer({seasons:{[SEASON.id]:{earned:[{id:'a',day:'2026-10-05',pt:50},{id:'b',day:'2026-10-08',pt:43}],gates:{curry:{on:'2026-10-06',cost:50}},rewards:{curry:{on:'2026-10-06'}},position:'curry'}}});
+ assert.equal(cubeBalance(season(p)),43);
+ for(const id of ['step-tora-1','step-tora-2']){const r=openGate(p,id,'2026-10-09');assert.equal(r.ok,true,id);p=r.player;}
+ assert.equal(cubeBalance(season(p)),3);
+ assert.equal(openGate(p,'toramana','2026-10-09').reason,'short');
+ assert.equal(nodeById('toramana').cost-cubeBalance(season(p)),37);
+ assert.ok(mangaOf(p,'2026-10-09').has('mc-07')&&mangaOf(p,'2026-10-09').has('daily-08'));
+});
+
+test('小さいマス：その先の 大きいゲートを もう ひらいている子は、手前の マスを 0pt で ひらける（もう とおった道）', ()=>{
+ let p=sanitizeCubePlayer({seasons:{[SEASON.id]:{earned:[{id:'a',day:'2026-10-05',pt:60}],gates:{bgm:{on:'2026-10-06',cost:60}},rewards:{bgm:{on:'2026-10-06'}},position:'bgm'}}});
+ assert.equal(cubeBalance(season(p)),0);
+ assert.equal(costOf(season(p),nodeById('step-bgm-1')),0);
+ assert.equal(costOf(season(p),nodeById('step-tora-1')),20);
+ for(const id of ['step-bgm-1','step-bgm-2']){const r=openGate(p,id,'2026-10-09');assert.equal(r.ok,true,id);p=r.player;}
+ assert.deepEqual(season(p).gates['step-bgm-1'],{on:'2026-10-09',cost:0});
+ assert.equal(cubeBalance(season(p)),0);
+ assert.ok(mangaOf(p,'2026-10-09').has('mc-06')&&mangaOf(p,'2026-10-09').has('daily-07'));
+ // まだ ひらいていない ゲートの手前は ふつうの pt（カレーが まだなので とおれない）
+ assert.equal(openGate(p,'step-tora-1','2026-10-09').reason,'locked');
 });

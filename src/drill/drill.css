@@ -517,6 +517,11 @@ body[data-view="map"] .dq-top{display:none}
 .dq-node.is-near,.dq-node.is-soon{background:#ffffffd9;border-style:dashed;border-color:#c9c3e8;color:#5b5880}
 .dq-node.is-fog{width:clamp(56px,16%,80px);border:0;background:radial-gradient(closest-side,#d8d6f0cc,#d8d6f000);box-shadow:none;color:transparent;pointer-events:none}
 .dq-node.is-fog .dq-node-icon{opacity:.75;filter:blur(1px)}
+/* 大きいゲートの手前の 小さいマス（マンガ1話ずつ）：ひとまわり小さく、名前は出さない */
+.dq-node.is-small{width:clamp(44px,12%,62px);padding:4px 2px;border-radius:12px}
+.dq-node.is-small .dq-node-icon{font-size:clamp(16px,4.4vw,22px)}
+.dq-node.is-small .dq-node-cost{padding:0 4px;font-size:9px}
+.dq-node.is-small.is-fog{width:clamp(36px,10%,52px)}
 .dq-node.is-here::before{content:'';position:absolute;inset:-7px;border-radius:20px;border:2px dashed var(--nebula);animation:dq-rot 9s linear infinite}
 .dq-node[aria-pressed="true"]{outline:3px solid var(--nebula);outline-offset:2px}
 .dq-node .dq-pix{position:absolute;top:-30px;right:-12px;width:30px;height:30px}

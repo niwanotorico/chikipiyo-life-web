@@ -60,7 +60,9 @@ test('ゲート：前がぜんぶ開いていて、pt が足りれば開く。pt
  assert.equal(openGate(r.player,'curry',D).reason,'open');
  assert.ok(effectsOf(r.player).has('curry'));
  assert.deepEqual(pendingHouseVisits(r.player),[]);
- const t=openGate(r.player,'toramana',D);
+ assert.equal(openGate(r.player,'toramana',D).reason,'locked');   // 手前の 小さいマス2つが先
+ let q=r.player;for(const id of ['step-tora-1','step-tora-2'])q=openGate(q,id,D).player;
+ const t=openGate(q,'toramana',D);
  assert.equal(t.ok,true);assert.deepEqual(pendingHouseVisits(t.player),['toramana']);
 });
 
@@ -71,10 +73,11 @@ test('pt が足りないと開かない', ()=>{
 
 test('分岐は排他ではない：どの順番でも、ぜんぶ開けて 100%', ()=>{
  const total=openableNodes().reduce((a,n)=>a+n.cost,0);
- for(const order of [['bgm','curry','toramana','deep','slot-left','slot-a','slot-b','slot-c'],['slot-left','slot-a','curry','slot-b','toramana','bgm','slot-c','deep'],['curry','bgm','slot-c','toramana','deep','slot-b','slot-left','slot-a']]){
+ const BGM=['step-bgm-1','step-bgm-2','bgm'],TORA=['step-tora-1','step-tora-2','toramana'],DEEP=['step-deep-1','step-deep-2','deep'];
+ for(const order of [[...BGM,'curry',...TORA,...DEEP,'slot-left','slot-a','slot-b','slot-c'],['slot-left','slot-a','curry','slot-b',...TORA,...BGM,'slot-c',...DEEP],['curry',...BGM,'slot-c',...TORA,...DEEP,'slot-b','slot-left','slot-a']]){
   let p=richPlayer(total);
   for(const id of order){const r=openGate(p,id,D7);assert.equal(r.ok,true,`${order}: ${id} ${r.reason}`);p=r.player;}
-  assert.deepEqual(completion(season(p)),{done:8,total:8,percent:100});
+  assert.deepEqual(completion(season(p)),{done:14,total:14,percent:100});
   assert.equal(cubeBalance(season(p)),richPlayer(total).seasons[SEASON.id].earned.reduce((a,e)=>a+e.pt,0)-total);
  }
 });
@@ -91,12 +94,14 @@ test('見えかた：となりは ❓、遠くは霧。最奥は片方だけ開�
  assert.equal(nodeState(s0,nodeById('slot-left'),D7),'ready');  // もと空きスロット → マンガ（20pt）。10/7 から
  assert.equal(nodeState(s0,nodeById('slot-left'),'2026-10-06'),'soon');
  assert.equal(nodeState(s0,nodeById('slot-left')),'soon');      // 日付がわからないときは まだ
- assert.equal(nodeState(s0,nodeById('bgm')),'ready');
+ assert.equal(nodeState(s0,nodeById('step-bgm-1')),'ready');
+ assert.equal(nodeState(s0,nodeById('bgm')),'fog');
  assert.equal(nodeState(s0,nodeById('curry')),'ready');
  assert.equal(nodeState(s0,nodeById('deep')),'fog');
- p=openGate(p,'bgm',D).player;
+ for(const id of ['step-bgm-1','step-bgm-2','bgm'])p=openGate(p,id,D).player;
  const s=season(p);
- assert.equal(nodeState(s,nodeById('deep')),'near');
+ assert.equal(nodeState(s,nodeById('step-deep-1')),'near');
+ assert.equal(nodeState(s,nodeById('deep')),'fog');
  assert.equal(nodeState(s,nodeById('slot-a')),'fog');
  assert.equal(nodeState(s,nodeById('toramana')),'fog');
  // 親モードは霧なし
@@ -158,7 +163,7 @@ test('保存先が使えなくても落ちない（メモリ）・スナップ�
  const r=cube.openGate('piyokichi','curry',D);assert.equal(r.ok,true);
  const snap=cube.snapshot('piyokichi',D);
  for(const k of ['cubePt','gates','rewards','position','playsToday','coinToday','completion'])assert.ok(k in snap,k);
- assert.equal(snap.cubePt,0);assert.deepEqual(snap.gates,['curry']);assert.equal(snap.completion.percent,12);   // 1/8（マンガ4つを足したので）
+ assert.equal(snap.cubePt,0);assert.deepEqual(snap.gates,['curry']);assert.equal(snap.completion.percent,7);   // 1/14（マンガ4つ＋小さいマス6つを足したので）
  assert.deepEqual(Object.keys(cube.snapshotAll(D)).sort(),['piyokichi','piyomi']);
 });
 
@@ -244,13 +249,13 @@ test('トラマナちゃんの絵：toramana_jump.png を使う（開放後の�
 
 test('空きスロット：slot-d だけ ❓ のまま（うさこは10月後半に別のごほうびで追加予定）。左の枠はマンガ', async ()=>{
  const left=nodeById('slot-left');
- assert.equal(left.cost,20);assert.equal(left.x,24);assert.equal(left.reward,'manga-1');
+ assert.equal(left.cost,20);assert.equal(left.x,22);assert.equal(left.reward,'manga-1');
  assert.ok(MAP.nodes.every(n=>n.reward!=='usako'));
  assert.deepEqual(MAP.nodes.filter(n=>n.id!==MAP.start&&!n.reward).map(n=>n.id),['slot-d']);
  // 空きスロットがあっても、ほかのゲートと最奥には行ける
  for(const n of openableNodes())assert.ok(n.requires.every(id=>id===MAP.start||openableNodes().some(o=>o.id===id)),n.id);
  // 子ども画面では ❓（じゅんびちゅう）、親モードでも中身は出ない
- let p=richPlayer(1000);p=openGate(p,'curry',D).player;p=openGate(p,'toramana',D).player;
+ let p=richPlayer(1000);for(const id of ['curry','step-tora-1','step-tora-2','toramana'])p=openGate(p,id,D).player;
  const s=season(p),slot=nodeById('slot-d');
  assert.equal(nodeState(s,slot),'soon');
  assert.equal(mapView(s,{parent:true}).find(v=>v.node.id==='slot-d').state,'soon');
