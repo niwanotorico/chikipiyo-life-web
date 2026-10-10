@@ -23,7 +23,10 @@ const $$=(sel,root=document)=>[...root.querySelectorAll(sel)];
 const storage=safeStorage();
 let {store,status}=loadStore(storage);
 let play=null;   // {player, dayKey, sessionId, practice, run, input, feedback, committed, award, stage, token}
-const audio=new QuestAudio({storage,lite:new URLSearchParams(location.search).get('lite')==='1'});   // ?lite=1：古い端末むけの軽い音（audio.js）
+// 古い端末むけの軽い音（audio.js）。iPad・iPhone は自動で lite（?lite=0 でふつうの音、?lite=1 でどの端末も lite）
+const LITE=(()=>{const q=new URLSearchParams(location.search).get('lite');if(q==='1'||q==='0')return q==='1';
+ const ua=navigator.userAgent||'';return /iPad|iPhone|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1);})();
+const audio=new QuestAudio({storage,lite:LITE});
 const particles=new Particles($('[data-fx]'));
 let reduced=prefersReducedMotion();
 try{matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',e=>{reduced=e.matches;});}catch{}

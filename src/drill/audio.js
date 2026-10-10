@@ -33,7 +33,8 @@ function readMuted(storage){try{return storage?.getItem(SOUND_KEY)==='off';}catc
 function safeStorage(){try{return typeof localStorage!=='undefined'?localStorage:null;}catch{return null;}}
 
 export class QuestAudio{
- // lite：古い端末むけの軽い設定（先読みを長く・音の作り置きを大きく・残響を短く）。効果音がわずかに遅れることがある
+ // lite：古い端末むけの軽い設定。先読みを長く、残響・左右の広がり・重ねがけ（音の厚み）を省き、細かい打楽器を間引く。
+ //       テーマソングは Web Audio を通さず <audio> のまま流す。効果音がわずかに遅れることがある
  constructor({storage=safeStorage(),AudioCtx=globalThis.AudioContext||globalThis.webkitAudioContext,lite=false}={}){
   this.storage=storage;this.AudioCtx=AudioCtx;
   this.lite=lite;this.ahead=lite?.3:.12;
@@ -63,11 +64,13 @@ export class QuestAudio{
   const comp=c.createDynamicsCompressor();comp.threshold.value=-14;comp.knee.value=12;comp.ratio.value=4;comp.attack.value=.004;comp.release.value=.18;
   this.master.connect(comp);comp.connect(c.destination);
   this.output=comp; // 録画用に外から拾えるように
-  // 残響（自作のノイズ減衰インパルス）
-  const len=Math.floor(c.sampleRate*(this.lite?.6:1.3)),ir=c.createBuffer(2,len,c.sampleRate);
-  for(let ch=0;ch<2;ch++){const d=ir.getChannelData(ch);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*(1-i/len)**3.2;}
-  this.reverb=c.createConvolver();this.reverb.buffer=ir;
-  const wet=c.createGain();wet.gain.value=.22;this.reverb.connect(wet);wet.connect(this.master);
+  // 残響（自作のノイズ減衰インパルス）。lite では作らない（ConvolverNode は古い端末でいちばん重い）
+  if(!this.lite){
+   const len=Math.floor(c.sampleRate*1.3),ir=c.createBuffer(2,len,c.sampleRate);
+   for(let ch=0;ch<2;ch++){const d=ir.getChannelData(ch);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*(1-i/len)**3.2;}
+   this.reverb=c.createConvolver();this.reverb.buffer=ir;
+   const wet=c.createGain();wet.gain.value=.22;this.reverb.connect(wet);wet.connect(this.master);
+  }
   // BGM：music → duck（まちがい時にしずむ）→ filter（リーチでこもる）→ master
   this.musicFilter=c.createBiquadFilter();this.musicFilter.type='lowpass';this.musicFilter.frequency.value=18000;this.musicFilter.Q.value=.8;
   this.duck=c.createGain();this.duck.gain.value=1;
@@ -105,9 +108,9 @@ export class QuestAudio{
  filter(type,f,q=.7){const n=this.ctx.createBiquadFilter();n.type=type;n.frequency.value=f;n.Q.value=q;return n;}
  out(node,bus,{rev=0,pan=0}={}){
   let last=node;
-  if(pan&&this.ctx.createStereoPanner){const p=this.ctx.createStereoPanner();p.pan.value=pan;node.connect(p);last=p;}
+  if(pan&&!this.lite&&this.ctx.createStereoPanner){const p=this.ctx.createStereoPanner();p.pan.value=pan;node.connect(p);last=p;}
   last.connect(bus);
-  if(rev){const s=this.ctx.createGain();s.gain.value=rev;last.connect(s);s.connect(this.reverb);}
+  if(rev&&this.reverb){const s=this.ctx.createGain();s.gain.value=rev;last.connect(s);s.connect(this.reverb);}
  }
  ok(){return !!this.ctx&&!this.muted&&this.ctx.state!=='closed';}
  chordAt(step=this.step){return PROG[Math.floor(step/16)%4];}
@@ -143,19 +146,19 @@ export class QuestAudio{
  pluck(t,m,v=.05,pan=0){const f=this.filter('lowpass',2400);const g=this.env(t,{a:.002,peak:v,d:.16});this.osc('square',mtof(m),t,t+.2,f);f.connect(g);this.out(g,this.music,{rev:.15,pan});}
  pad(t,notes,dur,v=.03,bright=900){
   const f=this.filter('lowpass',bright);const g=this.env(t,{a:.25,peak:v,hold:dur*.5,d:dur*.5});
-  for(const m of notes){this.osc('sawtooth',mtof(m),t,t+dur+.1,f,-7);this.osc('sawtooth',mtof(m),t,t+dur+.1,f,7);}
+  for(const m of notes){if(this.lite){this.osc('sawtooth',mtof(m),t,t+dur+.1,f);continue;}this.osc('sawtooth',mtof(m),t,t+dur+.1,f,-7);this.osc('sawtooth',mtof(m),t,t+dur+.1,f,7);}
   f.connect(g);this.out(g,this.padBus,{rev:.3});
  }
  lead(t,m,dur,v=.06){
   const f=this.filter('lowpass',2600);const g=this.env(t,{a:.01,peak:v,hold:dur*.4,d:dur*.8});
   const o=this.osc('square',mtof(m),t,t+dur*1.3,f);
-  const lfo=this.ctx.createOscillator(),lg=this.ctx.createGain();lfo.frequency.value=5.5;lg.gain.value=6;lfo.connect(lg);lg.connect(o.detune);lfo.start(t);lfo.stop(t+dur*1.3+.05);
+  if(!this.lite){const lfo=this.ctx.createOscillator(),lg=this.ctx.createGain();lfo.frequency.value=5.5;lg.gain.value=6;lfo.connect(lg);lg.connect(o.detune);lfo.start(t);lfo.stop(t+dur*1.3+.05);}
   f.connect(g);this.out(g,this.music,{rev:.3,pan:.1});
  }
  brass(t,notes,dur=.16,v=.05,bus=this.music){
   const f=this.filter('lowpass',500,2);f.frequency.setValueAtTime(500,t);f.frequency.linearRampToValueAtTime(3200,t+.04);f.frequency.exponentialRampToValueAtTime(900,t+dur);
   const g=this.env(t,{a:.012,peak:v,hold:dur*.5,d:dur*.6});
-  for(const m of notes){this.osc('sawtooth',mtof(m),t,t+dur+.1,f,-5);this.osc('sawtooth',mtof(m),t,t+dur+.1,f,6);}
+  for(const m of notes){if(this.lite){this.osc('sawtooth',mtof(m),t,t+dur+.1,f);continue;}this.osc('sawtooth',mtof(m),t,t+dur+.1,f,-5);this.osc('sawtooth',mtof(m),t,t+dur+.1,f,6);}
   f.connect(g);this.out(g,bus,{rev:.2});
  }
  bell(t,m,v=.12,dur=.9,pan=0,bus=this.sfx){ // チャイム：基音＋非整数倍音
@@ -188,7 +191,7 @@ export class QuestAudio{
   if(!this.ctx||this.playing)return;
   this.playing=true;this.step=0;this.nextTime=this.now()+.08;
   if(this.music){const g=this.music.gain,t=this.now();g.cancelScheduledValues(t);g.setValueAtTime(.5,t);}
-  this.timer=setInterval(()=>this.tick(),25);this.tick();
+  this.timer=setInterval(()=>this.tick(),this.lite?50:25);this.tick();
  }
  stopMusic(fade=0){
   this.playing=false;clearInterval(this.timer);this.timer=0;this.setReach(false,{silent:true});
@@ -200,6 +203,11 @@ export class QuestAudio{
  get themeOn(){return !!this.themeEl&&!this.themeEl.paused;}
  playTheme(el){
   if(!this.ctx||!el||this.muted)return false;
+  if(this.lite){ // Web Audio を通さない（createMediaElementSource は古い iOS で途切れやすい）
+   clearTimeout(this.themeStop);this.themeEl=el;el.volume=.65;
+   if(el.paused)el.play()?.catch?.(()=>{});
+   return true;
+  }
   try{
    if(this.themeEl!==el){
     // 1つの要素につなげるのは1回だけ（createMediaElementSource の制約）
@@ -216,6 +224,7 @@ export class QuestAudio{
  stopTheme(fade=.4){
   const el=this.themeEl;
   if(!el||el.paused)return;
+  if(this.lite){clearTimeout(this.themeStop);el.pause();el.currentTime=0;return;}
   const g=this.themeGain.gain,t=this.now();g.cancelScheduledValues(t);g.setValueAtTime(g.value,t);g.linearRampToValueAtTime(.0001,t+fade);
   clearTimeout(this.themeStop);this.themeStop=setTimeout(()=>{el.pause();el.currentTime=0;},fade*1000+50);
  }
@@ -241,7 +250,7 @@ export class QuestAudio{
   }
   if(L.has('toy')&&s%2===0){const i=TOY[(s/2)%8];this.toy(t,ch.tones[i]+12+k,.075,i===1?.3:-.3);}
   if(L.has('arp')){const i=ARP[s%8],m=i===3?ch.tones[0]+12:ch.tones[i];this.pluck(t,m+12+k+(this.stage>=4&&s>=8?12:0),.04,s%2?.3:-.3);}
-  if(L.has('shaker'))this.shaker(t,s%2?.045:.025);
+  if(L.has('shaker')&&!this.lite)this.shaker(t,s%2?.045:.025);
   const kick=(L.has('kick4')&&s%4===0)||(L.has('kick13')&&(s===0||s===8))||(L.has('kick1')&&s===0);
   if(kick){
    this.kick(t,L.has('kick4')?.9:.6);
@@ -251,7 +260,7 @@ export class QuestAudio{
   if(L.has('bass')){if(s%4===0)this.bass(t,ch.bass+k,sd*2.5);else if(this.stage>=3&&s%4===2)this.bass(t,ch.bass+12+k,sd*1.2,.2);}
   if(L.has('clap')&&(s===4||s===12))this.clap(t,.45);
   if(L.has('hat')&&s%4===2)this.hat(t,.13,this.stage>=4);
-  if(L.has('hat16')&&s%2===1)this.hat(t,.05);
+  if(L.has('hat16')&&!this.lite&&s%2===1)this.hat(t,.05);
   if(L.has('chirp')&&s===14&&bar%2===1)this.chirp(t,ch.tones[2]+24+k,.035,this.music,.35);
   if(L.has('lead')&&s%2===0){const m=HOOK[bar][s/2];if(m)this.lead(t,m+k,sd*1.8);}
   if(L.has('fill')&&bar===3&&s>=12)this.snare(t,.1+(s-12)*.06);
