@@ -32,6 +32,7 @@ import {installCupboard} from './world/cupboard.js';
 import {createPassbook} from './points/passbook.js';
 import {installBookshelf} from './world/bookshelf.js';
 import {createShelfEntry} from './manga/shelf-entry.js';
+import {installToramanaVisit} from './world/toramana-visit.js';
 const scene=new T.Scene();scene.background=new T.Color(0xeaf0e9);scene.fog=new T.Fog(0xeaf0e9,24,60);
 const camera=new T.PerspectiveCamera(36,1,.1,100);let controls;function resetCamera(){camera.position.set(13,12,17);controls?.target.set(0,.5,0);controls?.update();}resetCamera();
 scene.add(new T.HemisphereLight(0xfffaf1,0x8dafa4,2.5));const sun=new T.DirectionalLight(0xffe7c6,3.2);sun.position.set(-3,12,7);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-9,right:9,top:9,bottom:-9,near:.1,far:35});sun.shadow.normalBias=.035;sun.shadow.bias=-.0001;scene.add(sun);
@@ -50,6 +51,8 @@ cupboard?.onChange(open=>{if(!open)passbook.close();});
 // 戸棚の上の段に マンガの本（シリーズごとに1冊）。タップで大きなリーダー。ピヨドリルの記録は読むだけ。
 const bookshelf=installBookshelf(furniture.roomRoot);
 const shelf=bookshelf&&createShelfEntry(document.querySelector('.world'),host);
+// トラマナちゃん：ピヨ探検で ひらいた子が いるときだけ 読みこんで 部屋に 出す。タップで ひとこと
+const toramana=installToramanaVisit(scene,{onSay:message=>ui.event(message)});
 try{renderer=new T.WebGLRenderer({antialias:true});}catch(error){host.innerHTML='<p class="webgl-error">3D表示を開始できませんでした。ブラウザのハードウェアアクセラレーションを有効にして再読み込みしてください。</p>';throw error;}
 renderer.localClippingEnabled=true;renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;host.appendChild(renderer.domElement);
 // モデリング用の画面・ホログラムのシェーダーを先にコンパイルしておく（初回表示のカクつき防止）。
@@ -126,6 +129,8 @@ renderer.domElement.addEventListener('pointerup',e=>{
  if(e.button!==0||!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>6){down=null;return;}
  down=null;aimPointer(e);
  const hit=visibleHit(raycaster.intersectObjects(furniture.map(f=>f.group),true));
+ const tora=toramana.hit(raycaster);
+ if(tora&&(!hit||tora.distance<=hit.distance)){toramana.tap();return;}
  // 戸棚の扉・通帳が家具より手前で当たったときだけ戸棚を優先する（上の棚のカメラ等はそのまま家具として選べる）。
  const cup=cupboard?.hit(raycaster);
  // 本だなも同じ：家具や戸棚より手前で当たったときだけ。本なら その本を ひらく。本のない ところなら 本だなを えらぶ（ラベルを出す）。
@@ -161,5 +166,5 @@ function placeShelfEntry(){
  if(shelfPoint.z>1||Math.abs(shelfPoint.x)>.95||Math.abs(shelfPoint.y)>.95){shelf.placeEntry(null);return;}
  shelfScreen.x=(shelfPoint.x+1)/2*renderer.domElement.clientWidth;shelfScreen.y=(1-shelfPoint.y)/2*renderer.domElement.clientHeight;shelf.placeEntry(shelfScreen);
 }
-const clock=new T.Clock();let uiElapsed=0;renderer.setAnimationLoop(()=>{const dt=Math.min(clock.getDelta(),.05);simulation.update(dt);characters.forEach(c=>animateCharacter(c,simulation.time));animateRoom(furniture,characters,simulation.time);animatePudding(pudding,dt);cupboard?.update(dt);placePassbookEntry();placeShelfEntry();if(xr?.active)xr.update(dt);else controls.update();renderer.render(scene,camera);uiElapsed+=dt;if(uiElapsed>.2){ui.update();uiElapsed=0;}});
-window.__house={scene,camera,controls,renderer,characters,furniture,simulation,cupboard,passbook,bookshelf,shelf,get xr(){return xr;}};
+const clock=new T.Clock();let uiElapsed=0;renderer.setAnimationLoop(()=>{const dt=Math.min(clock.getDelta(),.05);simulation.update(dt);characters.forEach(c=>animateCharacter(c,simulation.time));animateRoom(furniture,characters,simulation.time);animatePudding(pudding,dt);toramana.update(dt);cupboard?.update(dt);placePassbookEntry();placeShelfEntry();if(xr?.active)xr.update(dt);else controls.update();renderer.render(scene,camera);uiElapsed+=dt;if(uiElapsed>.2){ui.update();uiElapsed=0;}});
+window.__house={scene,camera,controls,renderer,characters,furniture,simulation,cupboard,passbook,bookshelf,shelf,toramana,get xr(){return xr;}};

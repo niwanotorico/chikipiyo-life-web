@@ -15,7 +15,7 @@ export const DAILY_CUBE_SESSIONS=3;   // キューブpt がもらえるのは1�
 export const UPDATE_FROM='2026-10-07';
 
 // ごほうび。effects はドリル側で読む効果。house:true をつけると、開けたときに「3DPハウス来訪待ち」フラグを保存する
-// （ハウス側は pendingHouseVisits() で読む想定。いまはフラグ保存のみ）
+// （トラマナちゃんは 3DPハウスの src/world/toramana-visit.js が ゲート・ごほうびを 読んで 部屋に 出す）
 // secret：子どもの画面では中身を見せない（❓表示）。親にだけ見せる中身は parent-mode.js に置く
 export const REWARDS={
  // うさこ：10月後半に別のごほうびとして追加予定。いまはマップのどこにも置かない（定義だけ残す）
