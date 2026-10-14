@@ -19,6 +19,18 @@ npm run preview
 npm test
 ```
 
+## テスト
+
+```sh
+npm test                    # ロジックの単体テスト（tests/）
+npx playwright install chromium   # 初回だけ：E2E 用のブラウザ
+npm run test:e2e            # ビルドしたサイトをブラウザで開いて確かめる E2E（e2e/）
+npm run test:e2e:update     # 見た目をわざと変えたときに、スクリーンショットの基準画像を作りなおす
+npm run test:e2e:report     # 失敗したときの結果を見る
+```
+
+E2E は Pull Request のたびに GitHub Actions（`.github/workflows/e2e.yml`）でも動きます。何をテストしていて、何を Quest・スマホ実機で確かめるかは [docs/notes/test-plan.md](docs/notes/test-plan.md) にまとめています。
+
 ## GitHub Pagesでスマホ確認
 
 1. このプロジェクトを公開先のGitHubリポジトリへpushします（`package-lock.json` と `.github/workflows/pages.yml` も含めます）。
