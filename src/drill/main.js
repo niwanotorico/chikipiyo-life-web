@@ -13,6 +13,9 @@ import {giftOn,giftAvailable} from './cosmicube.js';
 import {themeTrack,trackElement} from './bgm-pool.js';
 import {isParentMode,parentLabel} from './parent-mode.js';
 import * as festival from './festival.js';
+import {checkAnswer} from './questions.js';
+import {explain} from './explain.js';
+import {pickReview,reviewQuestion,offerReview,setReviewStatus,recordReviewAnswer} from './review.js';
 
 const art={
  piyokichi:new URL('../../assets/points/piyokichi.png',import.meta.url).href,
@@ -47,6 +50,7 @@ const lines={
  ok:['せいかい！','いいね！','その ちょうし！','すごい！','ばっちり！'],
  hot:['とまらない！','ノリノリ！','きてる きてる！','おまつりだ！'],
  reach:'さいごの 1もん！ きめちゃおう！',
+ fixed:['できるように なったね！','こんどは できた！','ばっちり おぼえたね！'],
 };
 const pickLine=list=>list[Math.floor(Math.random()*list.length)];
 
@@ -157,7 +161,7 @@ function startPlay(){
  play={player,dayKey,sessionId:newSessionId(player),practice:sessionsLeft(store,player,dayKey)===0,run:createRun(makeQuestionSet(player,Math.random,undefined,{dayKey,round:dayInfo(store,player,dayKey).sessions,motifs:effects})),input:'',feedback:null,committed:false,award:null,stage:0,token:Symbol('play')};
  $('[data-fever-img]').src=POSE_URLS[DUO.high];
  actor.preload();actor.setIdle(art[player]);
- play.eggUsed=false;play.fx=fxMode;festival.clear();   // その回の演出モードは、はじめた時点のもので固定
+ play.eggUsed=false;play.fx=fxMode;play.mode='drill';document.body.dataset.mode='drill';festival.clear();   // その回の演出モードは、はじめた時点のもので固定
  react(play.practice?'きょうは れんしゅう。ポイントは なしだよ':lines.start[player],'');
  const q=$('[data-quit]');q.textContent='やめる';delete q.dataset.confirm;
  $('[data-fever]').hidden=true;
@@ -173,12 +177,14 @@ function renderEggs(){
  eggs.forEach((egg,i)=>{
   const a=run.answers[i],state=a?(a.ok?'is-done':'is-crack'):i===now?'is-now':'';
   if(egg.dataset.state!==state){egg.className=state;egg.dataset.state=state;}
+  egg.hidden=i>=run.questions.length;   // ふくしゅうは 問題の数だけ
  });
 }
 
 function renderQuestion(){
  const {run}=play,question=run.questions[run.answers.length],index=run.answers.length;
- $('[data-qno]').textContent=index+1;
+ $('[data-qno]').textContent=index+1;$('[data-qtotal]').textContent=run.questions.length;
+ showWhy(null);
  $('[data-track]').style.width=`${index/run.questions.length*100}%`;renderEggs();
  $('[data-kind]').textContent=question.label;
  const q=$('[data-question]');
@@ -197,7 +203,7 @@ function renderQuestion(){
  $('[data-mark]').className='dq-mark';
  $('[data-pad] [data-key="."]').disabled=!question.decimal;
  // さいごの 1もん：リーチ（音がこもってタメる）
- const last=index===run.questions.length-1;
+ const last=index===run.questions.length-1&&play.mode!=='review';   // ふくしゅうには リーチ・タメは ない
  document.body.classList.toggle('is-reach',last);
  if(last){audio.reachOn();react(lines.reach,'reach');particles.fadeAll(.4);}   // 画面を片付けて、しずかに
  play.input='';play.feedback=null;
@@ -258,7 +264,7 @@ function submit(){
  if(!play||play.suspense)return;
  if(play.feedback)return next();
  // さいごの1もん：「こたえる」→ ドラムロールのタメ → 発表
- if(play.run.answers.length===play.run.questions.length-1&&play.input){
+ if(play.mode!=='review'&&play.run.answers.length===play.run.questions.length-1&&play.input){
   play.suspense=true;
   const card=$('[data-card]');replay(card,'is-suspense');
   react('ドキドキ…','reach');
@@ -271,20 +277,31 @@ function submit(){
  judge();
 }
 function judge(){
+ if(play.mode==='review')return reviewJudge();
  const index=play.run.answers.length;
  const {run,feedback}=answerRun(play.run,play.input);
  if(!feedback)return;
  play.run=run;play.feedback=feedback;
- // □ に正しい答えを入れて見せる（まちがえたときも、答えの形が目で分かる）
- for(const box of $$('[data-question] .dq-box')){box.textContent=feedback.answer;box.classList.add('is-filled');}
- for(const b of $$('[data-choices] button')){b.disabled=true;b.classList.toggle('is-answer',b.dataset.choice===feedback.answer);}
- $('[data-track]').style.width=`${run.answers.length/run.questions.length*100}%`;renderEggs();
+ revealAnswer(feedback);
  renderChips();
  if(run.done)finish();   // ポイントはここで1回だけ保存（演出中に更新されても二重にならない）
  setSubmit(run.done?'けっかへ':'つぎへ');
  if(feedback.ok)celebrate(feedback,index,run.done);
  else miss(feedback,run.done);
  $('[data-submit]').focus({preventScroll:true});
+}
+
+// □ に正しい答えを入れて見せる（まちがえたときも、答えの形が目で分かる）
+function revealAnswer(feedback){
+ const {run}=play;
+ for(const box of $$('[data-question] .dq-box')){box.textContent=feedback.answer;box.classList.add('is-filled');}
+ for(const b of $$('[data-choices] button')){b.disabled=true;b.classList.toggle('is-answer',b.dataset.choice===feedback.answer);}
+ $('[data-track]').style.width=`${run.answers.length/run.questions.length*100}%`;renderEggs();
+}
+// まちがえたときの「考え方」ひとこと（explain.js）。説明が ないときは 出さない
+function showWhy(text){
+ const el=$('[data-why]');if(!el)return;
+ el.hidden=!text;$('[data-why-text]',el).textContent=text||'';
 }
 
 // 正解：音・キャラ・カード・粒子・+pt を同じ瞬間に
@@ -340,11 +357,13 @@ function miss(fb,done){
  actor.play(actorPlan({player:play.player,ok:false}));   // 専用の絵で「びくっ」→ 少し沈む
  const unit=fb.unit?` ${fb.unit}`:'';
  react(fb.close?`おしい！ こたえは ${fb.answer}${unit}。`:`だいじょうぶ。こたえは ${fb.answer}${unit} だよ。`,'miss');
+ // 考え方の ひとことが あるときは、読み終わるまで 待つ（「つぎへ」で すすむ）。ないときは いままでどおり 自動で
+ const why=explain(play.run.questions[play.run.answers.length-1]);showWhy(why);
  const stage=stageFor({combo:0,index:play.run.answers.length});
  play.stage=stage;
- if(done){document.body.classList.remove('is-reach');audio.setReach(false);later(SOFT_FINISH_MS,()=>{audio.finishSoft();showResult();});return;}
+ if(done){document.body.classList.remove('is-reach');audio.setReach(false);if(!why)later(SOFT_FINISH_MS,()=>{audio.finishSoft();showResult();});return;}
  setHeat(stage);audio.setStage(stage);
- later(WRONG_DELAY,next);
+ if(!why)later(WRONG_DELAY,next);
 }
 
 // 答えスポットライト：打った答えを、粒・目玉焼きより手前に大きく出して、ケチャップでハートを描く
@@ -376,6 +395,7 @@ function flash(amount){
 
 function next(){
  if(!play?.feedback)return;
+ if(play.mode==='review'&&play.run.done){clearTimers();return showReviewEnd();}
  if(play.run.done){
   if(play.inFever)return skipFever();              // フィーバー中：1.2秒たっていればスキップ
   if(play.run.answers.at(-1)?.ok)return;          // フィーバー開始前の一瞬は何もしない
@@ -438,7 +458,7 @@ function quit(){
  if(!b.dataset.confirm){b.dataset.confirm='1';b.textContent='ほんとに やめる？';setTimeout(()=>{if(b.dataset.confirm){delete b.dataset.confirm;b.textContent='やめる';}},3000);return;}
  leavePlay();renderHome();show('home');
 }
-function leavePlay(){clearTimers();actor.reset();for(const el of $$('.dq-hero-ans'))el.remove();audio.stopMusic(.3);particles.clear();festival.clear();play=null;setHeat(0);document.body.classList.remove('is-reach');$('[data-fever]').hidden=true;}
+function leavePlay(){clearTimers();actor.reset();for(const el of $$('.dq-hero-ans'))el.remove();audio.stopMusic(.3);particles.clear();festival.clear();play=null;setHeat(0);delete document.body.dataset.mode;document.body.classList.remove('is-reach');$('[data-fever]').hidden=true;}
 
 // ---------- けっか ----------
 function showResult(){
@@ -466,6 +486,7 @@ function showResult(){
  $('[data-reward-note]').textContent=award.puddingNew?'はじめての クリアごほうび。コレクションに 入ったよ':pud.displayed?'おうちに かざってあるよ':'コレクションに あるよ';
  renderDisplayButton();
  renderCubeResult();
+ renderReviewInvite();
  show('result');
  // フィーバーを Enter でとばしたあと、もう一度 Enter を押しても「もういちど」が始まらないよう、見出しにフォーカス
  const h=$('#dq-result-h');h.setAttribute('tabindex','-1');h.focus({preventScroll:true});
@@ -497,6 +518,105 @@ function displayPudding(){
  audio.tap();
 }
 
+// ---------- さっきの もんだいに もういちど！（ふくしゅう） ----------
+// 得点・コンボ・パーフェクト・1日3回・ピヨ探検pt・ごほうびは 10もんの 時点で 確定ずみ。ここでは 一切 さわらない
+// （answerRun・commitResult・cube.recordSession を 呼ばない。記録は review.js の 専用キーだけ）
+function renderReviewInvite(){
+ const box=$('[data-review-invite]');
+ if(!play.reviewPicks)play.reviewPicks=pickReview(play.run);
+ const picks=play.reviewPicks;
+ box.hidden=!picks.length||!!play.reviewClosed;
+ if(box.hidden)return;
+ $('[data-review-count]').textContent=picks.length;
+ offerReview(storage,{sessionId:play.sessionId,player:play.player,dayKey:play.dayKey,practice:!!play.award?.practice,picks});
+}
+function skipReview(){
+ if(!play)return;
+ play.reviewClosed=true;setReviewStatus(storage,play.sessionId,'skipped');
+ $('[data-review-invite]').hidden=true;audio.tap();
+ react('','');
+ $('[data-result-line]').textContent='また あした！ きょうも よく がんばったね';
+}
+function startReview(){
+ if(!play||play.mode!=='drill'||!play.reviewPicks?.length)return;
+ audio.unlock();clearTimers();particles.clear();for(const el of $$('.dq-hero-ans'))el.remove();
+ const picks=play.reviewPicks,questions=picks.map(p=>reviewQuestion(p.question));
+ setReviewStatus(storage,play.sessionId,'started');
+ play={...play,mode:'review',picks,run:{questions,answers:[],combo:0,maxCombo:0,correct:0,earned:0,done:false},input:'',feedback:null,stage:1,inFever:false,suspense:false,token:Symbol('review')};
+ document.body.dataset.mode='review';
+ actor.setIdle(art[play.player]);
+ react('さっきの もんだいに もういちど！','');
+ const q=$('[data-quit]');q.textContent='やめる';delete q.dataset.confirm;
+ setHeat(1);
+ show('play');
+ audio.startMusic(1);
+ renderQuestion();
+}
+function reviewJudge(){
+ const index=play.run.answers.length,q=play.run.questions[index];
+ const check=checkAnswer(q,play.input);
+ if(!check.valid)return;
+ const answers=[...play.run.answers,{id:q.id,ok:check.ok,given:check.given}];
+ play.run={...play.run,answers,correct:play.run.correct+(check.ok?1:0),done:answers.length>=play.run.questions.length};
+ const fb={ok:check.ok,close:check.close,answer:q.answer,unit:q.unit,combo:0,comboBonus:false,gained:0};
+ play.feedback=fb;
+ recordReviewAnswer(storage,play.sessionId,index,{ok:check.ok,given:check.given});
+ revealAnswer(fb);
+ setSubmit(play.run.done?'まとめへ':'つぎへ');
+ if(fb.ok)reviewCelebrate(fb);else reviewMiss(fb,q);
+ $('[data-submit]').focus({preventScroll:true});
+}
+// できた！：中くらいの お祝い（+pt・コンボ・フィーバー・目玉焼きは なし）。おまつりは 演出の量だけ ふえる
+function reviewCelebrate(fb){
+ const fest=play.fx==='festival',stage=2;
+ let v=visuals(stage,{reduced});
+ if(fest)v=festival.festivalVisuals(v,{q:6,combo:3,reduced});
+ const card=$('[data-card]'),readout=$('[data-readout]');
+ card.classList.add('is-ok');replay(card,'pop');
+ const mark=$('[data-mark]');mark.className='dq-mark';void mark.offsetWidth;mark.classList.add('show',`s${stage}`);
+ audio.correct(stage,3);
+ actor.play(actorPlan({player:play.player,ok:true,combo:3}));
+ heroAnswer(readout,fb,false);
+ const c=centerOf(readout);
+ particles.burst(c.x,c.y,{count:v.particles,kinds:v.kinds,speed:320+stage*90,up:160+stage*30,life:.8+stage*.08,ring:readout.offsetWidth*.4});
+ const cr=card.getBoundingClientRect(),er=Math.min(32,cr.width*.09)*1.12;
+ particles.bigEgg(cr.left+er*.95,cr.top+er*.15,er);if(v.bigEggs>1)particles.bigEgg(cr.right-er*.95,cr.top+er*.15,er);
+ if(fest)festival.wave(c.x,c.y,Math.min(cr.width,cr.height)*.55,{reduced});
+ if(v.hopEggs)later(90,()=>particles.hopEggs(v.hopEggs));
+ shake([card,$('.dq-bar')],v.shake);flash(v.flash);
+ cutin('できた！',2);
+ react(pickLine(lines.fixed),'ok');
+ later(play.run.done?1500:nextDelay(stage),next);
+}
+// もういちど まちがえた：正しい答えと 考え方を 見せて、この問題は おしまい（くりかえさない）
+function reviewMiss(fb,q){
+ const card=$('[data-card]');card.classList.add('is-miss');
+ audio.wrong();
+ actor.play(actorPlan({player:play.player,ok:false}));
+ const unit=fb.unit?` ${fb.unit}`:'';
+ react(`こたえは ${fb.answer}${unit} だよ。つぎは きっと できる！`,'miss');
+ const why=explain(q);showWhy(why);
+ if(!why)later(WRONG_DELAY,next);
+}
+function showReviewEnd(){
+ const {picks,run,player}=play;
+ audio.stopMusic(1.2);audio.finishSoft();
+ actor.reset();particles.clear();for(const el of $$('.dq-hero-ans'))el.remove();
+ setHeat(0);document.body.classList.remove('is-reach');
+ const ok=run.answers.filter(a=>a.ok).length,n=run.questions.length;
+ $('[data-review-img]').src=art[player];
+ $('[data-review-line]').textContent=ok===n?(n===1?'できるように なったね！':'ぜんぶ できるように なったね！'):ok>0?`${ok}もん できるように なったね！`:'こたえを おぼえたね。また ちょうせんしよう！';
+ $('[data-review-list]').replaceChildren(...run.questions.map((q,i)=>{
+  const a=run.answers[i],li=document.createElement('li');li.className=a?.ok?'is-ok':'is-miss';
+  const mark=document.createElement('b');mark.textContent=a?.ok?'できた！':'こたえ';
+  const t=document.createElement('span');t.textContent=q.text;
+  const ans=document.createElement('em');ans.textContent=`${q.answer}${q.unit?` ${q.unit}`:''}`;
+  li.append(mark,t,ans);return li;
+ }));
+ show('review');
+ const h=$('#dq-review-h');h.setAttribute('tabindex','-1');h.focus({preventScroll:true});
+}
+
 // ---------- 入力 ----------
 function bind(){
  for(const r of $$('input[name="player"]'))r.addEventListener('change',()=>{store=selectPlayer(store,r.value);persist();renderHome();audio.unlock();audio.tap();syncTheme();});
@@ -512,9 +632,11 @@ function bind(){
  $('[data-choices]').addEventListener('click',e=>{const b=e.target.closest('[data-choice]');if(b&&!b.disabled){choose(b.dataset.choice);replay(b,'hit');}});
  $('[data-submit]').addEventListener('click',submit);
  $('[data-quit]').addEventListener('click',quit);
- $('[data-again]').addEventListener('click',startPlay);
+ for(const b of $$('[data-again]'))b.addEventListener('click',startPlay);
+ $('[data-review-start]').addEventListener('click',startReview);
+ $('[data-review-skip]').addEventListener('click',skipReview);
  $('[data-display]').addEventListener('click',displayPudding);
- $('[data-to-home]').addEventListener('click',()=>{leavePlay();renderHome();show('home');});
+ for(const b of $$('[data-to-home]'))b.addEventListener('click',()=>{leavePlay();renderHome();show('home');});
  $('[data-fever]').addEventListener('click',skipFever);
  for(const b of $$('[data-to-map]'))b.addEventListener('click',()=>{if(play)leavePlay();openMap();});
  $('[data-map-back]').addEventListener('click',()=>{audio.tap();renderHome();show('home');});

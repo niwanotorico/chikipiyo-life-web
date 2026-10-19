@@ -600,3 +600,29 @@ body[data-fx="festival"].is-reach .dq-bg::after{background:radial-gradient(ellip
 body[data-fx="festival"].is-reach .dq-card:not(.is-ok):not(.is-miss){box-shadow:0 0 0 6px #ffd3c8,0 0 50px 10px #ffe6a3e6;animation:dq-fest-tremble 2.4s ease-in-out infinite}
 @keyframes dq-fest-tremble{0%,100%{transform:scale(1.02)}50%{transform:scale(1.035)}}
 @media (prefers-reduced-motion:reduce){.dq-fest-layer{display:none}body[data-fx="festival"].is-reach .dq-card:not(.is-ok):not(.is-miss){animation:none}}
+
+/* ---------- まちがえたときの「かんがえかた」・ふくしゅう（さっきの もんだいに もういちど！） ---------- */
+.dq-why{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;gap:4px 8px;margin:0;padding:8px 12px;border:2px dashed var(--herb);border-radius:14px;background:#f1f8ee;font-size:14px;font-weight:700;line-height:1.5;text-align:left;color:var(--ink)}
+.dq-why[hidden]{display:none}
+.dq-why b{flex:none;padding:1px 8px;border-radius:999px;background:var(--herb);color:#fff;font-size:11px}
+.dq-why span{flex:1 1 12em}
+.dq-qmode,.dq-chip.is-review{display:none}
+body[data-mode="review"] .dq-qmode{display:inline}
+body[data-mode="review"] .dq-chip.is-review{display:inline-block;background:var(--ketchup-soft);border-color:var(--ketchup)}
+body[data-mode="review"] .dq-chip.is-combo,body[data-mode="review"] .dq-chip.is-pts{display:none}
+.dq-eggs i[hidden]{display:none}
+.dq-review-end .dq-actions{align-items:stretch}
+.dq-review-end .dq-actions .dq-btn{margin:0}
+.dq-review-invite{display:grid;gap:8px;padding:14px;border:3px solid var(--ketchup);border-radius:22px;background:var(--ketchup-soft);text-align:center;animation:dq-invite .5s .4s both cubic-bezier(.3,1.5,.5,1)}
+.dq-review-invite[hidden]{display:none}
+.dq-review-ttl{margin:0;font-size:18px;font-weight:800}
+.dq-review-sub{margin:0;font-size:13px;font-weight:700;color:var(--ink-soft)}
+.dq-review-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dq-review-list{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.dq-review-list li{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;align-items:center;padding:10px 12px;border:2.5px solid var(--brown-soft);border-radius:16px;background:var(--paper);font-size:14px;font-weight:700}
+.dq-review-list li b{grid-row:span 2;padding:4px 10px;border-radius:999px;background:var(--cream);font-size:12px;white-space:nowrap}
+.dq-review-list li.is-ok{border-color:var(--yolk);background:#fff6dc}
+.dq-review-list li.is-ok b{background:var(--ketchup);color:#fff}
+.dq-review-list li em{font-style:normal;color:var(--ketchup);font-size:15px}
+@keyframes dq-invite{0%{opacity:0;transform:translateY(14px) scale(.92)}}
+@media(prefers-reduced-motion:reduce){.dq-review-invite{animation:none}}

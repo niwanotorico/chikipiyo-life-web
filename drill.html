@@ -48,8 +48,8 @@
  <div class="dq-bar">
   <button type="button" class="dq-quit" data-quit>やめる</button>
   <button type="button" class="dq-sound is-compact" data-sound aria-pressed="true"><span class="dq-sound-icon" aria-hidden="true"></span><span data-sound-label>おと あり</span></button>
-  <div class="dq-progress"><span class="dq-qno"><b data-qno>1</b> / 10 もんめ</span><span class="dq-track" aria-hidden="true"><i data-track></i></span><span class="dq-eggs" data-eggs aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
-  <div class="dq-chips"><span class="dq-chip is-combo" data-combo-chip>コンボ <b data-combo>0</b></span><span class="dq-chip is-pts"><span class="dq-chip-word">こんかい </span><b data-earned>0</b>pt</span></div>
+  <div class="dq-progress"><span class="dq-qno"><span class="dq-qmode">ふくしゅう </span><b data-qno>1</b> / <span data-qtotal>10</span> もんめ</span><span class="dq-track" aria-hidden="true"><i data-track></i></span><span class="dq-eggs" data-eggs aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
+  <div class="dq-chips"><span class="dq-chip is-review">もういちど！</span><span class="dq-chip is-combo" data-combo-chip>コンボ <b data-combo>0</b></span><span class="dq-chip is-pts"><span class="dq-chip-word">こんかい </span><b data-earned>0</b>pt</span></div>
  </div>
  <div class="dq-card" data-card>
   <span class="dq-reach" data-reach aria-hidden="true">さいごの 1もん！</span>
@@ -58,6 +58,7 @@
   <div class="dq-readout" data-readout role="status" aria-label="きみの こたえ"><span data-input></span><i class="dq-caret" aria-hidden="true"></i><small data-unit></small></div>
   <span class="dq-cutin" data-cutin aria-hidden="true"></span>
   <span class="dq-mark" data-mark aria-hidden="true"></span>
+  <p class="dq-why" data-why hidden><b>かんがえかた</b><span data-why-text></span></p>
  </div>
  <div class="dq-react" aria-live="polite"><div class="dq-stage" data-stage aria-hidden="true"></div><p data-react-line></p></div>
  <div class="dq-pad" data-pad>
@@ -80,6 +81,11 @@
  <ul class="dq-breakdown" data-breakdown></ul>
  <div class="dq-reward" data-reward><span class="dq-reward-icon" aria-hidden="true">🍮</span><div><b data-reward-title>プリン</b><small data-reward-note></small></div></div>
  <div class="dq-cube-result" data-cube-result hidden><p data-cube-line></p><p class="dq-cube-coin" data-cube-coin hidden></p><div class="dq-gift-new" data-cube-gift hidden><span class="dq-gift-art" data-cube-gift-art></span><p data-cube-gift-line></p></div><button type="button" class="dq-btn is-cube" data-to-map>ピヨ探検 マップへ</button></div>
+ <div class="dq-review-invite" data-review-invite hidden>
+  <p class="dq-review-ttl">さっきの もんだいに もういちど！</p>
+  <p class="dq-review-sub">まちがえた <b data-review-count>1</b>もんに ちょうせんできるよ（ポイントは かわらないよ）</p>
+  <div class="dq-review-btns"><button type="button" class="dq-btn is-again" data-review-start>ちょうせんする</button><button type="button" class="dq-btn" data-review-skip>きょうは おしまい</button></div>
+ </div>
  <div class="dq-actions">
   <button type="button" class="dq-btn is-display" data-display>おうちに かざる</button>
   <button type="button" class="dq-btn is-again" data-again>もういちど</button>
@@ -88,7 +94,17 @@
  <button type="button" class="dq-textbtn" data-to-home>クエストの トップへ</button>
 </section>
 
- <section class="dq-screen dq-map" data-screen="map" hidden aria-labelledby="dq-map-h">
+  <section class="dq-screen dq-result dq-review-end" data-screen="review" hidden aria-labelledby="dq-review-h">
+ <div class="dq-result-head"><img data-review-img alt="" width="72" height="96"><div><h2 id="dq-review-h">もういちど ちょうせん</h2><p data-review-line></p></div></div>
+ <ul class="dq-review-list" data-review-list></ul>
+ <div class="dq-actions">
+  <button type="button" class="dq-btn is-again" data-again>10もん もういちど</button>
+  <button type="button" class="dq-btn is-cube" data-to-map>ピヨ探検 マップへ</button>
+ </div>
+ <button type="button" class="dq-textbtn" data-to-home>クエストの トップへ</button>
+</section>
+
+<section class="dq-screen dq-map" data-screen="map" hidden aria-labelledby="dq-map-h">
  <div class="dq-map-head"><button type="button" class="dq-quit" data-map-back>もどる</button><div><h2 id="dq-map-h">ピヨ探検</h2><p class="dq-map-sub" data-map-sub></p></div><span class="dq-map-pt"><b data-map-pt>0</b><small>ピヨ探検pt</small></span></div>
  <div class="dq-map-space" data-map-space>
   <i class="dq-map-stars" aria-hidden="true"></i>
