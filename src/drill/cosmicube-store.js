@@ -9,7 +9,7 @@
 // とすればよい。データはプレイヤーごとに独立した1かたまり（players[id]）なので、そのまま1ドキュメントにできる。
 // 兄弟ゲートは snapshotAll()（2人ぶんのまとめ）を見て判定する想定。
 import {playerIds} from './questions.js';
-import {SEASON,emptyCubePlayer,sanitizeCubePlayer,recordSession,openGate,mergeCubePlayer,season,cubeBalance,cubeEarnedTotal,playsOn,cubeSessionsLeft,completion,foundCount,effectsOf,inSeason} from './cosmicube.js';
+import {SEASON,emptyCubePlayer,sanitizeCubePlayer,recordSession,openGate,mergeCubePlayer,season,cubeBalance,cubeEarnedTotal,playsOn,cubeSessionsLeft,completion,foundCount,effectsOf,inSeason,boostFor,applyCheer,CHEER} from './cosmicube.js';
 
 export const CUBE_KEY='chikipiyo-cosmicube:v1';
 export const CUBE_BROKEN_KEY=CUBE_KEY+':broken';
@@ -44,6 +44,10 @@ export function memoryCubeAdapter(initial=null){
  return {kind:'memory',load:()=>({data:data&&JSON.parse(JSON.stringify(data)),status:data?'ok':'new'}),save(d){data=JSON.parse(JSON.stringify(d));return true;}};
 }
 
+// 中身が おなじか（updatedAt・記録の ならび順・キーの 順は くらべない）
+const canon=v=>Array.isArray(v)?v.map(canon):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,canon(v[k])])):v;
+const strip=p=>{const c=sanitizeCubePlayer(p);for(const s of Object.values(c.seasons))s.earned.sort((a,b)=>a.day.localeCompare(b.day)||a.id.localeCompare(b.id));return JSON.stringify(canon({...c,updatedAt:0}));};
+export const sameCube=(a,b)=>strip(a)===strip(b);
 const newDeviceId=()=>`dev-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
 
 export class CubeStore{
@@ -80,10 +84,23 @@ export class CubeStore{
 
  player(id){return this.data.players[id];}
  // 10問クリア → キューブpt を入金（＋その日の1回目クリアならコインミッション達成）
- recordSession(id,{sessionId,dayKey,award}){return this.update(id,p=>recordSession(p,{sessionId,dayKey,award}));}
+ // おかえりボーナス（BOOSTS）は ここで かける。そのあと きょうだいの おうえん（CHEER）を 足す
+ recordSession(id,{sessionId,dayKey,award}){
+  const b=boostFor(id,dayKey);
+  const res=this.update(id,p=>recordSession(p,{sessionId,dayKey,award,boost:b?.rate??1}));
+  this.applyCheer();
+  return {...res,boost:b&&res.reason==='ok'?b:null};
+ }
+ // おうえん：ぴよみの 記録から ぴよきちに 足す（かわらなければ 保存しない）
+ applyCheer(){return this.update(CHEER.to,p=>applyCheer(p,this.player(CHEER.from)));}
  openGate(id,nodeId,dayKey){return this.update(id,p=>openGate(p,nodeId,dayKey));}
  // 将来の同期：相手端末の記録（1人ぶん）を足し合わせる
- mergeRemote(id,remotePlayer){return this.update(id,p=>mergeCubePlayer(p,remotePlayer));}
+ // 中身が かわらないときは 保存しない（updatedAt を むだに ふやさない）。かわったら true
+ mergeRemote(id,remotePlayer){
+  let changed=false;
+  this.update(id,p=>{const m=mergeCubePlayer(p,remotePlayer);if(sameCube(m,p))return p;changed=true;return m;});
+  return changed;
+ }
 
  // 画面や他ページ・兄弟ゲート用のまとめ（保存データから毎回計算する）
  snapshot(id,dayKey){

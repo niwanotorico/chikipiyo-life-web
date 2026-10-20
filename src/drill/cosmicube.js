@@ -137,13 +137,36 @@ export const openableNodes=()=>MAP.nodes.filter(n=>n.id!==MAP.start&&n.reward&&R
 // from のあるゲート（と おまけ）は、その日から（dayKey がわからないときは まだ）
 export const nodeActive=(node,dayKey)=>!node.from||(typeof dayKey==='string'&&dayKey>=node.from);
 // ハードモードに 入れるか（さいおくを ひらいている）。10/21 より前は まだ
+// ---- きょうだい（10/23〜）----
+// おかえりボーナス：ぴよきちは 10/23〜10/31 の あいだ、もらえる ピヨ探検pt が 1.5倍（ドリルの ポイントは そのまま）
+export const BOOSTS={piyokichi:{from:'2026-10-23',to:'2026-10-31',rate:1.5,label:'おかえりボーナス'}};
+export function boostFor(playerId,dayKey){const b=BOOSTS[playerId];return b&&typeof dayKey==='string'&&dayKey>=b.from&&dayKey<=b.to?b:null;}
+// おうえん：ぴよみが 10/23 から もらった ピヨ探検pt の 3わりが、ぴよきちにも とどく（ぴよみの pt は へらない）。
+// ぴよきちの earned に「cheer:」つきの 記録として 足す。id が きまっているので、何回 足しても 2台で 合わせても ふえない
+export const CHEER={from:'piyomi',to:'piyokichi',start:'2026-10-23',rate:0.3};
+const cheerPt=pt=>Math.round(pt*CHEER.rate);
+const cheerSource=e=>!e.cheer&&e.day>=CHEER.start&&e.day<=SEASON.end&&cheerPt(e.pt)>0;
+// fromPlayer（ぴよみ）の 記録から、toPlayer（ぴよきち）に まだ ない おうえんを 足す。かわらなければ toPlayer を そのまま返す
+export function applyCheer(toPlayer,fromPlayer){
+ const add=season(fromPlayer).earned.filter(cheerSource);
+ const have=new Set(season(toPlayer).earned.map(e=>e.id));
+ const missing=add.filter(e=>!have.has(`cheer:${e.id}`.slice(0,80)));
+ if(!missing.length)return toPlayer;
+ const next=sanitizeCubePlayer(clone(toPlayer)),s=season(next);
+ for(const e of missing)s.earned.push({id:`cheer:${e.id}`.slice(0,80),day:e.day,pt:cheerPt(e.pt),cheer:true});
+ s.earned.sort((a,b)=>a.day.localeCompare(b.day));
+ next.seasons[SEASON.id]=sanitizeSeason(s);
+ return next;
+}
+export function cheerReceived(s){return s.earned.filter(e=>e.cheer).reduce((a,e)=>a+e.pt,0);}
+export function cheerGiven(s){return s.earned.filter(cheerSource).reduce((a,e)=>a+cheerPt(e.pt),0);}
 export const hardOpen=(s,dayKey)=>!!s.gates[HARD.opensWith]&&typeof dayKey==='string'&&dayKey>=HARD.from;
 
 export function inSeason(dayKey,season=SEASON){return typeof dayKey==='string'&&dayKey>=season.start&&dayKey<=season.end;}
 
 // ---------- データの形 ----------
 // プレイヤー1人ぶん（この形のまま、将来 Firestore などに1ドキュメントとして置ける）
-//   earned:  [{id:セッションID, day:'YYYY-MM-DD', pt, perfect?}]   キューブpt の入金記録（同じ id は二度入らない）。perfect:true＝パーフェクトの ほし 1こ
+//   earned:  [{id:セッションID, day:'YYYY-MM-DD', pt, perfect?, cheer?}]   キューブpt の入金記録（同じ id は二度入らない）。perfect:true＝パーフェクトの ほし 1こ。cheer:true＝きょうだいの おうえん（あそんだ回には 数えない）
 //   gates:   {ノードID: {on:日付, cost}}                  ひらいたゲート
 //   rewards: {ごほうびID: {on:日付, house:bool}}           もらったごほうび（house=3DPハウス来訪待ち）
 //   position: ノードID                                     マップ上のいまの場所
@@ -162,7 +185,7 @@ export function sanitizeSeason(raw){
  const seen=new Set();
  for(const e of Array.isArray(r.earned)?r.earned:[]){
   if(!e||typeof e.id!=='string'||!e.id||!day(e.day)||seen.has(e.id))continue;
-  seen.add(e.id);s.earned.push({id:e.id.slice(0,80),day:e.day,pt:nat(e.pt,1000),...(e.perfect===true?{perfect:true}:{})});
+  seen.add(e.id);s.earned.push({id:e.id.slice(0,80),day:e.day,pt:nat(e.pt,1000),...(e.perfect===true?{perfect:true}:{}),...(e.cheer===true?{cheer:true}:{})});
  }
  s.earned=s.earned.slice(-EARNED_LIMIT);
  for(const [id,g] of Object.entries(obj(r.gates)))if(NODE[id]&&!isStartId(id))s.gates[id]={on:day(obj(g).on),cost:nat(obj(g).cost,100000)};
@@ -190,7 +213,7 @@ export function cubeBalance(s){
  return Math.max(0,inn-out);
 }
 export function cubeEarnedTotal(s){return s.earned.reduce((a,e)=>a+e.pt,0);}
-export function playsOn(s,dayKey){return s.earned.filter(e=>e.day===dayKey).length;}
+export function playsOn(s,dayKey){return s.earned.filter(e=>e.day===dayKey&&!e.cheer).length;}
 export function cubeSessionsLeft(s,dayKey){return inSeason(dayKey)?Math.max(0,DAILY_CUBE_SESSIONS-playsOn(s,dayKey)):0;}
 // みつけた ごほうびの数（画面の「みつけた ごほうび ○こ」）＝ 中身のあるゲートを ひらいた数。総数は出さない（あとから ふえるため）
 // マンガのゲートは 2話ぶんでも 1こ。自動の おまけ（AUTO_MANGA）が あっても 数えない
@@ -202,7 +225,7 @@ export function completion(s){
 }
 export const isOpen=(s,id)=>id===MAP.start||!!s.gates[id]||(id===HARD.start&&!!s.gates[HARD.opensWith]);
 // パーフェクトの ほし：もらった数 − ⭐の マスで つかった数
-export function starsEarned(s){return s.earned.filter(e=>e.perfect).length;}
+export function starsEarned(s){return s.earned.filter(e=>e.perfect&&!e.cheer).length;}
 export function starsUsed(s){return Object.keys(s.gates).filter(id=>NODE[id]?.star).length;}
 export function starBalance(s){return Math.max(0,starsEarned(s)-starsUsed(s));}
 // いま ひらくのに いる pt。その先の 大きいゲートを もう ひらいていれば、手前の 小さいマスは 0pt
@@ -288,7 +311,8 @@ export function mapView(s,{parent=false,dayKey,map='main'}={}){
 // 1回分（10問クリア）を入金する。award は storage.js commitResult の戻り値
 // 戻り値 {player, cubePt, coinNew, reason, star}（star：パーフェクトの ほしを もらった）
 //   reason: 'ok' | 'practice'（4回目以降）| 'season'（期間外）| 'limit'（その日3回ずみ）| 'duplicate'
-export function recordSession(player,{sessionId,dayKey,award}){
+// boost：おかえりボーナスの 倍率（BOOSTS。なければ 1）
+export function recordSession(player,{sessionId,dayKey,award,boost=1}){
  const next=sanitizeCubePlayer(clone(player));
  const s=season(next);
  let coinNew=false;
@@ -301,9 +325,9 @@ export function recordSession(player,{sessionId,dayKey,award}){
  else if(award?.practice)reason='practice';
  else if(!inSeason(dayKey))reason='season';
  else if(playsOn(s,dayKey)>=DAILY_CUBE_SESSIONS)reason='limit';
- else{cubePt=nat(award?.points,1000);s.earned.push({id:sessionId,day:dayKey,pt:cubePt,...(award?.perfect===true?{perfect:true}:{})});}
+ else{cubePt=Math.round(nat(award?.points,1000)*(boost>1&&boost<=3?boost:1));s.earned.push({id:sessionId,day:dayKey,pt:cubePt,...(award?.perfect===true?{perfect:true}:{})});}
  next.seasons[SEASON.id]=sanitizeSeason(s);
- return {player:next,cubePt,coinNew,reason,star:reason==='ok'&&award?.perfect===true};
+ return {player:next,cubePt,basePt:reason==='ok'?nat(award?.points,1000):0,coinNew,reason,star:reason==='ok'&&award?.perfect===true};
 }
 
 // ゲートを開ける。戻り値 {player, ok, reason, reward}

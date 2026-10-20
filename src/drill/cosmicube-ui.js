@@ -1,6 +1,6 @@
 // ピヨドリル：ピヨ探検のマップ画面と、ゲートが開くときの演出。保存は cube（CubeStore）にまかせる。
 import {PLAYERS} from './questions.js';
-import {SEASON,MAP,HARD,REWARDS,nodeById,mapView,season,cubeBalance,costOf,foundCount,stickersOf,hardOpen,starBalance} from './cosmicube.js';
+import {SEASON,MAP,HARD,REWARDS,nodeById,mapView,season,cubeBalance,costOf,foundCount,stickersOf,hardOpen,starBalance,BOOSTS,boostFor,CHEER,cheerReceived,cheerGiven} from './cosmicube.js';
 
 // ---------- マップの現在地キャラ（ドット絵素材） ----------
 // 元素材：piyodrill/characters/*_ipad.png（100×115）。遊んでいる人の絵を出す
@@ -75,7 +75,24 @@ export function rewardFace(id,player,parent=null){
 const fmtDay=d=>`${Number(d.slice(5,7))}/${Number(d.slice(8,10))}`;
 export const seasonPeriod=()=>`${fmtDay(SEASON.start)}〜${fmtDay(SEASON.end)}`;
 
-export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,today,parent=null}){
+// きょうだい同期の ようす（map の 下に 小さく）
+export function syncLabel(st,fmtTime=t=>{const d=new Date(t);return `${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;}){
+ if(!st||st.status==='idle')return '';
+ if(st.status==='syncing')return '🔗 きょうだいと つないでいるよ…';
+ if(st.status==='ok')return `🔗 きょうだいと つながったよ（${fmtTime(st.lastOk)}）`;
+ return '🔗 いまは きょうだいと つながっていないよ（あそぶのは だいじょうぶ）';
+}
+// おかえりボーナス・おうえんの 文
+export function familyLines(player,p,dayKey){
+ const s=season(p),b=boostFor(player,dayKey),started=typeof dayKey==='string'&&dayKey>=CHEER.start;
+ const boost=b?`🏠 ${b.label}：${fmtDay(b.to)} まで ピヨ探検pt が ${b.rate}ばい！`:'';
+ let cheer='';
+ if(started&&player===CHEER.to)cheer=`🤝 ${CHEER.from==='piyomi'?'ぴよみ':'ぴよきち'}の おうえん：これまで +${cheerReceived(s)} pt とどいたよ`;
+ if(started&&player===CHEER.from)cheer=`🤝 ${CHEER.to==='piyokichi'?'ぴよきち':'ぴよみ'}を おうえんちゅう：これまで ${cheerGiven(s)} pt とどけたよ（ぴよみの pt は へらないよ）`;
+ return {boost,cheer};
+}
+
+export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,today,parent=null,syncState=()=>null,onGateOpened=()=>{}}){
  const $=(sel,root=document)=>root.querySelector(sel);
  let selected=null,revealAt=0,mapId=null;   // mapId：'main'（ほしぞら）| 'hard'（ハードモード）。null は おまかせ
 
@@ -140,6 +157,14 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
    box.append(el);
   }
   renderDetail(player,s,bal,stateOf,stars);
+  const fam=familyLines(player,p,dayKey),famBox=$('[data-map-family]');
+  if(famBox){
+   famBox.hidden=!fam.boost&&!fam.cheer;
+   const bEl=$('[data-map-boost]'),cEl=$('[data-map-cheer]');
+   bEl.hidden=!fam.boost;bEl.textContent=fam.boost;cEl.hidden=!fam.cheer;cEl.textContent=fam.cheer;
+  }
+  const sy=$('[data-map-sync]');
+  if(sy){const t=syncLabel(syncState());sy.hidden=!t;sy.textContent=t;}
   renderStickers(p);
  }
 
@@ -197,6 +222,7 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
   if(!res.ok){render();return;}
   selected=nodeId;render();
   reveal(player,res.reward);
+  onGateOpened(nodeId);
  }
 
  // 派手な非ドット演出：キューブがほどけて、光の中からごほうび

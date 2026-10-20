@@ -8,6 +8,7 @@ import {QuestAudio} from './audio.js';
 import {Particles,flyText,shake,replay,centerOf,prefersReducedMotion} from './fx.js';
 import {mountSiteNav} from '../nav/site-nav.js';
 import {CubeStore,localCubeAdapter,memoryCubeAdapter} from './cosmicube-store.js';
+import {createCubeSync} from './cube-sync.js';
 import {createCubeMap,pixelChar,seasonPeriod,giftLabel,giftImg} from './cosmicube-ui.js';
 import {giftOn,giftAvailable,season,hardOpen,starBalance} from './cosmicube.js';
 import {themeTrack,trackElement} from './bgm-pool.js';
@@ -43,7 +44,17 @@ const actor=new Actor($('[data-stage]'),{reduced:()=>reduced});
 // ピヨ探検（10月の報酬マップ）。保存は cosmicube-store.js だけが行う。親モード（仮）の判定は parent-mode.js
 const cube=new CubeStore({adapter:storage?localCubeAdapter(storage):memoryCubeAdapter()});
 const PARENT=isParentMode()?{label:parentLabel}:null;
-const cubeMap=createCubeMap({cube,audio,particles,flash:a=>flash(a),reduced:()=>reduced,getPlayer:()=>store.selected,today:()=>todayKey(),parent:PARENT});
+// きょうだい同期（2台の iPad）。保存できない環境（メモリ）や ?nosync=1 では しない。失敗しても ドリルは そのまま
+const cubeSync=storage&&params.get('nosync')!=='1'?createCubeSync({cube,onChange:st=>onSyncChange(st)}):null;
+let lastSyncStatus='idle';
+function onSyncChange(st){
+ const done=lastSyncStatus==='syncing'&&st.status!=='syncing';lastSyncStatus=st.status;
+ const v=document.body.dataset.view;
+ if(v==='map'&&!cubeMap.isRevealing())cubeMap.render();
+ else if(done&&v==='home')renderHome();
+}
+const syncNow=()=>{cubeSync?.sync();};
+const cubeMap=createCubeMap({cube,audio,particles,flash:a=>flash(a),reduced:()=>reduced,getPlayer:()=>store.selected,today:()=>todayKey(),parent:PARENT,syncState:()=>cubeSync?.state()??null,onGateOpened:syncNow});
 
 const lines={
  start:{piyokichi:'さくっと 10もん いこう！',piyomi:'よーし、いっしょに がんばろ！'},
@@ -126,6 +137,7 @@ function renderHome(){
 }
 function renderCubePanel(sel,today){
  cube.reload();   // 別タブでの記録も反映
+ cube.applyCheer();   // きょうだいの おうえん（ネットが なくても、この iPad に ある 記録から）
  const c=sel?cube.snapshot(sel,today):null;
  $('[data-c="period"]').textContent=seasonPeriod();
  $('[data-c="pt"]').textContent=c?c.cubePt:0;
@@ -138,7 +150,7 @@ function renderCubePanel(sel,today){
  $('[data-pix]').innerHTML=pixelChar(sel??'piyokichi');
  $('[data-cube-panel] [data-to-map]').disabled=!sel;
 }
-function openMap(){if(!store.selected)return;audio.unlock();cubeMap.reset();cube.reload();cubeMap.render();show('map');}
+function openMap(){if(!store.selected)return;audio.unlock();cubeMap.reset();cube.reload();cube.applyCheer();cubeMap.render();show('map');syncNow();}
 
 function showNotice(){
  const n=$('[data-notice]');
@@ -414,7 +426,7 @@ function finish(){
  store=res.store;play.award=res.award;play.committed=true;
  persist();
  // ピヨ探検：scoring.js で計算したポイントをキューブpt に入金（同じ回は二度入らない）
- if(!res.duplicate)play.cube=cube.recordSession(play.player,{sessionId:play.sessionId,dayKey:play.dayKey,award:res.award});
+ if(!res.duplicate){play.cube=cube.recordSession(play.player,{sessionId:play.sessionId,dayKey:play.dayKey,award:res.award});syncNow();}
 }
 
 // ---------- プリンフィーバー ----------
@@ -496,7 +508,7 @@ function renderCubeResult(){
  box.hidden=!c;if(!c)return;
  const bal=cube.snapshot(play.player,play.dayKey).cubePt;
  const why={practice:'きょうの ピヨ探検pt は 3回 もらったよ',season:'ピヨ探検の 期間外だよ',limit:'きょうの ピヨ探検pt は 3回 もらったよ',duplicate:''}[c.reason];
- $('[data-cube-line]').textContent=c.reason==='ok'?`🧊 +${c.cubePt} ピヨ探検pt（いま ${bal} pt）`:`🧊 ${why}（いま ${bal} pt）`;
+ $('[data-cube-line]').textContent=c.reason==='ok'?`🧊 +${c.cubePt} ピヨ探検pt${c.boost&&c.cubePt>c.basePt?`（${c.boost.label} ×${c.boost.rate}）`:''}（いま ${bal} pt）`:`🧊 ${why}（いま ${bal} pt）`;
  // ⭐ パーフェクトの ほし：ハードモードに 入れる子だけ 見せる（ほしは ずっと たまっている）
  const st=$('[data-cube-star]'),cs=season(cube.player(play.player)),showStar=!!c.star&&hardOpen(cs,play.dayKey);
  st.hidden=!showStar;if(showStar)st.textContent=`⭐ パーフェクトの ほし ゲット！（いま ⭐ ×${starBalance(cs)}）`;
@@ -665,6 +677,9 @@ function bind(){
  // ページを離れたら音を止める
  document.addEventListener('visibilitychange',()=>{if(document.hidden){audio.suspend();document.getAnimations?.().forEach(a=>a.pause());}else if(document.body.dataset.view==='play'){audio.resume();document.getAnimations?.().forEach(a=>{if(a.playState==='paused')a.play();});}else if(audio.themeOn)audio.resume();});
  addEventListener('pagehide',()=>{audio.stopMusic();audio.suspend();});
+ // きょうだい同期：ひらいたとき・もどってきたとき
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncNow();});
+ setTimeout(syncNow,1500);
 }
 
 // 共通ナビ（ほかのページと同じ）。PC は右上、スマホは画面下。問題を解いている間は出さない（テンキーと重ねない）

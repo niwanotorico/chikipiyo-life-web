@@ -491,6 +491,10 @@ body.is-reach .dq-eggs i.is-now{animation:dq-eggnow .3s ease-in-out infinite alt
 .dq-cube-result .dq-cube-coin{font-size:13px}
 .dq-cube-star{margin:6px 0 0;font-size:14px;font-weight:800;color:#a8324f}
 .dq-cube-star[hidden]{display:none}
+.dq-map-family{display:grid;gap:4px;padding:10px 12px;border:2.5px dashed #e7a6a0;border-radius:16px;background:#fff8f3}
+.dq-map-family[hidden],.dq-map-family p[hidden],.dq-map-sync[hidden]{display:none}
+.dq-map-family p{margin:0;font-size:13px;font-weight:800;line-height:1.5;color:#6b3f3a}
+.dq-map-sync{margin:0;font-size:11px;color:var(--ink-soft);text-align:center}
 
 /* マップ画面 */
 body[data-view="map"] .dq-top{display:none}
