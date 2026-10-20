@@ -14,5 +14,10 @@ const PARENT_LABELS={
   piyomi:{name:'メロガッパFC 3か月権',note:'親から渡す特別ごほうび（ぴよみの画面では ひみつ）'},
   piyokichi:{name:'（未定）',note:'ぴよきちの さいおく報酬は まだ決めていない'},
  },
+ // ハードモードの ゴール：現実の ごほうび（ちきんが あとで決める）
+ 'hard-goal':{
+  piyomi:{name:'（未定）ハードモードの ごほうび',note:'親から渡す 現実の ごほうび。中身は ちきんが 決める（子どもの画面では ひみつ）'},
+  piyokichi:{name:'（未定）ハードモードの ごほうび',note:'親から渡す 現実の ごほうび。中身は ちきんが 決める（子どもの画面では ひみつ）'},
+ },
 };
 export function parentLabel(rewardId,player){return PARENT_LABELS[rewardId]?.[player]??null;}

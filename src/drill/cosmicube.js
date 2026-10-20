@@ -45,6 +45,25 @@ export const REWARDS={
  'manga-14':{icon:'🎃',name:'マンガ「ハロウィン攻略法」',note:'3DPハウスの 本だなで よめるよ',manga:['season-01'],effects:[]},
  'st-dj':{icon:'🏷️',name:'シール「DJ」',label:'DJ',note:'シールちょうに はったよ',sticker:'dj',effects:[]},
  'st-headphones':{icon:'🏷️',name:'シール「ヘッドホン」',label:'ヘッドホン',note:'シールちょうに はったよ',sticker:'headphones',effects:[]},
+ // ---- ハードモード（さいおくの さらに おく。10/21〜）----
+ // マンガは 1マス1話。シールは まだ つかっていなかった ドット絵
+ 'manga-15':{icon:'📚',name:'マンガ「ひみつの入口」',note:'3DPハウスの 本だなで よめるよ',manga:['mc-09'],effects:[]},
+ 'manga-16':{icon:'📚',name:'マンガ「くしゃみのしゅっぱつ」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-10'],effects:[]},
+ 'manga-17':{icon:'📚',name:'マンガ「おかわり」',note:'3DPハウスの 本だなで よめるよ',manga:['mc-10'],effects:[]},
+ 'manga-18':{icon:'📚',name:'マンガ「しずくのまちあわせ」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-11'],effects:[]},
+ 'manga-19':{icon:'📚',name:'マンガ「かくれんぼ」',note:'3DPハウスの 本だなで よめるよ',manga:['mc-11'],effects:[]},
+ 'manga-20':{icon:'📚',name:'マンガ「おさんぽのおきゃくさん」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-12'],effects:[]},
+ 'manga-21':{icon:'📚',name:'マンガ「まんしつ」',note:'3DPハウスの 本だなで よめるよ',manga:['mc-12'],effects:[]},
+ 'manga-22':{icon:'📚',name:'マンガ「かえりみちのおと」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-13'],effects:[]},
+ 'manga-23':{icon:'📚',name:'マンガ「とんぼのとまりぎ」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-14'],effects:[]},
+ 'st-banzai':{icon:'🏷️',name:'シール「バンザイ」',label:'バンザイ',note:'シールちょうに はったよ',sticker:'banzai',effects:[]},
+ 'st-wink':{icon:'🏷️',name:'シール「ウインクダンス」',label:'ウインクダンス',note:'シールちょうに はったよ',sticker:'wink',effects:[]},
+ 'st-radio':{icon:'🏷️',name:'シール「ラジカセ」',label:'ラジカセ',note:'シールちょうに はったよ',sticker:'radio',effects:[]},
+ 'st-kurutto':{icon:'🏷️',name:'シール「くるっと」',label:'くるっと',note:'シールちょうに はったよ',sticker:'kurutto',effects:[]},
+ 'st-duo':{icon:'🏷️',name:'シール「ふたりでダンス」',label:'ふたりでダンス',note:'シールちょうに はったよ',sticker:'duo',effects:[]},
+ 'st-piyomi':{icon:'🏷️',name:'シール「iPadの ぴよみ」',label:'iPadの ぴよみ',note:'シールちょうに はったよ',sticker:'piyomi',effects:[]},
+ 'st-piyokichi':{icon:'🏷️',name:'シール「iPadの ぴよきち」',label:'iPadの ぴよきち',note:'シールちょうに はったよ',sticker:'piyokichi',effects:[]},
+ 'hard-goal':{icon:'🔥',name:'ハードモードの ❓',note:'なにが あるかは まだ ひみつ。ひらいたら、おうちの人に つたえてね',secret:true},
 };
 
 // マップ。x,y はマップ上の位置（%）。requires は「ぜんぶ開いていれば挑戦できる」ゲート。
@@ -79,18 +98,52 @@ export const MAP={
   {id:'deep',x:62,y:12,cost:20,reward:'deep',requires:['step-deep-5']},
  ],
 };
-const NODE=Object.fromEntries(MAP.nodes.map(n=>[n.id,n]));
+// ハードモード：さいおく（deep）を ひらいた子だけ 入れる、べつの マップ（10/21〜）。
+//  - 入口 hard-start は deep を ひらくと 自動で ひらく（pt なし・保存しない。opensWith）
+//  - star:true の マス（⭐）は pt に くわえて「パーフェクトの ほし」が 1こ いる。
+//    ほしは ピヨ探検pt が もらえる回（1日3回まで）に 10もん ぜんぶ せいかい すると 1こ（earned の perfect）。
+//    のこりの ほし ＝ もらった ほし − ⭐の マスを ひらいた数（残高と おなじく 記録から 毎回 計算する）
+//  - pt は 1マス 15→20→25、ゴール 30（合計 345pt ＋ ほし 4こ）。だいたい 1日 30pt で 10/31 に とどく見こみ
+//  - ぜんぶ 小さいマス（絵だけ・名前は タップで）。ゴール（hard-goal）の 中身は ひみつ（親モードで 見える）
+export const HARD={
+ start:'hard-start',opensWith:'deep',from:'2026-10-21',
+ nodes:[
+  {id:'hard-start',x:50,y:92,cost:0,reward:null,requires:[],label:'さいおく から'},
+  {id:'hard-01',x:27,y:83,cost:15,reward:'manga-15',requires:['hard-start'],small:true},
+  {id:'hard-02',x:73,y:83,cost:15,reward:'st-banzai',requires:['hard-start'],small:true},
+  {id:'hard-03',x:14,y:71,cost:15,reward:'manga-16',requires:['hard-01'],small:true},
+  {id:'hard-04',x:86,y:71,cost:15,reward:'manga-17',requires:['hard-02'],small:true,star:true},
+  {id:'hard-05',x:50,y:64,cost:15,reward:'st-wink',requires:['hard-03','hard-04'],small:true},
+  {id:'hard-06',x:29,y:54,cost:20,reward:'manga-18',requires:['hard-05'],small:true},
+  {id:'hard-07',x:71,y:54,cost:20,reward:'st-radio',requires:['hard-05'],small:true},
+  {id:'hard-08',x:15,y:43,cost:20,reward:'manga-19',requires:['hard-06'],small:true,star:true},
+  {id:'hard-09',x:85,y:43,cost:20,reward:'manga-20',requires:['hard-07'],small:true},
+  {id:'hard-10',x:50,y:36,cost:20,reward:'st-kurutto',requires:['hard-08','hard-09'],small:true},
+  {id:'hard-11',x:29,y:27,cost:20,reward:'manga-21',requires:['hard-10'],small:true},
+  {id:'hard-12',x:71,y:27,cost:20,reward:'st-duo',requires:['hard-10'],small:true},
+  {id:'hard-13',x:14,y:17,cost:25,reward:'manga-22',requires:['hard-11'],small:true,star:true},
+  {id:'hard-14',x:86,y:17,cost:25,reward:'st-piyomi',requires:['hard-12'],small:true},
+  {id:'hard-15',x:50,y:20,cost:25,reward:'manga-23',requires:['hard-13','hard-14'],small:true},
+  {id:'hard-16',x:31,y:8,cost:25,reward:'st-piyokichi',requires:['hard-15'],small:true},
+  {id:'hard-goal',x:66,y:9,cost:30,reward:'hard-goal',requires:['hard-16'],star:true},
+ ],
+};
+const MAPS={main:MAP,hard:HARD};
+const NODE=Object.fromEntries([...MAP.nodes,...HARD.nodes.map(n=>({...n,map:'hard'}))].map(n=>[n.id,n]));
+const isStartId=id=>id===MAP.start||id===HARD.start;
 export const nodeById=id=>NODE[id]??null;
 // ひらける（中身のある）ゲート。空きスロットは数えない
 export const openableNodes=()=>MAP.nodes.filter(n=>n.id!==MAP.start&&n.reward&&REWARDS[n.reward]);
 // from のあるゲート（と おまけ）は、その日から（dayKey がわからないときは まだ）
 export const nodeActive=(node,dayKey)=>!node.from||(typeof dayKey==='string'&&dayKey>=node.from);
+// ハードモードに 入れるか（さいおくを ひらいている）。10/21 より前は まだ
+export const hardOpen=(s,dayKey)=>!!s.gates[HARD.opensWith]&&typeof dayKey==='string'&&dayKey>=HARD.from;
 
 export function inSeason(dayKey,season=SEASON){return typeof dayKey==='string'&&dayKey>=season.start&&dayKey<=season.end;}
 
 // ---------- データの形 ----------
 // プレイヤー1人ぶん（この形のまま、将来 Firestore などに1ドキュメントとして置ける）
-//   earned:  [{id:セッションID, day:'YYYY-MM-DD', pt}]   キューブpt の入金記録（同じ id は二度入らない）
+//   earned:  [{id:セッションID, day:'YYYY-MM-DD', pt, perfect?}]   キューブpt の入金記録（同じ id は二度入らない）。perfect:true＝パーフェクトの ほし 1こ
 //   gates:   {ノードID: {on:日付, cost}}                  ひらいたゲート
 //   rewards: {ごほうびID: {on:日付, house:bool}}           もらったごほうび（house=3DPハウス来訪待ち）
 //   position: ノードID                                     マップ上のいまの場所
@@ -109,10 +162,10 @@ export function sanitizeSeason(raw){
  const seen=new Set();
  for(const e of Array.isArray(r.earned)?r.earned:[]){
   if(!e||typeof e.id!=='string'||!e.id||!day(e.day)||seen.has(e.id))continue;
-  seen.add(e.id);s.earned.push({id:e.id.slice(0,80),day:e.day,pt:nat(e.pt,1000)});
+  seen.add(e.id);s.earned.push({id:e.id.slice(0,80),day:e.day,pt:nat(e.pt,1000),...(e.perfect===true?{perfect:true}:{})});
  }
  s.earned=s.earned.slice(-EARNED_LIMIT);
- for(const [id,g] of Object.entries(obj(r.gates)))if(NODE[id]&&id!==MAP.start)s.gates[id]={on:day(obj(g).on),cost:nat(obj(g).cost,100000)};
+ for(const [id,g] of Object.entries(obj(r.gates)))if(NODE[id]&&!isStartId(id))s.gates[id]={on:day(obj(g).on),cost:nat(obj(g).cost,100000)};
  for(const [id,v] of Object.entries(obj(r.rewards)))if(REWARDS[id])s.rewards[id]={on:day(obj(v).on),house:obj(v).house===true&&!!REWARDS[id].house};   // 来訪のないごほうびにはフラグを残さない
  s.position=NODE[r.position]&&(r.position===MAP.start||s.gates[r.position])?r.position:MAP.start;
  return s;
@@ -147,7 +200,11 @@ export function completion(s){
  const done=list.filter(n=>s.gates[n.id]).length;
  return {done,total:list.length,percent:list.length?Math.floor(done/list.length*100):0};
 }
-export const isOpen=(s,id)=>id===MAP.start||!!s.gates[id];
+export const isOpen=(s,id)=>id===MAP.start||!!s.gates[id]||(id===HARD.start&&!!s.gates[HARD.opensWith]);
+// パーフェクトの ほし：もらった数 − ⭐の マスで つかった数
+export function starsEarned(s){return s.earned.filter(e=>e.perfect).length;}
+export function starsUsed(s){return Object.keys(s.gates).filter(id=>NODE[id]?.star).length;}
+export function starBalance(s){return Math.max(0,starsEarned(s)-starsUsed(s));}
 // いま ひらくのに いる pt。その先の 大きいゲートを もう ひらいていれば、手前の 小さいマスは 0pt
 export const costOf=(s,node)=>node.before&&isOpen(s,node.before)?0:node.cost;
 // 全プレイヤー共通で、ごほうびが持つ効果（usako / curry / toramana / bgm）
@@ -172,15 +229,8 @@ export const DAILY_GIFTS=[
 ];
 // まだ どこにも つかっていない シール（あとで マップの 仮の マスなどに つかえる）
 export const SPARE_STICKERS=[
- {id:'st-banzai',sticker:'banzai',name:'バンザイ'},
- {id:'st-duo',sticker:'duo',name:'ふたりでダンス'},
- {id:'st-radio',sticker:'radio',name:'ラジカセ'},
- {id:'st-wink',sticker:'wink',name:'ウインクダンス'},
- {id:'st-kurutto',sticker:'kurutto',name:'くるっと'},
  {id:'st-batsu1',sticker:'batsu1',name:'×その1'},
  {id:'st-batsu2',sticker:'batsu2',name:'×その2'},
- {id:'st-piyokichi',sticker:'piyokichi',name:'iPadの ぴよきち'},
- {id:'st-piyomi',sticker:'piyomi',name:'iPadの ぴよみ'},
  {id:'st-toramana',sticker:'toramana',name:'トラマナちゃん'},
 ];
 // とどいた ごほうび [{day, ...ごほうび}]（とどいた じゅん）
@@ -220,14 +270,15 @@ export function mangaOf(player,dayKey){
 //   'soon'   となりだけど、中身がまだない空きスロット → ❓ じゅんびちゅう
 //   'fog'    遠くて見えない
 export function nodeState(s,node,dayKey){
+ if(NODE[node.id]?.map==='hard'&&!hardOpen(s,dayKey))return isOpen(s,node.id)?'open':'fog';
  if(isOpen(s,node.id))return 'open';
  const met=node.requires.filter(id=>isOpen(s,id)).length;
  if(met===0)return 'fog';
  if(!node.reward||!REWARDS[node.reward]||!nodeActive(node,dayKey))return 'soon';
  return met===node.requires.length?'ready':'near';
 }
-export function mapView(s,{parent=false,dayKey}={}){
- return MAP.nodes.map(n=>{
+export function mapView(s,{parent=false,dayKey,map='main'}={}){
+ return (MAPS[map]??MAP).nodes.map(n=>{
   const state=nodeState(s,n,dayKey);
   return {node:n,state:parent&&state==='fog'?(n.reward&&nodeActive(n,dayKey)?'near':'soon'):state};
  });
@@ -235,7 +286,7 @@ export function mapView(s,{parent=false,dayKey}={}){
 
 // ---------- 書きかえ（新しいオブジェクトを返す） ----------
 // 1回分（10問クリア）を入金する。award は storage.js commitResult の戻り値
-// 戻り値 {player, cubePt, coinNew, reason}
+// 戻り値 {player, cubePt, coinNew, reason, star}（star：パーフェクトの ほしを もらった）
 //   reason: 'ok' | 'practice'（4回目以降）| 'season'（期間外）| 'limit'（その日3回ずみ）| 'duplicate'
 export function recordSession(player,{sessionId,dayKey,award}){
  const next=sanitizeCubePlayer(clone(player));
@@ -250,22 +301,24 @@ export function recordSession(player,{sessionId,dayKey,award}){
  else if(award?.practice)reason='practice';
  else if(!inSeason(dayKey))reason='season';
  else if(playsOn(s,dayKey)>=DAILY_CUBE_SESSIONS)reason='limit';
- else{cubePt=nat(award?.points,1000);s.earned.push({id:sessionId,day:dayKey,pt:cubePt});}
+ else{cubePt=nat(award?.points,1000);s.earned.push({id:sessionId,day:dayKey,pt:cubePt,...(award?.perfect===true?{perfect:true}:{})});}
  next.seasons[SEASON.id]=sanitizeSeason(s);
- return {player:next,cubePt,coinNew,reason};
+ return {player:next,cubePt,coinNew,reason,star:reason==='ok'&&award?.perfect===true};
 }
 
 // ゲートを開ける。戻り値 {player, ok, reason, reward}
-//   reason: 'ok' | 'unknown' | 'open' | 'locked' | 'empty' | 'short'（pt 不足）
+//   reason: 'ok' | 'unknown' | 'open' | 'locked' | 'empty' | 'short'（pt 不足）| 'star'（ほし 不足）
 export function openGate(player,nodeId,dayKey){
  const node=NODE[nodeId];
- if(!node||nodeId===MAP.start)return {player,ok:false,reason:'unknown'};
+ if(!node||isStartId(nodeId))return {player,ok:false,reason:'unknown'};
  const s0=season(player);
  if(s0.gates[nodeId])return {player,ok:false,reason:'open'};
  if(!node.reward||!REWARDS[node.reward]||!nodeActive(node,dayKey))return {player,ok:false,reason:'empty'};
+ if(node.map==='hard'&&!hardOpen(s0,dayKey))return {player,ok:false,reason:'locked'};
  if(!node.requires.every(id=>isOpen(s0,id)))return {player,ok:false,reason:'locked'};
  const cost=costOf(s0,node);
  if(cubeBalance(s0)<cost)return {player,ok:false,reason:'short'};
+ if(node.star&&starBalance(s0)<1)return {player,ok:false,reason:'star'};
  const next=sanitizeCubePlayer(clone(player)),s=season(next);
  s.gates[nodeId]={on:dayKey,cost};
  s.rewards[node.reward]={on:dayKey,house:!!REWARDS[node.reward].house};

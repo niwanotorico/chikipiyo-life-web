@@ -9,7 +9,7 @@ import {Particles,flyText,shake,replay,centerOf,prefersReducedMotion} from './fx
 import {mountSiteNav} from '../nav/site-nav.js';
 import {CubeStore,localCubeAdapter,memoryCubeAdapter} from './cosmicube-store.js';
 import {createCubeMap,pixelChar,seasonPeriod,giftLabel,giftImg} from './cosmicube-ui.js';
-import {giftOn,giftAvailable} from './cosmicube.js';
+import {giftOn,giftAvailable,season,hardOpen,starBalance} from './cosmicube.js';
 import {themeTrack,trackElement} from './bgm-pool.js';
 import {isParentMode,parentLabel} from './parent-mode.js';
 import * as festival from './festival.js';
@@ -497,6 +497,9 @@ function renderCubeResult(){
  const bal=cube.snapshot(play.player,play.dayKey).cubePt;
  const why={practice:'きょうの ピヨ探検pt は 3回 もらったよ',season:'ピヨ探検の 期間外だよ',limit:'きょうの ピヨ探検pt は 3回 もらったよ',duplicate:''}[c.reason];
  $('[data-cube-line]').textContent=c.reason==='ok'?`🧊 +${c.cubePt} ピヨ探検pt（いま ${bal} pt）`:`🧊 ${why}（いま ${bal} pt）`;
+ // ⭐ パーフェクトの ほし：ハードモードに 入れる子だけ 見せる（ほしは ずっと たまっている）
+ const st=$('[data-cube-star]'),cs=season(cube.player(play.player)),showStar=!!c.star&&hardOpen(cs,play.dayKey);
+ st.hidden=!showStar;if(showStar)st.textContent=`⭐ パーフェクトの ほし ゲット！（いま ⭐ ×${starBalance(cs)}）`;
  const coin=$('[data-cube-coin]');coin.hidden=!c.coinNew;
  coin.textContent='🪙 きょうの コインミッション たっせい！（ミッション1つぶん：赤・青コイン）';
  // 🎁 毎日の ごほうび：その日はじめての クリアで とどいた 1こ

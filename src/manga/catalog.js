@@ -16,6 +16,10 @@ export const SERIES=[
    {id:'mc-06',no:6,title:'人気者'},
    {id:'mc-07',no:7,title:'いいながめ'},
    {id:'mc-08',no:8,title:'ねこの指定席'},
+   {id:'mc-09',no:9,title:'ひみつの入口'},
+   {id:'mc-10',no:10,title:'おかわり'},
+   {id:'mc-11',no:11,title:'かくれんぼ'},
+   {id:'mc-12',no:12,title:'まんしつ'},
   ]},
  {id:'daily',title:'まったり日常本',folder:'02_slowlife',color:'#e7a6a0',ink:'#6b3f3a',paper:'#fdf3ea',
   episodes:[
@@ -28,6 +32,11 @@ export const SERIES=[
    {id:'daily-07',no:7,title:'おなかのおへんじ'},
    {id:'daily-08',no:8,title:'かぜのかくれんぼ'},
    {id:'daily-09',no:9,title:'くものいす'},
+   {id:'daily-10',no:10,title:'くしゃみのしゅっぱつ'},
+   {id:'daily-11',no:11,title:'しずくのまちあわせ'},
+   {id:'daily-12',no:12,title:'おさんぽのおきゃくさん'},
+   {id:'daily-13',no:13,title:'かえりみちのおと'},
+   {id:'daily-14',no:14,title:'とんぼのとまりぎ'},
   ]},
  // 季節の本：イベントの話。ピヨ探検の マップの マス（ハロウィンは slot-e）で ふえる
  {id:'season',title:'季節の本',folder:'03_event',color:'#e8893a',ink:'#4a2d5c',paper:'#fbf0e2',

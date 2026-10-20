@@ -1,6 +1,6 @@
 // ピヨドリル：ピヨ探検のマップ画面と、ゲートが開くときの演出。保存は cube（CubeStore）にまかせる。
 import {PLAYERS} from './questions.js';
-import {SEASON,MAP,REWARDS,nodeById,mapView,season,cubeBalance,costOf,foundCount,stickersOf} from './cosmicube.js';
+import {SEASON,MAP,HARD,REWARDS,nodeById,mapView,season,cubeBalance,costOf,foundCount,stickersOf,hardOpen,starBalance} from './cosmicube.js';
 
 // ---------- マップの現在地キャラ（ドット絵素材） ----------
 // 元素材：piyodrill/characters/*_ipad.png（100×115）。遊んでいる人の絵を出す
@@ -77,21 +77,35 @@ export const seasonPeriod=()=>`${fmtDay(SEASON.start)}〜${fmtDay(SEASON.end)}`;
 
 export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,today,parent=null}){
  const $=(sel,root=document)=>root.querySelector(sel);
- let selected=null,revealAt=0;
+ let selected=null,revealAt=0,mapId=null;   // mapId：'main'（ほしぞら）| 'hard'（ハードモード）。null は おまかせ
 
  function render(){
   const player=getPlayer();if(!player)return;
-  const dayKey=today(),p=cube.player(player),s=season(p),view=mapView(s,{parent,dayKey}),bal=cubeBalance(s),foundN=foundCount(s);
+  const dayKey=today(),p=cube.player(player),s=season(p),hard=hardOpen(s,dayKey);
+  // ハードモードに 入れる子は、さいしょは ハードモードを 見せる
+  if(!hard)mapId='main';else if(!mapId)mapId='hard';
+  const M=mapId==='hard'?HARD:MAP;
+  const view=mapView(s,{parent,dayKey,map:mapId}),bal=cubeBalance(s),foundN=foundCount(s),stars=starBalance(s);
   const stateOf=Object.fromEntries(view.map(v=>[v.node.id,v.state]));
+  // マップの きりかえ（ハードモードに 入れる子だけ）
+  const tabs=$('[data-map-tabs]');
+  if(tabs){tabs.hidden=!hard;for(const b of tabs.querySelectorAll('[data-map-tab]')){const on=b.dataset.mapTab===mapId;b.classList.toggle('is-on',on);b.setAttribute('aria-pressed',String(on));}}
+  $('[data-map-space]').classList.toggle('is-hard',mapId==='hard');
+  const starEl=$('[data-map-star]');
+  if(starEl){starEl.hidden=!hard;starEl.textContent=`⭐ ×${stars}`;}
+  // いまの場所：ハードモードの マスに いる子は、ほしぞらでは さいおくに、ハードモードの 入口は さいおくに いる子
+  const here=mapId==='hard'?(nodeById(s.position)?.map==='hard'?s.position:HARD.start):(nodeById(s.position)?.map==='hard'?HARD.opensWith:s.position);
   $('[data-map-pt]').textContent=bal;
   $('[data-map-sub]').textContent=`${PLAYERS[player].name}の マップ・${seasonPeriod()}${parent?'（親モード：ぜんぶ見えています）':''}`;
   $('[data-map-found]').textContent=`${foundN}こ`;
-  $('[data-map-note]').textContent=dayKey>SEASON.end?`ピヨ探検pt を ためられるのは ${fmtDay(SEASON.end)} まで。のこりの pt で ゲートは ひらけるよ`
+  $('[data-map-note]').textContent=mapId==='hard'?'🔥 ハードモード：⭐の マスは「パーフェクトの ほし」も 1こ いるよ。ほしは 10もん ぜんぶ せいかい（ピヨ探検pt が もらえる回）で 1こ もらえる'
+   :hard?'🔥 さいおくの さらに おくに ハードモードが あるよ！ うえの「ハードモード」から いけるよ'
+   :dayKey>SEASON.end?`ピヨ探検pt を ためられるのは ${fmtDay(SEASON.end)} まで。のこりの pt で ゲートは ひらけるよ`
    :dayKey<SEASON.start?`ピヨ探検pt が たまるのは ${fmtDay(SEASON.start)} から`:'10もん クリアで ピヨ探検pt が たまるよ（1日3回まで）。ゲートは どの じゅんばんでも ぜんぶ ひらけるよ';
   // 線
   const svgNS='http://www.w3.org/2000/svg',lines=$('[data-map-lines]');
   lines.replaceChildren();
-  for(const n of MAP.nodes)for(const r of n.requires){
+  for(const n of M.nodes)for(const r of n.requires){
    const a=nodeById(r),l=document.createElementNS(svgNS,'line');
    l.setAttribute('x1',a.x);l.setAttribute('y1',a.y);l.setAttribute('x2',n.x);l.setAttribute('y2',n.y);
    const st=stateOf[n.id];
@@ -108,22 +122,24 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
    else{
     el.type='button';el.dataset.node=node.id;el.setAttribute('aria-pressed',String(selected===node.id));
     if(node.id===MAP.start){icon='⭐';label=node.label;}
+    else if(node.id===HARD.start){icon='🔥';label=node.label;}
     else if(node.reward&&(state==='open'||parent)){const f=rewardFace(node.reward,player,parent);icon=f.icon;label=node.small?'':f.name;}   // 小さいマスは 絵だけ（名前は タップで）
     else if(state==='soon'){label='じゅんびちゅう';}
     const cost=costOf(s,node);
-    if(state==='ready')tag=`${cost}pt`;
+    if(state==='ready')tag=node.star?`⭐+${cost}pt`:`${cost}pt`;
+    if(node.star&&state!=='open')el.classList.add('is-star');
     if(state==='near')tag='🔒';
-    el.setAttribute('aria-label',state==='open'?label:state==='ready'?`なにかが ある ゲート。${cost} ピヨ探検pt で ひらく`:state==='near'?'まだ ひらけない ゲート':'じゅんびちゅう');
+    el.setAttribute('aria-label',state==='open'?label:state==='ready'?`なにかが ある ゲート。${node.star?'パーフェクトの ほし 1こと ':''}${cost} ピヨ探検pt で ひらく`:state==='near'?'まだ ひらけない ゲート':'じゅんびちゅう');
    }
    el.innerHTML=`<span class="dq-node-icon"></span>${label?'<span class="dq-node-label"></span>':''}${tag?'<span class="dq-node-cost"></span>':''}`;
    if(state==='open'&&REWARD_ART[node.reward])$('.dq-node-icon',el).append(artImg(node.reward,'dq-node-art'));
    else $('.dq-node-icon',el).textContent=icon;
    if(label)$('.dq-node-label',el).textContent=label;
    if(tag)$('.dq-node-cost',el).textContent=tag;
-   if(s.position===node.id){el.classList.add('is-here');const img=document.createElement('img');img.className='dq-map-char';img.src=MAP_CHAR[player];img.alt='';img.width=100;img.height=115;img.decoding='async';el.append(img);}
+   if(here===node.id){el.classList.add('is-here');const img=document.createElement('img');img.className='dq-map-char';img.src=MAP_CHAR[player];img.alt='';img.width=100;img.height=115;img.decoding='async';el.append(img);}
    box.append(el);
   }
-  renderDetail(player,s,bal,stateOf);
+  renderDetail(player,s,bal,stateOf,stars);
   renderStickers(p);
  }
 
@@ -139,7 +155,7 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
   }));
  }
 
- function renderDetail(player,s,bal,stateOf){
+ function renderDetail(player,s,bal,stateOf,stars){
   const d=$('[data-map-detail]');
   const node=selected&&nodeById(selected);
   const st=node&&stateOf[node.id];
@@ -147,6 +163,7 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
   const h=document.createElement('h3'),p=document.createElement('p');
   const parts=[h,p];
   if(node.id===MAP.start){h.textContent='⭐ スタート';p.textContent='ここから ぼうけんが はじまる。';}
+  else if(node.id===HARD.start){h.textContent='🔥 ハードモード';p.textContent='さいおくの さらに おく。⭐の マスは、パーフェクトの ほしが ないと ひらかないよ。';}
   else if(st==='open'){
    const f=rewardFace(node.reward,player,parent),got=s.rewards[node.reward];
    h.textContent=`${f.icon} ${f.name}`;p.textContent=f.note+(got?.on?`（${fmtDay(got.on)}に ゲット）`:'');
@@ -154,13 +171,17 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
   }
   else if(st==='ready'){
    h.textContent=parent&&node.reward?`❓ ${rewardFace(node.reward,player,parent).name}`:'❓ なにが でるかな？';
-   const cost=costOf(s,node);
-   p.textContent=cost===0?'もう とおった みち だから、pt なしで ひらけるよ。':bal>=cost?`${cost} ピヨ探検pt で ひらけるよ。`:`ひらくには ${cost} ピヨ探検pt。あと ${cost-bal} pt！`;
+   const cost=costOf(s,node),needStar=!!node.star,starOk=!needStar||stars>=1;
+   if(needStar){
+    const ptText=bal>=cost?`${cost} pt は OK`:`pt は あと ${cost-bal}`;
+    p.textContent=`⭐ パーフェクトの ほし 1こ と ${cost} ピヨ探検pt で ひらくよ。（いま ⭐ ×${stars}・${ptText}）`+(starOk?'':'　10もん ぜんぶ せいかいで ほしが もらえるよ！');
+   }
+   else p.textContent=cost===0?'もう とおった みち だから、pt なしで ひらけるよ。':bal>=cost?`${cost} ピヨ探検pt で ひらけるよ。`:`ひらくには ${cost} ピヨ探検pt。あと ${cost-bal} pt！`;
    const b=document.createElement('button');b.type='button';b.className='dq-btn is-open-gate';b.dataset.openGate=node.id;
-   b.textContent=`ひらく（${cost} pt）`;b.disabled=bal<cost;parts.push(b);
+   b.textContent=needStar?`ひらく（⭐1 ＋ ${cost} pt）`:`ひらく（${cost} pt）`;b.disabled=bal<cost||!starOk;parts.push(b);
   }
   else if(st==='near'){
-   const need=node.requires.filter(id=>!s.gates[id]&&id!==MAP.start).map(id=>{const n=nodeById(id);return stateOf[id]==='open'||parent?rewardFace(n.reward,player,parent).name:'となりの ❓';});
+   const need=node.requires.filter(id=>!s.gates[id]&&id!==MAP.start&&id!==HARD.start).map(id=>{const n=nodeById(id);return stateOf[id]==='open'||parent?rewardFace(n.reward,player,parent).name:'となりの ❓';});
    h.textContent=parent&&node.reward?`🔒 ${rewardFace(node.reward,player,parent).name}`:'🔒 まだ ひらけない ゲート';
    p.textContent=`${[...new Set(need)].join(' と ')} を ひらくと、いけるようになるよ。`;
   }
@@ -202,9 +223,10 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
 
  function bind(){
   $('[data-map-nodes]').addEventListener('click',e=>{const b=e.target.closest('[data-node]');if(b)select(b.dataset.node);});
+  $('[data-map-tabs]')?.addEventListener('click',e=>{const b=e.target.closest('[data-map-tab]');if(!b||b.dataset.mapTab===mapId)return;mapId=b.dataset.mapTab;selected=null;audio.tap();render();});
   $('[data-map-detail]').addEventListener('click',e=>{const b=e.target.closest('[data-open-gate]');if(b&&!b.disabled)open(b.dataset.openGate);});
   $('[data-cube-reveal]').addEventListener('click',closeReveal);
  }
- return {render,bind,reset(){selected=null;},isRevealing:()=>!$('[data-cube-reveal]').hidden};
+ return {render,bind,reset(){selected=null;mapId=null;},isRevealing:()=>!$('[data-cube-reveal]').hidden};
 }
 
