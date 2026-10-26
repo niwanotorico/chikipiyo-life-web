@@ -111,6 +111,7 @@ test('ぜんぶ ひらける：ほし4こ ＋ 345pt で ゴールまで。ゴー
  for(const n of HARD.nodes)if(n.id!==HARD.start)assert.ok(s.gates[n.id],n.id);
  assert.equal(s.position,'hard-goal');
  assert.equal(parentLabel('hard-goal','piyomi').name.includes('ハードモード'),true);
+ assert.ok(parentLabel('hard-goal','piyomi').name.includes('メロガッパFC 3か月'));
  const ui=readFileSync(new URL('../src/drill/cosmicube-ui.js',import.meta.url),'utf8');
  assert.ok(ui.includes('rewardFace'),'secret は rewardFace で ❓');
 });

@@ -117,7 +117,7 @@ test('最奥の中身は 子ども2人とも ❓。親モード（仮）だけ�
  }
  const parent={label:parentLabel};
  assert.equal(rewardFace('deep','piyomi',parent).name,'メロガッパFC 3か月権');
- assert.equal(rewardFace('deep','piyokichi',parent).name,'（未定）');
+ assert.equal(rewardFace('deep','piyokichi',parent).name,'プリンター稼働券 600ポイント');
  assert.equal(rewardFace('usako','piyomi',parent).name,'うさこ');
  // 親にだけ見せる中身は parent-mode.js にしかない
  for(const f of ['cosmicube.js','cosmicube-ui.js','cosmicube-store.js','main.js']){
