@@ -19,6 +19,21 @@ export function stepPosition(eps,pos,dir){
 }
 export const pageAt=(eps,pos)=>pos?eps.find(e=>e.id===pos.episode)?.pages[pos.page]??null:null;
 
+// ---------- NEW（よんでいない話）----------
+// shelf.read[player]：よんだ話IDの リスト。まだ ない人は、はじめて ひらいたときに「いま よめる話」で うめる
+// （この しくみを 入れる前から よめた話に NEW が つかないように）。そのあと ふえた話だけが NEW になる
+export function seedRead(shelf,player,ids){
+ shelf.read??={};
+ if(Array.isArray(shelf.read[player]))return false;
+ shelf.read[player]=[...ids];return true;
+}
+export function isNewEpisode(shelf,player,id){const list=shelf.read?.[player];return Array.isArray(list)&&!list.includes(id);}
+export function markRead(shelf,player,id){
+ shelf.read??={};const list=shelf.read[player]??=[];
+ if(list.includes(id))return false;
+ list.push(id);if(list.length>500)list.splice(0,list.length-500);return true;
+}
+
 // ---------- 画像の窓：いまの1枚 ＋ つぎの1枚（先読み）だけ ----------
 // img：画面の <img>。createImage：先読み用（テストで差しかえ）
 export function createPageWindow(img,{createImage=()=>new Image(),onState=()=>{}}={}){

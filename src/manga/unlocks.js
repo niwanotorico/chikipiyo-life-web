@@ -39,10 +39,16 @@ export function readShelf(storage){
    (last[p.id]??={})[series]={episode:v.episode.slice(0,40),page:Number.isSafeInteger(v.page)&&v.page>=0?Math.min(v.page,999):0};
   }
  }
- return {player:isPlayer(r.player)?r.player:null,last};
+ // よんだ話（NEW を けすため）。まだ 記録が ない人は ここに 入らない（はじめて ひらいたときに いま よめる話で うめる）
+ const read={};
+ for(const p of MANGA_PLAYERS){
+  const list=r.read?.[p.id];if(!Array.isArray(list))continue;
+  read[p.id]=[...new Set(list.filter(id=>typeof id==='string').map(id=>id.slice(0,40)))].slice(0,500);
+ }
+ return {player:isPlayer(r.player)?r.player:null,last,read};
 }
 export function writeShelf(storage,shelf){
- try{storage?.setItem(SHELF_KEY,JSON.stringify({player:shelf.player,last:shelf.last}));return true;}catch{return false;}
+ try{storage?.setItem(SHELF_KEY,JSON.stringify({player:shelf.player,last:shelf.last,read:shelf.read??{}}));return true;}catch{return false;}
 }
 
 // ひらいたときの人：ピヨドリルで いま えらばれている人 → 本だなで さいごに えらんだ人 → まだ わからない（null）

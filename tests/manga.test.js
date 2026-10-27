@@ -167,7 +167,7 @@ test('ひらいたときの人：ドリルで えらばれている人 → 本�
  assert.equal(defaultPlayer(fakeStorage({})),null);
  assert.equal(defaultPlayer(fakeStorage({[QUEST_KEY]:{selected:'someone'}})),null);
  const shelf=readShelf(fakeStorage({[SHELF_KEY]:{player:'x',last:{piyomi:{mc:{episode:'mc-02',page:-3},zzz:{episode:'a'}},ghost:{}}}}));
- assert.deepEqual(shelf,{player:null,last:{piyomi:{mc:{episode:'mc-02',page:0}}}});
+ assert.deepEqual(shelf,{player:null,last:{piyomi:{mc:{episode:'mc-02',page:0}}},read:{}});
 });
 
 test('読む順番：画像のない話は とばす。話のおわりで つぎの話へ。はしでは止まる', ()=>{
@@ -398,4 +398,22 @@ test('小さいマス：その先の 大きいゲートを もう ひらいて�
  assert.ok(mangaOf(p,'2026-10-09').has('mc-06')&&mangaOf(p,'2026-10-09').has('daily-07'));
  // まだ ひらいていない ゲートの手前は ふつうの pt（カレーが まだなので とおれない）
  assert.equal(openGate(p,'step-tora-1','2026-10-09').reason,'locked');
+});
+
+test('NEW：はじめて ひらいた人は いま よめる話を よんだに する。そのあと ふえた話だけ NEW、よむと きえる。保存して 読みなおせる', async ()=>{
+ const {seedRead,isNewEpisode,markRead}=await import('../src/manga/reading.js');
+ const shelf={player:null,last:{}};
+ assert.equal(isNewEpisode(shelf,'piyomi','daily-01'),false,'記録が ないうちは NEW なし');
+ assert.equal(seedRead(shelf,'piyomi',['daily-01','daily-02']),true);
+ assert.equal(seedRead(shelf,'piyomi',['daily-03']),false,'2回目は うめない');
+ assert.equal(isNewEpisode(shelf,'piyomi','daily-01'),false);
+ assert.equal(isNewEpisode(shelf,'piyomi','daily-15'),true,'あとから ふえた話は NEW');
+ assert.equal(markRead(shelf,'piyomi','daily-15'),true);
+ assert.equal(markRead(shelf,'piyomi','daily-15'),false);
+ assert.equal(isNewEpisode(shelf,'piyomi','daily-15'),false);
+ assert.equal(isNewEpisode(shelf,'piyokichi','daily-15'),false,'ぴよきちは べつ');
+ const s=fakeStorage({});
+ writeShelf(s,shelf);
+ assert.deepEqual(readShelf(s).read,{piyomi:['daily-01','daily-02','daily-15']});
+ assert.deepEqual(readShelf(fakeStorage({[SHELF_KEY]:{read:{piyomi:'x',ghost:['a'],piyokichi:['mc-01',3,'mc-01']}}})).read,{piyokichi:['mc-01']});
 });
