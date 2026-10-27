@@ -315,16 +315,22 @@ function motifWord(rng,player,m){
   const p=pick(rng,[380,450,520,640]),n=int(rng,3,6);return q('word','文章題',[`トラマナちゃんの カレー屋さんで、1さら ${p}円の カレーを ${n}さら たのみました。代金は 何円？`],p*n,{unit:'円'});
  }
  const item=curry?pick(rng,['カレーパン','じゃがいも','にんじん']):pick(rng,['クッキー','おにぎり','いちご']);
+ // そのまま 食べる物は「たべる」、カレーの ざいりょうは「つかう」（いちごを「つかう」は へんなので）
+ const eat=!['じゃがいも','にんじん'].includes(item);
  if(player==='piyomi'){
   const t=int(rng,0,2);
-  if(t===0){const a=int(rng,25,60),b=int(rng,6,a-11);return q('word','文章題',[`${item}が ${a}こ あります。${name}が ${b}こ つかうと、のこりは 何こ？`],a-b,{unit:'こ'});}
+  if(t===0){const a=int(rng,25,60),b=int(rng,6,a-11);return q('word','文章題',[`${item}が ${a}こ あります。${name}が ${b}こ ${eat?'たべる':'つかう'}と、のこりは 何こ？`],a-b,{unit:'こ'});}
   if(t===1){const n=int(rng,2,9),k=int(rng,2,9);return q('word','文章題',[`${name}は ${n}人に ${item}を ${k}こずつ くばります。ぜんぶで 何こ いる？`],n*k,{unit:'こ'});}
   const n=int(rng,2,9),c=int(rng,2,9);return q('word','文章題',[`${n*c}この ${item}を ${name}たち ${n}人で 同じ数ずつ 分けます。1人 何こ？`],c,{unit:'こ'});
  }
  const t=int(rng,0,2);
  if(t===0){const p=pick(rng,[60,80,120,150,180,240]),n=int(rng,3,8);return q('word','文章題',[`${name}は 1こ ${p}円の ${item}を ${n}こ 買いました。代金は 何円？`],p*n,{unit:'円'});}
  if(t===1){const n=int(rng,3,8),c=int(rng,6,24);return q('word','文章題',[`${n*c}この ${item}を ${name}たち ${n}人で 同じ数ずつ 分けます。1人 何こ？`],c,{unit:'こ'});}
- const a=notRound(rng,11,49),n=int(rng,2,9);return q('word','文章題',[`${name}は ${item}を 1日に ${tenths(a)}kg つかいます。${n}日では 何kg？`],tenths(a*n),{unit:'kg',decimal:true});
+ const a=notRound(rng,11,49),n=int(rng,2,9);
+ // kg の問題：ふだんは カレー屋さんの しいれ（リアルな量）。10回に1回くらい「だいぐい」の レア問題（おにぎり 2.1kg とか）
+ if(eat&&rng()<.1)return q('word','文章題',[`なんと！ ${name}は ${item}を 1日に ${tenths(a)}kg たべます。${n}日では 何kg？`],tenths(a*n),{unit:'kg',decimal:true});
+ const ing=pick(rng,['じゃがいも','にんじん','たまねぎ']);
+ return q('word','文章題',[`${name}の カレー屋さんでは、${ing}を 1日に ${tenths(a)}kg つかいます。${n}日では 何kg？`],tenths(a*n),{unit:'kg',decimal:true});
 }
 function applyMotifs(list,rng,player,motifs){
  const m=new Set([...(motifs??[])].filter(x=>MOTIFS.includes(x)));

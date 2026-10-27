@@ -152,3 +152,24 @@ test('ホーム画面：開始ボタンは「10もんチャレンジを はじ�
  assert.match(html,/data-start[^>]*>10もんチャレンジを はじめる</);
  assert.ok(!/算数|国語|理科|社会/.test(html));
 });
+
+test('モチーフの文章題：たべ物は「たべる」。いちご・クッキーなどを「つかう」と書かない', ()=>{
+ const motifs=new Set(['usako','curry','toramana']);let seen=0;
+ for(let r=0;r<400;r++)for(const p of ['piyomi','piyokichi'])for(const q of makeQuestionSet(p,seededRandom(r*7+3),QUESTIONS_PER_SET,{motifs})){
+  const t=q.text.join?q.text.join(''):String(q.text);
+  for(const f of ['いちご','クッキー','おにぎり','カレーパン'])if(t.includes(f)&&/つか[うい]/.test(t))assert.fail(t);
+  if(/たべ/.test(t))seen++;
+ }
+ assert.ok(seen>0,'たべる 問題が 出ている');
+});
+
+test('kg の文章題：ふだんは カレー屋さんの しいれ。だいぐい（たべます）は たまにだけ', ()=>{
+ const motifs=new Set(['usako','curry','toramana']);let kg=0,oogui=0;
+ for(let r=0;r<3000;r++)for(const q of makeQuestionSet('piyokichi',seededRandom(r*11+1),QUESTIONS_PER_SET,{motifs})){
+  const t=q.text.join?q.text.join(''):String(q.text);
+  if(!/1日に [\d.]+kg/.test(t))continue;kg++;
+  if(/たべます/.test(t)){oogui++;assert.ok(t.startsWith('なんと！'),t);}
+  else assert.ok(/カレー屋さんでは、(じゃがいも|にんじん|たまねぎ)を/.test(t),t);
+ }
+ assert.ok(kg>50,`kg ${kg}`);assert.ok(oogui>0,'レアも 出る');assert.ok(oogui/kg<.2,`${oogui}/${kg}`);
+});
