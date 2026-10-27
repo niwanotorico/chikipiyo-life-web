@@ -27,5 +27,11 @@ export const MANGA_PAGES={
  'daily-12':[{"src":"manga/daily/12/p01.webp","w":1024,"h":1536}],
  'daily-13':[{"src":"manga/daily/13/p01.webp","w":1024,"h":1536}],
  'daily-14':[{"src":"manga/daily/14/p01.webp","w":1024,"h":1536}],
+ 'daily-15':[{"src":"manga/daily/15/p01.webp","w":1024,"h":1536}],
+ 'daily-16':[{"src":"manga/daily/16/p01.webp","w":1024,"h":1536}],
+ 'daily-17':[{"src":"manga/daily/17/p01.webp","w":1024,"h":1536}],
+ 'daily-18':[{"src":"manga/daily/18/p01.webp","w":1024,"h":1536}],
+ 'daily-19':[{"src":"manga/daily/19/p01.webp","w":1024,"h":1536}],
+ 'daily-20':[{"src":"manga/daily/20/p01.webp","w":1024,"h":1536}],
  'season-01':[{"src":"manga/season/01/p01.webp","w":1024,"h":1536}],
 };

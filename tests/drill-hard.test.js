@@ -26,29 +26,30 @@ function deepPlayer(){
 // 前から じゅんばんに ひらけるだけ ひらく
 function openAll(p,day=D){let moved=true;while(moved){moved=false;for(const n of HARD.nodes){const r=openGate(p,n.id,day);if(r.ok){p=r.player;moved=true;}}}return p;}
 
-test('マップ定義：17マス（マンガ9・シール7・ゴール1）、ID・requires・位置が正しい、⭐は4マス', ()=>{
+test('マップ定義：17マス（マンガ14・シール2・ゴール1）、ID・requires・位置が正しい、⭐は4マス', ()=>{
  const ids=HARD.nodes.map(n=>n.id);
  assert.equal(new Set(ids).size,ids.length);
  for(const id of ids)assert.ok(!MAP.nodes.some(n=>n.id===id),`${id} は メインと かぶらない`);
  for(const n of HARD.nodes){for(const r of n.requires)assert.ok(ids.includes(r),`${n.id} → ${r}`);assert.ok(n.x>=5&&n.x<=95&&n.y>=5&&n.y<=95,n.id);}
  const gates=HARD.nodes.filter(n=>n.id!==HARD.start);
  assert.equal(gates.length,17);
- assert.equal(gates.filter(n=>REWARDS[n.reward]?.manga).length,9);
- assert.equal(gates.filter(n=>REWARDS[n.reward]?.sticker).length,7);
+ assert.equal(gates.filter(n=>REWARDS[n.reward]?.manga).length,14);
+ assert.equal(gates.filter(n=>REWARDS[n.reward]?.sticker).length,2);
  assert.deepEqual(gates.filter(n=>n.star).map(n=>n.id),['hard-04','hard-08','hard-13','hard-goal']);
- assert.equal(gates.reduce((a,n)=>a+n.cost,0),345);
+ assert.equal(gates.reduce((a,n)=>a+n.cost,0),290);
+ assert.equal(nodeById('hard-16').reward,'manga-28');assert.deepEqual(REWARDS['manga-28'].manga,['daily-19']);
  assert.ok(REWARDS['hard-goal'].secret);
  // メインの マップは そのまま（合計 430pt・ノード数）
  assert.equal(openableNodes().reduce((a,n)=>a+n.cost,0),430);
  assert.equal(completion(season(emptyCubePlayer())).total,20);
 });
 
-test('マンガ9話：catalog にあり、配信用 WebP があり、どれか1マスだけ', ()=>{
+test('マンガ15話：catalog にあり、配信用 WebP があり、どれか1マスだけ', ()=>{
  const eps=HARD.nodes.flatMap(n=>REWARDS[n.reward]?.manga??[]);
- assert.deepEqual(eps.sort(),['daily-10','daily-11','daily-12','daily-13','daily-14','mc-09','mc-10','mc-11','mc-12']);
+ assert.deepEqual(eps.sort(),['daily-10','daily-11','daily-12','daily-13','daily-14','daily-15','daily-16','daily-17','daily-18','daily-19','daily-20','mc-09','mc-10','mc-11','mc-12']);
  for(const e of eps){assert.ok(episodeById(e),e);assert.equal(MANGA_PAGES[e]?.length,1,e);}
  const stickers=HARD.nodes.map(n=>REWARDS[n.reward]?.sticker).filter(Boolean);
- assert.equal(new Set(stickers).size,7);
+ assert.equal(new Set(stickers).size,2);
  for(const st of stickers)assert.ok(!SPARE_STICKERS.some(x=>x.sticker===st),`${st} は もう 予備ではない`);
 });
 

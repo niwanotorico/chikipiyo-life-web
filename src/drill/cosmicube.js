@@ -56,6 +56,11 @@ export const REWARDS={
  'manga-21':{icon:'📚',name:'マンガ「まんしつ」',note:'3DPハウスの 本だなで よめるよ',manga:['mc-12'],effects:[]},
  'manga-22':{icon:'📚',name:'マンガ「かえりみちのおと」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-13'],effects:[]},
  'manga-23':{icon:'📚',name:'マンガ「とんぼのとまりぎ」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-14'],effects:[]},
+ 'manga-24':{icon:'📚',name:'マンガ「どんぐりのぼうし」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-15'],effects:[]},
+ 'manga-25':{icon:'📚',name:'マンガ「ありさんのさんぽみち」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-16'],effects:[]},
+ 'manga-26':{icon:'📚',name:'マンガ「はっぱのおめん」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-17'],effects:[]},
+ 'manga-27':{icon:'📚',name:'マンガ「ちいさなふね」「ふーのあと」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-18','daily-20'],effects:[]},
+ 'manga-28':{icon:'📚',name:'マンガ「ゴールがにげた」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-19'],effects:[]},
  'st-banzai':{icon:'🏷️',name:'シール「バンザイ」',label:'バンザイ',note:'シールちょうに はったよ',sticker:'banzai',effects:[]},
  'st-wink':{icon:'🏷️',name:'シール「ウインクダンス」',label:'ウインクダンス',note:'シールちょうに はったよ',sticker:'wink',effects:[]},
  'st-radio':{icon:'🏷️',name:'シール「ラジカセ」',label:'ラジカセ',note:'シールちょうに はったよ',sticker:'radio',effects:[]},
@@ -103,7 +108,9 @@ export const MAP={
 //  - star:true の マス（⭐）は pt に くわえて「パーフェクトの ほし」が 1こ いる。
 //    ほしは ピヨ探検pt が もらえる回（1日3回まで）に 10もん ぜんぶ せいかい すると 1こ（earned の perfect）。
 //    のこりの ほし ＝ もらった ほし − ⭐の マスを ひらいた数（残高と おなじく 記録から 毎回 計算する）
-//  - pt は 1マス 15→20→25、ゴール 30（合計 345pt ＋ ほし 4こ）。だいたい 1日 30pt で 10/31 に とどく見こみ
+//  - pt は 1マス 15→20、ゴール 30（合計 290pt ＋ ほし 4こ）。10/27 に hard-06 から先を 安くした（20→15・25→20）
+//    ぴよみ（10/26 夜で hard-05 まで・のこり27pt）が 1日 40pt くらいで 10/31 に とどく見こみ
+//  - 10/27：シールの マス5つを マンガ（daily-15〜20）に 入れかえ。ゴールの 1つ手前（hard-16）は「ゴールがにげた」
 //  - ぜんぶ 小さいマス（絵だけ・名前は タップで）。ゴール（hard-goal）の 中身は ひみつ（親モードで 見える）
 export const HARD={
  start:'hard-start',opensWith:'deep',from:'2026-10-21',
@@ -114,17 +121,17 @@ export const HARD={
   {id:'hard-03',x:14,y:71,cost:15,reward:'manga-16',requires:['hard-01'],small:true},
   {id:'hard-04',x:86,y:71,cost:15,reward:'manga-17',requires:['hard-02'],small:true,star:true},
   {id:'hard-05',x:50,y:64,cost:15,reward:'st-wink',requires:['hard-03','hard-04'],small:true},
-  {id:'hard-06',x:29,y:54,cost:20,reward:'manga-18',requires:['hard-05'],small:true},
-  {id:'hard-07',x:71,y:54,cost:20,reward:'st-radio',requires:['hard-05'],small:true},
-  {id:'hard-08',x:15,y:43,cost:20,reward:'manga-19',requires:['hard-06'],small:true,star:true},
-  {id:'hard-09',x:85,y:43,cost:20,reward:'manga-20',requires:['hard-07'],small:true},
-  {id:'hard-10',x:50,y:36,cost:20,reward:'st-kurutto',requires:['hard-08','hard-09'],small:true},
-  {id:'hard-11',x:29,y:27,cost:20,reward:'manga-21',requires:['hard-10'],small:true},
-  {id:'hard-12',x:71,y:27,cost:20,reward:'st-duo',requires:['hard-10'],small:true},
-  {id:'hard-13',x:14,y:17,cost:25,reward:'manga-22',requires:['hard-11'],small:true,star:true},
-  {id:'hard-14',x:86,y:17,cost:25,reward:'st-piyomi',requires:['hard-12'],small:true},
-  {id:'hard-15',x:50,y:20,cost:25,reward:'manga-23',requires:['hard-13','hard-14'],small:true},
-  {id:'hard-16',x:31,y:8,cost:25,reward:'st-piyokichi',requires:['hard-15'],small:true},
+  {id:'hard-06',x:29,y:54,cost:15,reward:'manga-18',requires:['hard-05'],small:true},
+  {id:'hard-07',x:71,y:54,cost:15,reward:'manga-24',requires:['hard-05'],small:true},
+  {id:'hard-08',x:15,y:43,cost:15,reward:'manga-19',requires:['hard-06'],small:true,star:true},
+  {id:'hard-09',x:85,y:43,cost:15,reward:'manga-20',requires:['hard-07'],small:true},
+  {id:'hard-10',x:50,y:36,cost:15,reward:'manga-25',requires:['hard-08','hard-09'],small:true},
+  {id:'hard-11',x:29,y:27,cost:15,reward:'manga-21',requires:['hard-10'],small:true},
+  {id:'hard-12',x:71,y:27,cost:15,reward:'manga-26',requires:['hard-10'],small:true},
+  {id:'hard-13',x:14,y:17,cost:20,reward:'manga-22',requires:['hard-11'],small:true,star:true},
+  {id:'hard-14',x:86,y:17,cost:20,reward:'manga-27',requires:['hard-12'],small:true},
+  {id:'hard-15',x:50,y:20,cost:20,reward:'manga-23',requires:['hard-13','hard-14'],small:true},
+  {id:'hard-16',x:31,y:8,cost:20,reward:'manga-28',requires:['hard-15'],small:true},
   {id:'hard-goal',x:66,y:9,cost:30,reward:'hard-goal',requires:['hard-16'],star:true},
  ],
 };
