@@ -2,7 +2,8 @@
 // 答えはいつも「ひとつの数」。小数は 10 倍した整数で計算するので、浮動小数点の誤差が出ない。
 //   token: 文字列 | {frac:[分子,分母]}（null の側が □） | {box:true}（□）
 
-import {SUBJECT_BANKS} from './subjects/index.js';
+import {SUBJECT_BANKS,bankGroups,weekIndex} from './subjects/index.js';
+import {centerFigure,flowerFigure,squareArcFigure,circlesRowFigure,circlesOverlapFigure,ballsBoxFigure} from './figures.js';
 
 export const PLAYERS={
  piyokichi:{id:'piyokichi',name:'ぴよきち',grade:5,gradeLabel:'小学5年'},
@@ -162,15 +163,97 @@ const piyomiOctMakers={
  // ボス：大きめの 2けた×1けた（58×6 くらい）
  mul2x1Big(rng){const a=int(rng,51,98),b=int(rng,3,9);return q('mul','かけ算の筆算',eq(a,'×',b),a*b);},
 };
-// 4教科シャッフルの算数の枠で使う型（ゾーンごと）。いつもの算数 ＋ 10月教材
+const piyomiOctPools={easy:['mulTens','mulHundreds'],normal:['thousands','manAdd','tenTimes'],hard:['mul2x1','manSub'],boss:['mul2x1Big']};
+
+// 11月教材の算数（ぴよみ：かけ算の筆算(1)・大きな数のわり算・円と球・小数）。週ごとに 単元が ふえる
+const mul3=(a,b,c)=>[String(a),'×',String(b),'×',String(c),'=',{box:true}];
+const ABC=['ア','イ','ウ'];
+// 図の 3択：選択肢は ア・イ・ウ の じゅんのまま（図の 名前と ならびを そろえる）。why は まちがえたときの ひとこと
+// figureLayout:'side' … 図が 正方形に ちかいので、問題文の 左に ならべる（画面の 高さを つかわない）
+const figPick=(text,fig,why)=>q('choice','円と球',[text],fig.answer,{choices:[...ABC],figure:fig.svg,figureLayout:'side',why});
+// 図の 長さの 3択：テンキーと 図は 画面に 入りきらないので 3択に する。まちがいは よくある まちがい（半径のまま 計算した など）。小さい じゅんに ならべる
+const figLen=(text,figure,answer,wrong,why)=>q('choice','円と球',[text],`${answer}cm`,{choices:[...new Set([answer,...wrong])].sort((a,b)=>a-b).map(v=>`${v}cm`),figure,why});
+// ことばの 3択：[問題文, 正解, まちがい1, まちがい2, ひとこと]
+const wordPick=(rng,label,rows)=>{const [text,answer,...rest]=pick(rng,rows),why=rest.pop();return q('choice',label,[text],answer,{choices:shuffle(rng,[answer,...rest]),why});};
+const CIRCLE_WORDS=[
+ ['円の 中心から まわりまで ひいた 直線を 何という？','半径','直径','中心','中心から まわりまでの 直線が「半径」だよ'],
+ ['円の 中心を 通って、まわりから まわりまで ひいた 直線を 何という？','直径','半径','中心','中心を 通る まわりから まわりまでの 直線が「直径」。半径の 2つ分だよ'],
+ ['1つの 円の 半径の 長さは？','どれも 同じ','ぜんぶ ちがう','2本だけ 同じ','1つの 円では、半径は どれも 同じ 長さだよ'],
+ ['直径の 長さは、半径の 何ばい？','2ばい','3ばい','半分','直径は 半径 2つ分。だから 2ばいだよ'],
+ ['コンパスで 円を かくとき、はりを さすのは？','円の 中心','円の まわり','どこでも よい','はりを さした ところが 円の 中心に なるよ'],
+];
+const SPHERE_WORDS=[
+ ['ボールのように、どこから 見ても 円に 見える 形を 何という？','球','円','三角形','どこから 見ても 円に 見える 形を「球」というよ'],
+ ['球を どこで 切っても、切り口の 形は？','円','三角形','四角形','球は どこで 切っても、切り口は 円に なるよ'],
+ ['球の 切り口が いちばん 大きく なるのは？','ちょうど 半分に 切ったとき','はしの ほうを 切ったとき','どこで 切っても 同じ','ちょうど 半分に 切ると、切り口の 円が いちばん 大きいよ'],
+ ['球を 半分に 切った 切り口の 円の 中心は、球の 何？','中心','半径','直径','切り口の 円の 中心・半径・直径が、そのまま 球の 中心・半径・直径だよ'],
+];
+const DECIMAL_WORDS=[
+ ['0.1Lを 10こ 集めると？','1L','10L','0.10L','0.1が 10こで 1 だよ'],
+ ['1dLは 何L？','0.1L','1L','10L','1Lを 10等分した 1こ分が 1dL＝0.1L だよ'],
+ ['「2.5」の「.」を 何という？','小数点','まる','くぎり','「.」は 小数点。2.5 は「二点五」と 読むよ'],
+ ['0.2 や 1.5 のような 数を 何という？','小数','整数','分数','小数点の ある 数を「小数」というよ'],
+ ['0、1、2、3 … のような 数を 何という？','整数','小数','分数','小数点の ない 0、1、2、3 … を「整数」というよ'],
+ ['小数点の すぐ 右の 位を 何という？','小数第一位','一の位','十の位','小数点の すぐ 右は 小数第一位（1/10の位）だよ'],
+];
+const piyomiNovMakers={
+ // 1週め：かけ算の筆算(1)・大きな数のわり算
+ divTens(rng){const b=int(rng,2,4),c=int(rng,1,Math.floor(9/b));return q('div','わり算',eq(b*c*10,'÷',b),c*10);},          // 60÷3
+ mulThreeEasy(rng){const a=int(rng,12,49);return q('mul','かけ算',rng()<.5?mul3(a,5,2):mul3(a,2,5),a*10);},                // 37×5×2
+ mulThree(rng){const a=int(rng,12,99),f=pick(rng,[[5,2],[2,5],[4,25],[25,4]]);return q('mul','かけ算',mul3(a,...f),a*f[0]*f[1]);},
+ mul3x1(rng){const a=int(rng,101,329),b=int(rng,2,3);return q('mul','かけ算の筆算',eq(a,'×',b),a*b);},                    // 305×3
+ div2x1(rng){const b=int(rng,2,4),m=Math.floor(9/b),t=int(rng,1,m),o=int(rng,1,m);return q('div','わり算',eq((t*10+o)*b,'÷',b),t*10+o);},   // 69÷3
+ fracOf(rng){const n=int(rng,2,4),m=Math.floor(9/n),c=int(rng,1,m)*10+int(rng,0,m);return q('word','分数',[`${c*n}cmの`,{frac:[1,n]},'の 長さは 何cm？'],c,{unit:'cm'});},   // 80cmの 1/4
+ mul3x1Carry(rng){const a=int(rng,112,249),b=int(rng,4,7);return q('mul','かけ算の筆算',eq(a,'×',b),a*b);},
+ mul3x1Big(rng){const a=int(rng,213,489),b=int(rng,5,9);return q('mul','かけ算の筆算',eq(a,'×',b),a*b);},
+ mulThreeBig(rng){const a=int(rng,101,499);return q('mul','かけ算',rng()<.5?mul3(a,5,2):mul3(a,2,5),a*10);},                // 287×5×2
+ // 2週め：円（半径・直径・コンパス）
+ circleWord(rng){return wordPick(rng,'円と球',CIRCLE_WORDS);},
+ centerPick(rng){return figPick(pick(rng,['この 円の 中心は どれ？','この 円を コンパスで かきました。はりを さしたのは どれ？']),centerFigure(rng),'中心は、円の まわりの どこからも 同じ 長さの 点だよ');},
+ diamFromRadius(rng){const r=int(rng,2,9);return q('word','円と球',[`半径 ${r}cmの 円の 直径は 何cm？`],r*2,{unit:'cm'});},
+ radiusFromDiam(rng){const d=int(rng,2,10)*2;return q('word','円と球',[`直径 ${d}cmの 円の 半径は 何cm？`],d/2,{unit:'cm'});},
+ compassOpen(rng){const d=int(rng,2,8)*2;return q('word','円と球',[`直径 ${d}cmの 円を コンパスで かきます。コンパスを 何cmに 開く？`],d/2,{unit:'cm'});},
+ circlesRow(rng){const n=int(rng,2,4),r=int(rng,2,6),d=r*2;return figLen(`半径 ${r}cmの 円が ${n}こ、ぴったり ならんでいます。横の 長さは？`,circlesRowFigure(n,`${r}cm`),d*n,[r*n,d*(n+1)],`直径は ${r}×2＝${d}cm。それが ${n}こ分で ${d}×${n}＝${d*n}cm`);},
+ circlesOverlap(rng){const d=int(rng,2,6)*2,r=d/2;return figLen(`たて ${d}cmの 長方形に、同じ 円が 3こ、となりの 中心を 通って ならんでいます。横の 長さは？`,circlesOverlapFigure(`${d}cm`),d*2,[d*3,r*3],`たては 直径と 同じ ${d}cm。横は 半径 4つ分＝直径 2つ分で ${d}×2＝${d*2}cm`);},
+ // 3週め：球・小数のはじめ・コンパスの もよう
+ sphereWord(rng){return wordPick(rng,'円と球',SPHERE_WORDS);},
+ sphereDiam(rng){const d=int(rng,3,10)*2;return q('word','円と球',[`球を ちょうど 半分に 切ったら、切り口の 円の 直径が ${d}cmでした。この 球の 半径は 何cm？`],d/2,{unit:'cm'});},
+ ballsBox(rng){return ballsBoxQ(rng,int(rng,2,5),2,int(rng,2,3));},
+ ballsBoxBig(rng){return ballsBoxQ(rng,int(rng,4,9),int(rng,2,3),int(rng,3,4));},
+ decimalTenths(rng){const n=int(rng,2,9);return q('word','小数',[`0.1Lを ${n}こ 集めた かさは 何L？`],tenths(n),{unit:'L',decimal:true});},
+ dLtoL(rng){const a=int(rng,1,3),b=int(rng,1,9);return q('word','小数',[`${a}L ${b}dLは 何L？`],tenths(a*10+b),{unit:'L',decimal:true});},
+ mmToCm(rng){const n=notRound(rng,101,199);return q('word','小数',[`${n}mmは 何cm？`],tenths(n),{unit:'cm',decimal:true});},
+ flowerPick(rng){return figPick('花びらの 太い 線を かいたとき、はりを さしたのは どれ？',flowerFigure(rng),'太い 線は、はりを さした 点から どこも 同じ 長さ。花びらは 大きな 円の まわりの 点に はりを さして かくよ');},
+ // 4週め：小数・もよう・テスト
+ decimalWord(rng){return wordPick(rng,'小数',DECIMAL_WORDS);},
+ decimalCount(rng){const t=int(rng,11,29);return q('word','小数',[`${tenths(t)}Lは 0.1Lの 何こ分？`],t,{unit:'こ分'});},
+ cmToM(rng){const n=int(rng,1,9);return rng()<.5?q('word','小数',[`${n}0cmは 何m？`],tenths(n),{unit:'m',decimal:true}):q('word','小数',[`1m ${n}0cmは 何m？`],tenths(10+n),{unit:'m',decimal:true});},
+ squareArcPick(rng){return figPick('正方形の 太い 線を かいたとき、はりを さしたのは どれ？',squareArcFigure(rng),'太い 線の どこからも 同じ 長さに ある かどが 中心。線の はしの かどでは ないよ');},
+};
+function ballsBoxQ(rng,r,rows,cols){
+ const side=rng()<.5?'たて':'横',k=side==='たて'?rows:cols,d=r*2;
+ return figLen(`半径 ${r}cmの ボールが 箱に ぴったり 入っています（真上から 見た 図）。${side}の 長さは？`,ballsBoxFigure(rows,cols,`${r}cm`),d*k,[r*k,d*(k+1)],`ボールの 直径は ${r}×2＝${d}cm。${side}に ${k}こ ならぶので ${d}×${k}＝${d*k}cm`);
+}
+// 週ごとの 型（subjects/piyomi-g3-nov.js の weeks と 同じ じゅんばん）
+const PIYOMI_NOV_MATH=[
+ {easy:['divTens','mulThreeEasy'],normal:['mul3x1','div2x1','mulThree'],hard:['fracOf','mul3x1Carry'],boss:['mul3x1Big','mulThreeBig']},
+ {easy:['circleWord','centerPick'],normal:['diamFromRadius','radiusFromDiam','compassOpen'],hard:['circlesRow'],boss:['circlesOverlap']},
+ {easy:['sphereWord','centerPick'],normal:['decimalTenths','dLtoL','sphereDiam','ballsBox'],hard:['mmToCm','flowerPick'],boss:['ballsBoxBig']},
+ {easy:['decimalWord'],normal:['cmToM','decimalCount','squareArcPick'],hard:['flowerPick','squareArcPick','mmToCm'],boss:['circlesOverlap','ballsBoxBig','mul3x1Big']},
+];
+// その日の 算数の型（ゾーンごと）：いつもの算数・10月・前の週は 少しずつ、いまの週を 多めに（同じ名前を くり返して 出やすくする）
+function piyomiMixPools(dayKey){
+ const now=weekIndex(SUBJECT_BANKS.piyomi.weeks,dayKey),pools={};
+ for(const zone of ['easy','normal','hard','boss']){
+  const cur=PIYOMI_NOV_MATH[now][zone],earlier=PIYOMI_NOV_MATH.slice(0,now).flatMap(w=>w[zone]);
+  pools[zone]=[...piyomiPools[zone],...piyomiOctPools[zone],...earlier,...earlier,...cur,...cur,...cur,...cur];
+ }
+ return pools;
+}
+// 4教科シャッフルの算数の枠で使う型。pools(dayKey) → {easy,normal,hard,boss}
 export const MIX_MATH_POOLS={
- piyomi:{makers:{...piyomiMakers,...piyomiOctMakers},pools:{
-  easy:[...piyomiPools.easy,'mulTens','mulHundreds'],
-  normal:[...piyomiPools.normal,'thousands','manAdd','tenTimes'],
-  hard:[...piyomiPools.hard,'mul2x1','manSub'],
-  boss:[...piyomiPools.boss,'mul2x1Big'],
- }},
- piyokichi:{makers:piyokichiMakers,pools:piyokichiPools},
+ piyomi:{makers:{...piyomiMakers,...piyomiOctMakers,...piyomiNovMakers},pools:piyomiMixPools},
+ piyokichi:{makers:piyokichiMakers,pools:()=>piyokichiPools},
 };
 
 // 文字列から乱数の種（その日・その人で同じ問題にするため）
@@ -183,18 +266,29 @@ function subjectOrder(plan,rng){
  for(let t=0;t<500;t++){const order=[...shuffle(rng,rest),'算数'];if(!hasTriple(order))return order;}
  throw new Error('subject order not found');
 }
-// その日の「まだ使っていない問題」の山（教科ごとにシャッフル）と、算数の重なりチェック
-function mixState(bank,rng){
- const queues={};
- for(const [subject,rows] of Object.entries(bank.banks))queues[subject]=shuffle(rng,rows.map((row,idx)=>({row,key:`${subject}-${idx}`})));
- return {queues,used:new Set(),seen:new Set()};
+// その日の「まだ使っていない問題」の山（教科ごと）と、算数の重なりチェック。
+// 山は 週の グループ（subjects/index.js の bankGroups）を 重み つきで まぜて 作る：重い グループの 問題ほど 前に 来やすい
+function mixState(player,dayKey,rng){
+ const groups=bankGroups(SUBJECT_BANKS[player],dayKey),queues={};
+ const subjects=[...new Set(groups.flatMap(g=>Object.keys(g.banks)))];
+ for(const subject of subjects){
+  const lists=groups.map(g=>({weight:g.weight,rest:shuffle(rng,(g.banks[subject]??[]).map((row,idx)=>({row,key:`${g.id}-${subject}-${idx}`})))})).filter(l=>l.rest.length);
+  const queue=[];
+  for(let live=lists;live.length;live=live.filter(l=>l.rest.length)){
+   let x=rng()*live.reduce((s,l)=>s+l.weight,0),from=live[live.length-1];
+   for(const l of live)if((x-=l.weight)<0){from=l;break;}
+   queue.push(from.rest.shift());
+  }
+  queues[subject]=queue;
+ }
+ return {queues,used:new Set(),seen:new Set(),pools:MIX_MATH_POOLS[player].pools(dayKey)};
 }
-function mixMath(player,zone,rng,seen){
- const {makers,pools}=MIX_MATH_POOLS[player];
+function mixMath(player,zone,rng,state){
+ const {makers}=MIX_MATH_POOLS[player],{pools,seen}=state;
  let item,tries=0;
  do item=makers[pick(rng,pools[zone])](rng);while(seen.has(sameKey(item))&&++tries<30);
  seen.add(sameKey(item));
- return {...item,subject:'算数'};
+ return {...item,subject:'算数',...(item.choices?{level:ZONE_LEVEL[zone]}:{})};   // 図や ことばの 3択も、難しさは 枠に そろえる
 }
 function bankQuestion(subject,entry,rng){
  const [level,text,answer,...wrong]=entry.row;
@@ -204,7 +298,7 @@ function buildMixSet(player,plan,rng,state){
  return subjectOrder(plan,rng).map((subject,i)=>{
   const zone=ZONES[i];
   let item;
-  if(subject==='算数')item=mixMath(player,zone,rng,state.seen);
+  if(subject==='算数')item=mixMath(player,zone,rng,state);
   else{
    const queue=state.queues[subject];
    let entry=null;
@@ -219,14 +313,13 @@ function buildMixSet(player,plan,rng,state){
 export const hasSubjectMix=player=>!!SUBJECT_BANKS[player];
 // 戻り値 {set, motifRng} | null（4教科の問題プールがないプレイヤー・日付なし）
 function mixedSet(player,dayKey,round,rng){
- const bank=SUBJECT_BANKS[player];
- if(!bank||!dayKey)return null;
+ if(!SUBJECT_BANKS[player]||!dayKey)return null;
  if(round<FIXED_ROUNDS){
-  const seed=hashSeed(`${player}|${dayKey}`),r=seededRandom(seed),state=mixState(bank,r);
+  const seed=hashSeed(`${player}|${dayKey}`),r=seededRandom(seed),state=mixState(player,dayKey,r);
   let set;for(let k=0;k<=round;k++)set=buildMixSet(player,MIX_PLANS[k],r,state);   // A → B → C の順に作ると、毎回同じ・重なりなし
   return {set,motifRng:seededRandom(seed+round+1)};
  }
- return {set:buildMixSet(player,MIX_PLANS[round%FIXED_ROUNDS],rng,mixState(bank,rng)),motifRng:rng};
+ return {set:buildMixSet(player,MIX_PLANS[round%FIXED_ROUNDS],rng,mixState(player,dayKey,rng)),motifRng:rng};
 }
 
 // ---------- 日付で決まる 3択セット ----------
@@ -335,8 +428,8 @@ function motifWord(rng,player,m){
 function applyMotifs(list,rng,player,motifs){
  const m=new Set([...(motifs??[])].filter(x=>MOTIFS.includes(x)));
  if(!m.size)return list;
- // 算数の問題（3択でない・ボス以外）だけをおきかえる。「ふつう」の枠を優先
- const math=list.map((x,i)=>i).filter(i=>!list[i].choices&&list[i].zone!=='boss');
+ // 算数の問題（ボス以外）だけをおきかえる。「ふつう」の枠を優先。算数の 図や ことばの 3択も おきかえて よい
+ const math=list.map((x,i)=>i).filter(i=>(list[i].subject?list[i].subject==='算数':!list[i].choices)&&list[i].zone!=='boss');
  const want=m.has('toramana')?2:1;
  let slots=shuffle(rng,math.filter(i=>list[i].zone==='normal')).slice(0,want);
  if(slots.length<want)slots=[...slots,...shuffle(rng,math.filter(i=>list[i].zone!=='normal')).slice(0,want-slots.length)];

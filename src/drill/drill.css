@@ -99,6 +99,23 @@ body[data-view="play"] .dq-top{display:none}
 .dq-question{margin:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:.28em;font-size:clamp(28px,8.4vw,40px);font-weight:800;font-variant-numeric:tabular-nums;line-height:1.25;min-height:1.3em}
 .dq-question.is-word{font-size:clamp(17px,4.6vw,21px);font-weight:700;line-height:1.7;text-align:left;justify-content:flex-start}
 .dq-op{color:var(--green-dark);font-weight:700}
+/* 問題の 図（figures.js の SVG）：画面が 低くても 10もんが おさまるよう、高さを おさえる */
+.dq-figure{display:grid;place-items:center}
+.dq-figure[hidden]{display:none}
+.dq-fig{display:block;width:auto;max-width:100%;height:clamp(100px,16dvh,170px)}
+/* 正方形に ちかい 図（ア・イ・ウ の 3択）は 問題文の 左に ならべる */
+.dq-card.is-figside{grid-template-columns:auto 1fr;align-items:center}
+.dq-card.is-figside>*{grid-column:1/-1}
+.dq-card.is-figside>.dq-figure{grid-column:1}
+.dq-card.is-figside>.dq-question{grid-column:2}
+.dq-card.is-figside .dq-fig{height:clamp(124px,19dvh,168px)}
+.dq-fig .ln{fill:none;stroke:var(--ink);stroke-width:2}
+.dq-fig .sub{fill:none;stroke:var(--ink-soft);stroke-width:1.5;opacity:.7}
+.dq-fig .hl{fill:none;stroke:#e0663f;stroke-width:5;stroke-linecap:round}
+.dq-fig .ball{fill:#dbe9f6;stroke:#6b8fb3;stroke-width:1.5}
+.dq-fig .pt{fill:var(--ink)}
+.dq-fig .lb{font-size:22px;font-weight:800;fill:#2f6db3}
+.dq-fig .sm{font-size:15px;font-weight:700;fill:var(--ink)}
 .dq-box{display:inline-grid;place-items:center;min-width:1.2em;height:1.2em;padding:0 .12em;border:3px dashed #d7b865;border-radius:.24em;color:#d7b865;font-size:.8em}
 .dq-box.is-filled{border-style:solid;border-color:#9dbb8f;background:#fff;color:var(--green-dark);font-size:.9em}
 .dq-card.is-miss .dq-box.is-filled{border-color:#e3c77a;color:var(--gold-ink)}
@@ -443,6 +460,7 @@ body.is-reach .dq-eggs i.is-now{animation:dq-eggnow .3s ease-in-out infinite alt
 /* 3択：テンキーと同じ見た目の よこ長ボタン */
 .dq-pad[hidden],.dq-choices[hidden]{display:none}
 .dq-choices{display:grid;gap:8px}
+.dq-choices.is-row{grid-template-columns:repeat(3,1fr)}   /* 図の 3択（ア・イ・ウ）は 横 1れつ：図の ぶん 高さを あける */
 .dq-choices button{min-height:clamp(50px,7.6dvh,64px);padding:8px 14px;border:2.5px solid var(--brown);border-radius:22px;background:var(--paper);color:var(--ink);box-shadow:0 4px 0 var(--brown-soft);font-family:var(--pop);font-size:clamp(17px,4.8vw,21px);touch-action:manipulation}
 .dq-choices button[aria-pressed="true"]{background:var(--gold-soft);border-color:#d8604f}
 .dq-choices button.is-answer{background:var(--ketchup-soft);border-color:#d8604f}

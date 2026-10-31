@@ -3,6 +3,7 @@
 //   3択：subjects/*-why.js の「ちきんが 読んで OK を出した（checked:true）」行だけ 返す。まだの行は null。
 // questions.js・scoring.js には さわらない（毎日の問題・得点は そのまま）。
 import piyomiG3Why from './subjects/piyomi-g3-why.js';
+import piyomiG3NovWhy from './subjects/piyomi-g3-nov-why.js';
 
 const PLACE=['一','十','百','千','万'];
 const isInt=s=>/^\d+$/.test(s);
@@ -15,7 +16,7 @@ const same=(value,answer)=>String(value)===String(answer);
 
 // ---------- 3択 ----------
 const CHOICE_WHY=new Map();
-for(const rows of Object.values(piyomiG3Why))for(const [text,why,checked] of rows)if(checked===true&&why)CHOICE_WHY.set(text,why);
+for(const table of [piyomiG3Why,piyomiG3NovWhy])for(const rows of Object.values(table))for(const [text,why,checked] of rows)if(checked===true&&why)CHOICE_WHY.set(text,why);
 export function choiceWhyTable(){return CHOICE_WHY;}
 
 // ---------- たし算・ひき算（位ごと） ----------
@@ -122,6 +123,18 @@ const WORD=[
  [/(\d+)を 10で わった/,a=>[Number(a)/10,`10で わると、うしろの 0が 1こ へるよ`]],
  [/([\d.]+)mの リボンから ([\d.]+)m 使い/,(a,b)=>[fromTenths(toTenths(a)-toTenths(b)),`のこりは ひき算：${a}−${b}`]],
  [/1日に ([\d.]+)kg (?:つかいます|たべます)。(\d+)日では/,(a,n)=>[fromTenths(toTenths(a)*Number(n)),`${n}日分 なので かけ算：${a}×${n}`]],
+ // 11月：円と球
+ [/^半径 (\d+)cmの 円の 直径/,r=>[Number(r)*2,`直径は 半径の 2つ分：${r}×2`]],
+ [/^直径 (\d+)cmの 円の 半径/,d=>[Number(d)/2,`半径は 直径の 半分：${d}÷2`]],
+ [/^直径 (\d+)cmの 円を コンパスで/,d=>[Number(d)/2,`コンパスは 半径の 長さに 開くよ。半径は 直径の 半分：${d}÷2`]],
+ [/切り口の 円の 直径が (\d+)cm/,d=>[Number(d)/2,`半分に 切った 切り口の 直径＝球の 直径。半径は その 半分：${d}÷2`]],
+ // 11月：小数
+ [/^0\.1Lを (\d+)こ 集めた/,n=>[fromTenths(Number(n)),`0.1が ${n}こで ${fromTenths(Number(n))}`]],
+ [/^(\d+)L (\d)dLは 何L/,(a,b)=>[fromTenths(Number(a)*10+Number(b)),`1dL＝0.1L。${b}dL＝0.${b}L なので ${a}Lと あわせて`]],
+ [/^([\d.]+)Lは 0\.1Lの 何こ分/,a=>[toTenths(a),`${a} を 0.1 の いくつ分か 考えよう`]],
+ [/^(\d+)mmは 何cm/,n=>[fromTenths(Number(n)),`1mm＝0.1cm。${n}mmは 0.1cmが ${n}こ`]],
+ [/^1m (\d)0cmは 何m/,n=>[fromTenths(10+Number(n)),`10cm＝0.1m。${n}0cmは 0.${n}m なので 1mと あわせて`]],
+ [/^(\d)0cmは 何m/,n=>[fromTenths(Number(n)),`10cm＝0.1m。${n}0cmは 0.1mが ${n}こ`]],
 ];
 function wordWhy(text,ans){
  for(const [re,fn] of WORD){
@@ -134,8 +147,17 @@ function wordWhy(text,ans){
 
 function mathWhy(q){
  const t=q.tokens||[],ans=String(q.answer);
+ const part=/^(\d+)cmの$/.exec(typeof t[0]==='string'?t[0]:'');
+ if(part&&t[1]?.frac?.[0]===1){   // 80cmの 1/4 の 長さ：もとの 長さを 等分する わり算
+  const L=Number(part[1]),n=t[1].frac[1];
+  return same(L/n,ans)?`1/${n}は ${n}等分した 1こ分。わり算で：${L}÷${n}＝${ans}`:null;
+ }
  if(q.kind==='word'||(t.length===1&&typeof t[0]==='string'))return wordWhy(String(t[0]??q.text??''),ans);
  if(t.some(x=>x&&typeof x==='object'&&x.frac))return fracWhy(t,ans);
+ if(t.length===7&&t[1]==='×'&&t[3]==='×'&&[t[0],t[2],t[4]].every(isInt)){   // 3つの数の かけ算：うしろを 先に まとめる
+  const [a,b,c]=[t[0],t[2],t[4]].map(Number);
+  return same(a*b*c,ans)?`うしろの ${b}×${c}＝${b*c} を 先に 計算すると かんたん：${a}×${b*c}＝${ans}`:null;
+ }
  if(t.length!==5||typeof t[0]!=='string'||typeof t[2]!=='string'||!t[4]?.box)return null;
  const [a,op,b]=t;
  const man=/^(\d+)万$/;
@@ -158,7 +180,8 @@ function mathWhy(q){
 export function explain(q){
  if(!q)return null;
  try{
-  if(q.choices)return CHOICE_WHY.get(String(q.tokens?.[0]??q.text??''))??null;
+  // 算数の 図・ことばの 3択は、問題を 作るときに ひとこと（q.why）を いっしょに もつ
+  if(q.choices)return CHOICE_WHY.get(String(q.tokens?.[0]??q.text??''))??(q.subject==='算数'&&q.why?q.why:null);
   return mathWhy(q)??null;
  }catch{return null;}
 }

@@ -199,13 +199,16 @@ function renderQuestion(){
  showWhy(null);
  $('[data-track]').style.width=`${index/run.questions.length*100}%`;renderEggs();
  $('[data-kind]').textContent=question.label;
+ // 図（円と球など）：questions.js / figures.js が 作った SVG。ない 問題では かくす
+ const fig=$('[data-figure]');fig.hidden=!question.figure;fig.innerHTML=question.figure??'';
+ $('[data-card]').classList.toggle('is-figside',question.figureLayout==='side');
  const q=$('[data-question]');
  q.replaceChildren(...question.tokens.map(renderToken));
  q.setAttribute('aria-label',question.text);
  q.classList.toggle('is-word',question.kind==='word'||!!question.choices);
  // 3択：テンキーのかわりに選択肢ボタン
  $('[data-pad]').hidden=!!question.choices;
- const ch=$('[data-choices]');ch.hidden=!question.choices;
+ const ch=$('[data-choices]');ch.hidden=!question.choices;ch.classList.toggle('is-row',!!question.figure);
  ch.replaceChildren(...(question.choices||[]).map(c=>{const b=document.createElement('button');b.type='button';b.dataset.choice=c;b.textContent=c;b.setAttribute('aria-pressed','false');return b;}));
  $('[data-readout]').classList.toggle('is-choice',!!question.choices);
  $('[data-unit]').textContent=question.unit;

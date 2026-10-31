@@ -9,6 +9,8 @@ import {explain} from '../src/drill/explain.js';
 import {pickReview,reviewQuestion,REVIEW_MAX,REVIEW_KEY,loadReviewLog,offerReview,setReviewStatus,recordReviewAnswer} from '../src/drill/review.js';
 import bank from '../src/drill/subjects/piyomi-g3.js';
 import why from '../src/drill/subjects/piyomi-g3-why.js';
+import novBank from '../src/drill/subjects/piyomi-g3-nov.js';
+import novWhy from '../src/drill/subjects/piyomi-g3-nov-why.js';
 
 const mem=()=>{const m=new Map();return {getItem:k=>m.has(k)?m.get(k):null,setItem:(k,v)=>m.set(k,String(v)),m};};
 const sets=()=>{const out=[];for(const p of ['piyokichi','piyomi'])for(let r=0;r<300;r++)out.push(makeQuestionSet(p,seededRandom(r*13+5),undefined,{dayKey:r%2?`2026-10-${String(11+r%15).padStart(2,'0')}`:undefined,round:r%5,motifs:r%3?['usako','curry','toramana']:[]}));return out;};
@@ -17,7 +19,7 @@ const sets=()=>{const out=[];for(const p of ['piyokichi','piyomi'])for(let r=0;r
 const BACKUP=new URL('../../backups/web-before-retry-20261010/src/drill/scoring.js',import.meta.url);
 test('得点・保存・ピヨ探検・問題づくりの ファイルは ふくしゅう追加の前と 同じ',{skip:!existsSync(BACKUP)&&'バックアップが ない（公開先）'},()=>{
  const sha=p=>createHash('sha256').update(readFileSync(new URL(p,import.meta.url))).digest('hex');
- for(const f of ['scoring.js','storage.js','cosmicube.js','cosmicube-store.js','cosmicube-ui.js','questions.js','subjects/piyomi-g3.js','subjects/index.js','festival.js','hype.js'])
+ for(const f of ['scoring.js','storage.js','cosmicube.js','cosmicube-store.js','cosmicube-ui.js','subjects/piyomi-g3.js','festival.js','hype.js'])   // questions.js・subjects/index.js は 11月教材で 変えたので対象外
   assert.equal(sha(`../src/drill/${f}`),sha(`../../backups/web-before-retry-20261010/src/drill/${f}`),f);
 });
 
@@ -58,6 +60,24 @@ test('3択の 理由：問題文と 1対1。チェックずみ（true）の 行�
  const q={kind:'choice',tokens:['「回る」の 読みは？'],choices:['まわる','かえる','はしる'],answer:'まわる'};
  const checked=why.国語.find(r=>r[0]===q.tokens[0])[2];
  assert.equal(explain(q)!==null,checked);
+});
+
+test('11月の 3択の 理由：問題文と 1対1（下書きは false）',()=>{
+ for(const subject of ['国語','理科','社会']){
+  const texts=novBank.weeks.flatMap(w=>w.banks[subject].map(r=>r[1])),w=novWhy[subject].map(r=>r[0]);
+  assert.deepEqual([...w].sort(),[...texts].sort(),subject);
+  for(const r of novWhy[subject]){assert.equal(typeof r[1],'string');assert.ok(r[1].length>4&&r[1].length<70,r[1]);assert.equal(typeof r[2],'boolean');}
+ }
+});
+
+test('11月の 算数：かんがえかたが どの問題にも 出て、答えと 合う（図・ことばの 3択は ひとことが 出る）',()=>{
+ let n=0;
+ for(let d=1;d<=30;d++)for(let r=0;r<5;r++)for(const q of makeQuestionSet('piyomi',seededRandom(d*7+r),undefined,{dayKey:`2026-11-${String(d).padStart(2,'0')}`,round:r}).filter(q=>q.subject==='算数')){
+  n++;const w=explain(q);
+  assert.ok(w,`説明なし ${q.kind} ${q.text}`);
+  if(!q.choices)assert.ok(w.includes(String(q.answer)),`答えが 入っていない ${q.text} → ${w}`);
+ }
+ assert.ok(n>400);
 });
 
 const run=(qs,oks)=>({questions:qs,answers:oks.map((ok,i)=>({id:qs[i].id,ok,given:ok?qs[i].answer:'0'}))});
