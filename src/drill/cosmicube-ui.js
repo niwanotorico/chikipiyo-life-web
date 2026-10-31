@@ -1,6 +1,6 @@
 // ピヨドリル：ピヨ探検のマップ画面と、ゲートが開くときの演出。保存は cube（CubeStore）にまかせる。
 import {PLAYERS} from './questions.js';
-import {SEASON,MAP,HARD,REWARDS,nodeById,mapView,season,cubeBalance,costOf,foundCount,stickersOf,hardOpen,starBalance,BOOSTS,boostFor,CHEER,cheerReceived,cheerGiven} from './cosmicube.js';
+import {SEASON,MAP,HARD,MOMIJI,momijiOpen,REWARDS,nodeById,mapView,season,cubeBalance,costOf,foundCount,stickersOf,hardOpen,starBalance,BOOSTS,boostFor,CHEER,cheerReceived,cheerGiven} from './cosmicube.js';
 
 // ---------- マップの現在地キャラ（ドット絵素材） ----------
 // 元素材：piyodrill/characters/*_ipad.png（100×115）。遊んでいる人の絵を出す
@@ -94,28 +94,40 @@ export function familyLines(player,p,dayKey){
 
 export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,today,parent=null,syncState=()=>null,onGateOpened=()=>{}}){
  const $=(sel,root=document)=>root.querySelector(sel);
- let selected=null,revealAt=0,mapId=null;   // mapId：'main'（ほしぞら）| 'hard'（ハードモード）。null は おまかせ
+ let selected=null,revealAt=0,mapId=null;   // mapId：'main'（ほしぞら）| 'momiji'（もみじの もり）| 'hard'（ハードモード）。null は おまかせ
+ const MAP_OF={main:MAP,hard:HARD,momiji:MOMIJI};
+
+ // いまの場所：そのマップの マスに いれば そこ。いなければ、ほしぞらでは（ハードモードに いる子は さいおく）そのマップで さいごに ひらいた マス、なければ 入口
+ function hereOn(s,id){
+  const pos=nodeById(s.position),mapOf=n=>n?.map??'main';
+  if(mapOf(pos)===id)return s.position;
+  if(id==='main'&&mapOf(pos)==='hard')return HARD.opensWith;
+  const last=Object.entries(s.gates).filter(([g])=>mapOf(nodeById(g))===id).sort((a,b)=>(a[1].on??'').localeCompare(b[1].on??'')).pop();
+  return last?last[0]:MAP_OF[id].start;
+ }
 
  function render(){
   const player=getPlayer();if(!player)return;
-  const dayKey=today(),p=cube.player(player),s=season(p),hard=hardOpen(s,dayKey);
-  // ハードモードに 入れる子は、さいしょは ハードモードを 見せる
-  if(!hard)mapId='main';else if(!mapId)mapId='hard';
-  const M=mapId==='hard'?HARD:MAP;
+  const dayKey=today(),p=cube.player(player),s=season(p),hard=hardOpen(s,dayKey),momiji=momijiOpen(dayKey);
+  // 11/1 からは もみじの もりを、ハードモードに 入れる子は ハードモードを、さいしょに 見せる
+  const avail=['main',...(momiji?['momiji']:[]),...(hard?['hard']:[])];
+  if(!avail.includes(mapId))mapId=momiji?'momiji':hard?'hard':'main';
+  const M=MAP_OF[mapId];
   const view=mapView(s,{parent,dayKey,map:mapId}),bal=cubeBalance(s),foundN=foundCount(s),stars=starBalance(s);
   const stateOf=Object.fromEntries(view.map(v=>[v.node.id,v.state]));
-  // マップの きりかえ（ハードモードに 入れる子だけ）
+  // マップの きりかえ（ほかの マップに 入れる子だけ）
   const tabs=$('[data-map-tabs]');
-  if(tabs){tabs.hidden=!hard;for(const b of tabs.querySelectorAll('[data-map-tab]')){const on=b.dataset.mapTab===mapId;b.classList.toggle('is-on',on);b.setAttribute('aria-pressed',String(on));}}
+  if(tabs){tabs.hidden=avail.length<2;for(const b of tabs.querySelectorAll('[data-map-tab]')){const on=b.dataset.mapTab===mapId;b.hidden=!avail.includes(b.dataset.mapTab);b.classList.toggle('is-on',on);b.setAttribute('aria-pressed',String(on));}}
   $('[data-map-space]').classList.toggle('is-hard',mapId==='hard');
+  $('[data-map-space]').classList.toggle('is-momiji',mapId==='momiji');
   const starEl=$('[data-map-star]');
   if(starEl){starEl.hidden=!hard;starEl.textContent=`⭐ ×${stars}`;}
-  // いまの場所：ハードモードの マスに いる子は、ほしぞらでは さいおくに、ハードモードの 入口は さいおくに いる子
-  const here=mapId==='hard'?(nodeById(s.position)?.map==='hard'?s.position:HARD.start):(nodeById(s.position)?.map==='hard'?HARD.opensWith:s.position);
+  const here=hereOn(s,mapId);
   $('[data-map-pt]').textContent=bal;
   $('[data-map-sub]').textContent=`${PLAYERS[player].name}の マップ・${seasonPeriod()}${parent?'（親モード：ぜんぶ見えています）':''}`;
   $('[data-map-found]').textContent=`${foundN}こ`;
   $('[data-map-note]').textContent=mapId==='hard'?'🔥 ハードモード：⭐の マスは「パーフェクトの ほし」も 1こ いるよ。ほしは 10もん ぜんぶ せいかい（ピヨ探検pt が もらえる回）で 1こ もらえる'
+   :mapId==='momiji'?`🍁 もみじの もり：11月の あたらしい マップ。ピヨ探検pt は ほしぞらと おなじ。${fmtDay(SEASON.end)} まで たまるよ`
    :hard?'🔥 さいおくの さらに おくに ハードモードが あるよ！ うえの「ハードモード」から いけるよ'
    :dayKey>SEASON.end?`ピヨ探検pt を ためられるのは ${fmtDay(SEASON.end)} まで。のこりの pt で ゲートは ひらけるよ`
    :dayKey<SEASON.start?`ピヨ探検pt が たまるのは ${fmtDay(SEASON.start)} から`:'10もん クリアで ピヨ探検pt が たまるよ（1日3回まで）。ゲートは どの じゅんばんでも ぜんぶ ひらけるよ';
@@ -140,6 +152,7 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
     el.type='button';el.dataset.node=node.id;el.setAttribute('aria-pressed',String(selected===node.id));
     if(node.id===MAP.start){icon='⭐';label=node.label;}
     else if(node.id===HARD.start){icon='🔥';label=node.label;}
+    else if(node.id===MOMIJI.start){icon='🍁';label=node.label;}
     else if(node.reward&&(state==='open'||parent)){const f=rewardFace(node.reward,player,parent);icon=f.icon;label=node.small?'':f.name;}   // 小さいマスは 絵だけ（名前は タップで）
     else if(state==='soon'){label='じゅんびちゅう';}
     const cost=costOf(s,node);
@@ -189,6 +202,7 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
   const parts=[h,p];
   if(node.id===MAP.start){h.textContent='⭐ スタート';p.textContent='ここから ぼうけんが はじまる。';}
   else if(node.id===HARD.start){h.textContent='🔥 ハードモード';p.textContent='さいおくの さらに おく。⭐の マスは、パーフェクトの ほしが ないと ひらかないよ。';}
+  else if(node.id===MOMIJI.start){h.textContent='🍁 もみじの もり';p.textContent='11月の あたらしい もり。どんな ごほうびが かくれているかな？';}
   else if(st==='open'){
    const f=rewardFace(node.reward,player,parent),got=s.rewards[node.reward];
    h.textContent=`${f.icon} ${f.name}`;p.textContent=f.note+(got?.on?`（${fmtDay(got.on)}に ゲット）`:'');
@@ -206,7 +220,7 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
    b.textContent=needStar?`ひらく（⭐1 ＋ ${cost} pt）`:`ひらく（${cost} pt）`;b.disabled=bal<cost||!starOk;parts.push(b);
   }
   else if(st==='near'){
-   const need=node.requires.filter(id=>!s.gates[id]&&id!==MAP.start&&id!==HARD.start).map(id=>{const n=nodeById(id);return stateOf[id]==='open'||parent?rewardFace(n.reward,player,parent).name:'となりの ❓';});
+   const need=node.requires.filter(id=>!s.gates[id]&&id!==MAP.start&&id!==HARD.start&&id!==MOMIJI.start).map(id=>{const n=nodeById(id);return stateOf[id]==='open'||parent?rewardFace(n.reward,player,parent).name:'となりの ❓';});
    h.textContent=parent&&node.reward?`🔒 ${rewardFace(node.reward,player,parent).name}`:'🔒 まだ ひらけない ゲート';
    p.textContent=`${[...new Set(need)].join(' と ')} を ひらくと、いけるようになるよ。`;
   }

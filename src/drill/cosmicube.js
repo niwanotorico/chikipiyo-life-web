@@ -8,7 +8,9 @@
 //  - ゲートは排他ではない。どの順番でも、最後はぜんぶ開けられる
 //  - 見えかた：開いた場所・となり（❓）だけ見える。遠くは霧で見えない
 
-export const SEASON={id:'2026-10',start:'2026-10-03',end:'2026-10-31',title:'ピヨ探検',sub:'10月の ほしぞら マップ'};
+// 11月も 同じ シーズン（id は 2026-10 のまま）で つづける：pt・ひらいた ゲート・ほし は そのまま 持ちこし。
+// 11月の マスは べつの マップ「もみじの もり」（MOMIJI）に 足していく
+export const SEASON={id:'2026-10',start:'2026-10-03',end:'2026-11-30',title:'ピヨ探検',sub:'ほしぞら と もみじの もり'};
 export const DAILY_CUBE_SESSIONS=3;   // キューブpt がもらえるのは1日3回まで（storage.js の DAILY_REWARD_SESSIONS と同じ）
 // マンガのゲートは、この日（端末の日付）から。それより前は いままでどおり ❓じゅんびちゅう。
 // 公開した時刻に関係なく 日付で切りかわる（画面を開いたまま 日付をまたいでも、つぎの表示から反映）。ポイントの計算は変えない
@@ -18,7 +20,7 @@ export const UPDATE_FROM='2026-10-07';
 // （トラマナちゃんは 3DPハウスの src/world/toramana-visit.js が ゲート・ごほうびを 読んで 部屋に 出す）
 // secret：子どもの画面では中身を見せない（❓表示）。親にだけ見せる中身は parent-mode.js に置く
 export const REWARDS={
- // うさこ：10月後半に別のごほうびとして追加予定。いまはマップのどこにも置かない（定義だけ残す）
+ // うさこ：11月の「もみじの もり」の マス
  usako:{icon:'🐰',name:'うさこ',note:'もんだいに うさこが でてくる',effects:['usako']},   // 3DPハウス来訪は GLB ができたら house:true を足す
  bgm:{icon:'🎵',name:'テーマソング',note:'トップで「テーマソング」が ながれる',effects:['bgm']},
  curry:{icon:'🍛',name:'カレー',note:'文章題に カレーが でてくる',effects:['curry']},
@@ -69,6 +71,13 @@ export const REWARDS={
  'st-piyomi':{icon:'🏷️',name:'シール「iPadの ぴよみ」',label:'iPadの ぴよみ',note:'シールちょうに はったよ',sticker:'piyomi',effects:[]},
  'st-piyokichi':{icon:'🏷️',name:'シール「iPadの ぴよきち」',label:'iPadの ぴよきち',note:'シールちょうに はったよ',sticker:'piyokichi',effects:[]},
  'hard-goal':{icon:'🔥',name:'ハードモードの ❓',note:'なにが あるかは まだ ひみつ。ひらいたら、おうちの人に つたえてね',secret:true},
+ // ---- もみじの もり（11/1〜）----
+ 'manga-29':{icon:'📚',name:'マンガ「ちかみち」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-21'],effects:[]},
+ 'manga-30':{icon:'📚',name:'マンガ「めじるし」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-22'],effects:[]},
+ 'manga-31':{icon:'📚',name:'マンガ「くさのトンネル」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-23'],effects:[]},
+ 'manga-32':{icon:'📚',name:'マンガ「ちず」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-24'],effects:[]},
+ 'manga-33':{icon:'📚',name:'マンガ「いちばんのり」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-25'],effects:[]},
+ 'momiji-goal':{icon:'🍁',name:'もみじの もりの ❓',note:'なにが あるかは まだ ひみつ。ひらいたら、おうちの人に つたえてね',secret:true},
 };
 
 // マップ。x,y はマップ上の位置（%）。requires は「ぜんぶ開いていれば挑戦できる」ゲート。
@@ -135,9 +144,30 @@ export const HARD={
   {id:'hard-goal',x:66,y:9,cost:30,reward:'hard-goal',requires:['hard-16'],star:true},
  ],
 };
-const MAPS={main:MAP,hard:HARD};
-const NODE=Object.fromEntries([...MAP.nodes,...HARD.nodes.map(n=>({...n,map:'hard'}))].map(n=>[n.id,n]));
-const isStartId=id=>id===MAP.start||id===HARD.start;
+// もみじの もり：11/1 から だれでも 入れる、べつの マップ（入口は さいしょから ひらいている）。
+//  - ぜんぶの マスに from:'2026-11-01'。それより前は タブも 出さない
+//  - reward:null の マス（momiji-07・08）は ❓じゅんびちゅう。マンガや シールが できたら 中身を 足す
+//  - ゴール（momiji-goal）の 中身は ひみつ（親モードで 見える）
+const MOMIJI_FROM='2026-11-01';
+export const MOMIJI={
+ start:'momiji-start',from:MOMIJI_FROM,
+ nodes:[
+  {id:'momiji-start',x:50,y:92,cost:0,reward:null,requires:[],label:'もりの 入口'},
+  {id:'momiji-01',x:28,y:80,cost:20,reward:'manga-29',requires:['momiji-start'],small:true},
+  {id:'momiji-02',x:72,y:80,cost:20,reward:'manga-30',requires:['momiji-start'],small:true},
+  {id:'momiji-03',x:18,y:63,cost:20,reward:'manga-31',requires:['momiji-01'],small:true},
+  {id:'momiji-usako',x:80,y:61,cost:30,reward:'usako',requires:['momiji-02']},
+  {id:'momiji-05',x:36,y:46,cost:20,reward:'manga-32',requires:['momiji-03'],small:true},
+  {id:'momiji-06',x:64,y:44,cost:20,reward:'manga-33',requires:['momiji-usako'],small:true},
+  {id:'momiji-07',x:16,y:30,cost:20,reward:null,requires:['momiji-05'],small:true},
+  {id:'momiji-08',x:84,y:28,cost:20,reward:null,requires:['momiji-06'],small:true},
+  {id:'momiji-goal',x:50,y:14,cost:40,reward:'momiji-goal',requires:['momiji-05','momiji-06']},
+ ].map(n=>({...n,from:MOMIJI_FROM})),
+};
+export const momijiOpen=dayKey=>typeof dayKey==='string'&&dayKey>=MOMIJI.from;
+const MAPS={main:MAP,hard:HARD,momiji:MOMIJI};
+const NODE=Object.fromEntries([...MAP.nodes,...HARD.nodes.map(n=>({...n,map:'hard'})),...MOMIJI.nodes.map(n=>({...n,map:'momiji'}))].map(n=>[n.id,n]));
+const isStartId=id=>id===MAP.start||id===HARD.start||id===MOMIJI.start;
 export const nodeById=id=>NODE[id]??null;
 // ひらける（中身のある）ゲート。空きスロットは数えない
 export const openableNodes=()=>MAP.nodes.filter(n=>n.id!==MAP.start&&n.reward&&REWARDS[n.reward]);
@@ -185,7 +215,8 @@ const DAY_RE=/^\d{4}-\d{2}-\d{2}$/;
 const nat=(v,max=100000)=>Number.isSafeInteger(v)&&v>=0?Math.min(v,max):0;
 const day=v=>typeof v==='string'&&DAY_RE.test(v)?v:null;
 const obj=v=>v&&typeof v==='object'&&!Array.isArray(v)?v:{};
-const EARNED_LIMIT=200,COIN_DAYS_LIMIT=120;
+// earned は 残高の もとなので、古い記録が 切りすてられると pt が へる。10〜11月の 2か月（ぴよきちは おうえんの 記録も 入る）でも あふれない数に
+const EARNED_LIMIT=500,COIN_DAYS_LIMIT=120;
 
 export function sanitizeSeason(raw){
  const r=obj(raw),s=emptySeason();
@@ -230,7 +261,7 @@ export function completion(s){
  const done=list.filter(n=>s.gates[n.id]).length;
  return {done,total:list.length,percent:list.length?Math.floor(done/list.length*100):0};
 }
-export const isOpen=(s,id)=>id===MAP.start||!!s.gates[id]||(id===HARD.start&&!!s.gates[HARD.opensWith]);
+export const isOpen=(s,id)=>id===MAP.start||id===MOMIJI.start||!!s.gates[id]||(id===HARD.start&&!!s.gates[HARD.opensWith]);
 // パーフェクトの ほし：もらった数 − ⭐の マスで つかった数
 export function starsEarned(s){return s.earned.filter(e=>e.perfect&&!e.cheer).length;}
 export function starsUsed(s){return Object.keys(s.gates).filter(id=>NODE[id]?.star).length;}

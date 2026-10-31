@@ -27,7 +27,7 @@ test('1日3回まで・4回目以降（れんしゅう）と期間外は入ら�
  for(let i=0;i<3;i++){const r=recordSession(p,{sessionId:`x${i}`,dayKey:D,award:award(10)});assert.equal(r.reason,'ok');p=r.player;}
  assert.equal(recordSession(p,{sessionId:'x3',dayKey:D,award:award(10)}).reason,'limit');
  assert.equal(recordSession(p,{sessionId:'x4',dayKey:D,award:award(0,{practice:true})}).reason,'practice');
- assert.equal(recordSession(p,{sessionId:'x5',dayKey:'2026-11-01',award:award(10)}).reason,'season');
+ assert.equal(recordSession(p,{sessionId:'x5',dayKey:'2026-12-01',award:award(10)}).reason,'season');   // 11月（もみじの もり）までは 入る
  assert.equal(recordSession(p,{sessionId:'x6',dayKey:'2026-10-02',award:award(10)}).reason,'season');
  assert.equal(recordSession(p,{sessionId:'x7',dayKey:'2026-10-06',award:award(10)}).reason,'ok');   // 次の日はまた入る
  assert.equal(playsOn(season(p),D),3);
@@ -84,7 +84,7 @@ test('分岐は排他ではない：どの順番でも、ぜんぶ開けて 100%
 
 test('メインのゲートのコスト合計は、毎日1回（約15pt）× 期間 で届く', ()=>{
  const total=openableNodes().reduce((a,n)=>a+n.cost,0);
- const days=(Date.parse(SEASON.end)-Date.parse(SEASON.start))/864e5+1;
+ const days=(Date.parse('2026-10-31')-Date.parse(SEASON.start))/864e5+1;   // ほしぞらは 10月の マップ（11月は もみじの もり）
  assert.ok(total<=15*days,`total ${total} / ${15*days}`);
  assert.ok(total>=10*days*.8,'かんたんすぎない');
 });
