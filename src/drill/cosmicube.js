@@ -155,7 +155,7 @@ const MOMIJI_FROM='2026-11-01';
 export const MOMIJI={
  start:'momiji-start',from:MOMIJI_FROM,
  nodes:[
-  {id:'momiji-start',x:50,y:92,cost:0,reward:null,requires:[],label:'もりの 入口'},
+  {id:'momiji-start',x:50,y:92,cost:0,reward:null,requires:[],label:'森の 入口'},
   {id:'momiji-01',x:28,y:83,cost:20,reward:'manga-29',requires:['momiji-start'],small:true},
   {id:'momiji-02',x:72,y:83,cost:20,reward:'manga-30',requires:['momiji-start'],small:true},
   {id:'momiji-morisaku',x:13,y:69,cost:30,reward:'morisaku',requires:['momiji-01']},
