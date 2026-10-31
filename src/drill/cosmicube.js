@@ -77,7 +77,8 @@ export const REWARDS={
  'manga-31':{icon:'📚',name:'マンガ「くさのトンネル」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-23'],effects:[]},
  'manga-32':{icon:'📚',name:'マンガ「ちず」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-24'],effects:[]},
  'manga-33':{icon:'📚',name:'マンガ「いちばんのり」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-25'],effects:[]},
- 'momiji-goal':{icon:'🍁',name:'もみじの もりの ❓',note:'なにが あるかは まだ ひみつ。ひらいたら、おうちの人に つたえてね',secret:true},
+ morisaku:{icon:'🎤',name:'もりと さくま',note:'もんだいに もりと さくまが でてくる',effects:['morisaku']},
+ 'momiji-secret':{icon:'🎁',name:'もみじの もりの ❓',note:'なにが あるかは まだ ひみつ。ひらいたら、おうちの人に つたえてね',secret:true},
 };
 
 // マップ。x,y はマップ上の位置（%）。requires は「ぜんぶ開いていれば挑戦できる」ゲート。
@@ -146,22 +147,27 @@ export const HARD={
 };
 // もみじの もり：11/1 から だれでも 入れる、べつの マップ（入口は さいしょから ひらいている）。
 //  - ぜんぶの マスに from:'2026-11-01'。それより前は タブも 出さない
-//  - reward:null の マス（momiji-07・08）は ❓じゅんびちゅう。マンガや シールが できたら 中身を 足す
-//  - ゴール（momiji-goal）の 中身は ひみつ（親モードで 見える）
+//  - 小ネタ（small）：マンガ・シール。小ゴール：もりと さくま・うさこ・曲・ひみつ（マクドナルド）。大ゴール：いちばん おく
+//  - reward:null の マスは ❓じゅんびちゅう：曲（momiji-song）・シール（momiji-st1・st2）・大ゴール（momiji-goal）。
+//    中身が できたら REWARDS に 足して reward を 書けば、そのまま ひらけるようになる
+//  - ひみつの 小ゴール（momiji-secret）の 中身は 親モードで 見える
 const MOMIJI_FROM='2026-11-01';
 export const MOMIJI={
  start:'momiji-start',from:MOMIJI_FROM,
  nodes:[
   {id:'momiji-start',x:50,y:92,cost:0,reward:null,requires:[],label:'もりの 入口'},
-  {id:'momiji-01',x:28,y:80,cost:20,reward:'manga-29',requires:['momiji-start'],small:true},
-  {id:'momiji-02',x:72,y:80,cost:20,reward:'manga-30',requires:['momiji-start'],small:true},
-  {id:'momiji-03',x:18,y:63,cost:20,reward:'manga-31',requires:['momiji-01'],small:true},
-  {id:'momiji-usako',x:80,y:61,cost:30,reward:'usako',requires:['momiji-02']},
-  {id:'momiji-05',x:36,y:46,cost:20,reward:'manga-32',requires:['momiji-03'],small:true},
-  {id:'momiji-06',x:64,y:44,cost:20,reward:'manga-33',requires:['momiji-usako'],small:true},
-  {id:'momiji-07',x:16,y:30,cost:20,reward:null,requires:['momiji-05'],small:true},
-  {id:'momiji-08',x:84,y:28,cost:20,reward:null,requires:['momiji-06'],small:true},
-  {id:'momiji-goal',x:50,y:14,cost:40,reward:'momiji-goal',requires:['momiji-05','momiji-06']},
+  {id:'momiji-01',x:28,y:83,cost:20,reward:'manga-29',requires:['momiji-start'],small:true},
+  {id:'momiji-02',x:72,y:83,cost:20,reward:'manga-30',requires:['momiji-start'],small:true},
+  {id:'momiji-morisaku',x:13,y:69,cost:30,reward:'morisaku',requires:['momiji-01']},
+  {id:'momiji-usako',x:87,y:69,cost:30,reward:'usako',requires:['momiji-02']},
+  {id:'momiji-03',x:50,y:66,cost:20,reward:'manga-31',requires:['momiji-01','momiji-02'],small:true},
+  {id:'momiji-04',x:30,y:53,cost:20,reward:'manga-32',requires:['momiji-morisaku'],small:true},
+  {id:'momiji-05',x:70,y:53,cost:20,reward:'manga-33',requires:['momiji-usako'],small:true},
+  {id:'momiji-secret',x:18,y:37,cost:40,reward:'momiji-secret',requires:['momiji-04']},
+  {id:'momiji-song',x:82,y:37,cost:30,reward:null,requires:['momiji-05']},
+  {id:'momiji-st1',x:36,y:24,cost:20,reward:null,requires:['momiji-secret'],small:true},
+  {id:'momiji-st2',x:64,y:24,cost:20,reward:null,requires:['momiji-song'],small:true},
+  {id:'momiji-goal',x:50,y:10,cost:50,reward:null,requires:['momiji-st1','momiji-st2']},
  ].map(n=>({...n,from:MOMIJI_FROM})),
 };
 export const momijiOpen=dayKey=>typeof dayKey==='string'&&dayKey>=MOMIJI.from;

@@ -19,10 +19,10 @@ const PARENT_LABELS={
   piyomi:{name:'Switch 2 にだいめ かいほう券',note:'ハードモードを クリアしたら Switch 2 の 2台目（ぴよみ用）を かいほう。メロガッパFC は 10/27 に 黒コインで 先にスタートしたので、ゴールは こちらに変更（子どもの画面では ひみつ）'},
   piyokichi:{name:'（未定）ハードモードの ごほうび',note:'親から渡す 現実の ごほうび。中身は ちきんが 決める（子どもの画面では ひみつ）'},
  },
- // もみじの もり（11月）の ゴール
- 'momiji-goal':{
-  piyomi:{name:'マクドナルド ランチ券',note:'もみじの もりの ゴール。親から渡す 現実の ごほうび（子どもの画面では ひみつ）'},
-  piyokichi:{name:'マクドナルド ランチ券',note:'もみじの もりの ゴール。親から渡す 現実の ごほうび（子どもの画面では ひみつ）'},
+ // もみじの もり（11月）の 小ゴール
+ 'momiji-secret':{
+  piyomi:{name:'マクドナルド ランチ券',note:'もみじの もりの 小ゴール。親から渡す 現実の ごほうび（子どもの画面では ひみつ）'},
+  piyokichi:{name:'マクドナルド ランチ券',note:'もみじの もりの 小ゴール。親から渡す 現実の ごほうび（子どもの画面では ひみつ）'},
  },
 };
 export function parentLabel(rewardId,player){return PARENT_LABELS[rewardId]?.[player]??null;}

@@ -303,11 +303,11 @@ function sameKey(question){
 }
 
 // ---------- ピヨ探検のごほうび：文章題のモチーフ ----------
-// motifs（Set か配列）：'usako' うさこが登場／'curry' カレーが登場／'toramana' トラマナちゃんが登場＋カレーが多め
+// motifs（Set か配列）：'usako' うさこが登場／'curry' カレーが登場／'toramana' トラマナちゃんが登場＋カレーが多め／'morisaku' もりと さくまが登場
 // 「ふつう」ゾーンの1問（トラマナちゃんがいれば2問）を、モチーフ入りの文章題にする。motifs が空なら何も変えない（乱数も使わない）
-export const MOTIFS=['usako','curry','toramana'];
+export const MOTIFS=['usako','curry','toramana','morisaku'];
 function motifWord(rng,player,m){
- const who=[...(m.has('usako')?['うさこ']:[]),...(m.has('toramana')?['トラマナちゃん']:[])];
+ const who=[...(m.has('usako')?['うさこ']:[]),...(m.has('toramana')?['トラマナちゃん']:[]),...(m.has('morisaku')?['もり','さくま']:[])];
  const name=who.length?pick(rng,who):pick(rng,['ちきん','ぴよきち','ぴよみ']);
  const curry=m.has('curry')&&(rng()<(m.has('toramana')?.8:.5));
  if(curry&&m.has('toramana')&&rng()<.4){   // トラマナちゃんのカレー屋さん
