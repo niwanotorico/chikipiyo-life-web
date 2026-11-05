@@ -36,19 +36,20 @@ test('もみじの もり：11/1 から。それまでは ひらけない', ()=>
  assert.equal(openGate(p,'momiji-03',N1).reason,'locked');
 });
 
-test('もみじの もり：小ネタ（マンガ5話）・小ゴール（もりと さくま・うさこ・ひみつ）。曲・シール・大ゴールは じゅんびちゅう', ()=>{
+test('もみじの もり：小ネタ（マンガ5話）・小ゴール（もりと さくま・うさこ・ひみつ）。曲・大ゴールは じゅんびちゅう', ()=>{
  let p=rich(1000);
  p=openPath(p,['momiji-01','momiji-02','momiji-morisaku','momiji-usako','momiji-03','momiji-04','momiji-05']);
  assert.ok(effectsOf(p).has('usako'));assert.ok(effectsOf(p).has('morisaku'));
  const m=mangaOf(p,N1);
  for(const ep of ['daily-21','daily-22','daily-23','daily-24','daily-25']){assert.ok(m.has(ep),ep);assert.ok(episodeById(ep),ep);}
+ p=openPath(p,['momiji-34']);
  const g=openGate(p,'momiji-secret',N1);
  assert.equal(g.ok,true);assert.equal(g.reward,'momiji-secret');
  assert.equal(REWARDS['momiji-secret'].secret,true);
  for(const who of ['piyomi','piyokichi'])assert.match(parentLabel('momiji-secret',who).name,/マクドナルド/);
  p=g.player;
- for(const id of ['momiji-song','momiji-st1']){assert.equal(nodeState(season(p),nodeById(id),N1),'soon',id);assert.equal(openGate(p,id,N1).reason,'empty');}
  assert.equal(nodeById('momiji-goal').reward,null);   // 大ゴールは 未定
+ assert.equal(nodeById('momiji-song').reward,null);   // 曲も 未定
  assert.ok(!nodeById('momiji-secret').small&&!nodeById('momiji-morisaku').small&&!nodeById('momiji-song').small);
  for(const n of MOMIJI.nodes)assert.equal(n.from,N1);
 });
@@ -78,4 +79,17 @@ test('2か月ぶんの 記録でも 古い pt が 切りすてられない', ()=
 test('drill.html に もみじの もりの タブ', ()=>{
  const html=readFileSync(new URL('../drill.html',import.meta.url),'utf8');
  assert.ok(html.includes('data-map-tab="momiji"'));
+});
+
+test('もみじの もり：26〜33話も ひらける。曲が じゅんびちゅうでも 大ゴールの 手前まで 行ける', ()=>{
+ let p=rich(2000);
+ p=openPath(p,['momiji-01','momiji-02','momiji-morisaku','momiji-usako','momiji-03','momiji-04','momiji-05',
+  'momiji-34','momiji-secret','momiji-36','momiji-st1','momiji-40','momiji-35','momiji-37','momiji-st2','momiji-41']);
+ const m=mangaOf(p,N1);
+ for(let n=21;n<=33;n++){const ep=`daily-${n}`;assert.ok(m.has(ep),ep);assert.ok(episodeById(ep),ep);}
+ assert.equal(nodeState(season(p),nodeById('momiji-song'),N1),'soon');
+ assert.equal(nodeState(season(p),nodeById('momiji-goal'),N1),'soon');   // 中身が きまれば すぐ ひらける
+ // マンガの マスは ぜんぶ 20pt。中身の ある マス 合計 360pt
+ const total=MOMIJI.nodes.filter(n=>n.reward).reduce((a,n)=>a+n.cost,0);
+ assert.equal(total,360);
 });
