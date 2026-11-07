@@ -8,9 +8,9 @@
 //  - ゲートは排他ではない。どの順番でも、最後はぜんぶ開けられる
 //  - 見えかた：開いた場所・となり（❓）だけ見える。遠くは霧で見えない
 
-// 11月も 同じ シーズン（id は 2026-10 のまま）で つづける：pt・ひらいた ゲート・ほし は そのまま 持ちこし。
+// 11月・12月も 同じ シーズン（id は 2026-10 のまま）で つづける：pt・ひらいた ゲート・ほし は そのまま 持ちこし。
 // 11月の マスは べつの マップ「もみじの もり」（MOMIJI）に 足していく
-export const SEASON={id:'2026-10',start:'2026-10-03',end:'2026-11-30',title:'ピヨ探検',sub:'ほしぞら と もみじの もり'};
+export const SEASON={id:'2026-10',start:'2026-10-03',end:'2026-12-31',title:'ピヨ探検',sub:'ほしぞら と もみじの もり'};
 export const DAILY_CUBE_SESSIONS=3;   // キューブpt がもらえるのは1日3回まで（storage.js の DAILY_REWARD_SESSIONS と同じ）
 // マンガのゲートは、この日（端末の日付）から。それより前は いままでどおり ❓じゅんびちゅう。
 // 公開した時刻に関係なく 日付で切りかわる（画面を開いたまま 日付をまたいでも、つぎの表示から反映）。ポイントの計算は変えない
@@ -85,7 +85,11 @@ export const REWARDS={
  'manga-39':{icon:'📚',name:'マンガ「おみせやさん」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-31'],effects:[]},
  'manga-40':{icon:'📚',name:'マンガ「おかねもち」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-32'],effects:[]},
  'manga-41':{icon:'📚',name:'マンガ「ふかふかベッド」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-33'],effects:[]},
+ 'manga-42':{icon:'📚',name:'マンガ「もうちょっとだけ」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-34'],effects:[]},
+ 'manga-43':{icon:'📚',name:'マンガ「おやつのじかん」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-35'],effects:[]},
+ 'manga-44':{icon:'📚',name:'マンガ「さいごのいっぽん」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-36'],effects:[]},
  morisaku:{icon:'🎤',name:'もりと さくま',note:'もんだいに もりと さくまが でてくる',effects:['morisaku']},
+ 'momiji-song':{icon:'🎵',name:'えんもたけなわ',note:'トップと ドリルで えんもたけなわ が ながれる',effects:['enmo']},
  'momiji-secret':{icon:'🎁',name:'もみじの もりの ❓',note:'なにが あるかは まだ ひみつ。ひらいたら、おうちの人に つたえてね',secret:true},
 };
 
@@ -157,13 +161,17 @@ export const HARD={
 //  - ぜんぶの マスに from:'2026-11-01'。それより前は タブも 出さない
 //  - 小ネタ（small）：マンガ（21〜33話）。小ゴール：もりと さくま・うさこ・曲・ひみつ（マクドナルド）。大ゴール：いちばん おく
 //    もとは シールの マスだった momiji-st1・st2 も マンガ（id は そのまま）。曲は 右の みちの より道（ゴールの じゃまを しない）
-//  - reward:null の マスは ❓じゅんびちゅう：曲（momiji-song）・大ゴール（momiji-goal）。
+//  - reward:null の マスは ❓じゅんびちゅう：momiji-oku-04〜14 と 大ゴール（momiji-goal）。
 //    中身が できたら REWARDS に 足して reward を 書けば、そのまま ひらけるようになる
 //  - ひみつの 小ゴール（momiji-secret）の 中身は 親モードで 見える
+//  - 11/7：約1か月で 大ゴールに つくように、40・41 の 先に 50pt の 1本道（momiji-oku-01〜14）を 足した。
+//    大ゴールは いちばん おくへ（50→100pt。まだ だれも ひらけない マスなので 記録には 影響しない）。
+//    マップは 縦に スクロール（drill.css の is-momiji）。y は 下の 60% に 今までの マス、上の 40% に 足した道
 const MOMIJI_FROM='2026-11-01';
+const momijiLower=n=>({...n,y:40+n.y*.6});
 export const MOMIJI={
  start:'momiji-start',from:MOMIJI_FROM,
- nodes:[
+ nodes:[...[
   {id:'momiji-start',x:50,y:94,cost:0,reward:null,requires:[],label:'森の 入口'},
   {id:'momiji-01',x:28,y:86,cost:20,reward:'manga-29',requires:['momiji-start'],small:true},
   {id:'momiji-02',x:72,y:86,cost:20,reward:'manga-30',requires:['momiji-start'],small:true},
@@ -176,13 +184,28 @@ export const MOMIJI={
   {id:'momiji-35',x:86,y:55,cost:20,reward:'manga-35',requires:['momiji-05'],small:true},
   {id:'momiji-secret',x:32,y:46,cost:40,reward:'momiji-secret',requires:['momiji-34']},
   {id:'momiji-37',x:68,y:46,cost:20,reward:'manga-37',requires:['momiji-35'],small:true},
-  {id:'momiji-song',x:50,y:38,cost:30,reward:null,requires:['momiji-37']},
+  {id:'momiji-song',x:50,y:38,cost:30,reward:'momiji-song',requires:['momiji-37']},
   {id:'momiji-36',x:14,y:36,cost:20,reward:'manga-36',requires:['momiji-secret'],small:true},
   {id:'momiji-st2',x:86,y:36,cost:20,reward:'manga-39',requires:['momiji-37'],small:true},
   {id:'momiji-st1',x:32,y:27,cost:20,reward:'manga-38',requires:['momiji-36'],small:true},
   {id:'momiji-41',x:68,y:27,cost:20,reward:'manga-41',requires:['momiji-st2'],small:true},
   {id:'momiji-40',x:24,y:17,cost:20,reward:'manga-40',requires:['momiji-st1'],small:true},
-  {id:'momiji-goal',x:50,y:8,cost:50,reward:null,requires:['momiji-40','momiji-41']},
+  ].map(momijiLower),
+  {id:'momiji-oku-01',x:50,y:46,cost:50,reward:'manga-42',requires:['momiji-40','momiji-41'],small:true},
+  {id:'momiji-oku-02',x:78,y:43,cost:50,reward:'manga-43',requires:['momiji-oku-01'],small:true},
+  {id:'momiji-oku-03',x:50,y:40,cost:50,reward:'manga-44',requires:['momiji-oku-02'],small:true},
+  {id:'momiji-oku-04',x:22,y:37,cost:50,reward:null,requires:['momiji-oku-03'],small:true},
+  {id:'momiji-oku-05',x:50,y:34,cost:50,reward:null,requires:['momiji-oku-04'],small:true},
+  {id:'momiji-oku-06',x:78,y:31,cost:50,reward:null,requires:['momiji-oku-05'],small:true},
+  {id:'momiji-oku-07',x:50,y:28,cost:50,reward:null,requires:['momiji-oku-06'],small:true},
+  {id:'momiji-oku-08',x:22,y:25,cost:50,reward:null,requires:['momiji-oku-07'],small:true},
+  {id:'momiji-oku-09',x:50,y:22,cost:50,reward:null,requires:['momiji-oku-08'],small:true},
+  {id:'momiji-oku-10',x:78,y:19,cost:50,reward:null,requires:['momiji-oku-09'],small:true},
+  {id:'momiji-oku-11',x:50,y:16,cost:50,reward:null,requires:['momiji-oku-10'],small:true},
+  {id:'momiji-oku-12',x:22,y:13,cost:50,reward:null,requires:['momiji-oku-11'],small:true},
+  {id:'momiji-oku-13',x:50,y:10,cost:50,reward:null,requires:['momiji-oku-12'],small:true},
+  {id:'momiji-oku-14',x:78,y:7,cost:50,reward:null,requires:['momiji-oku-13'],small:true},
+  {id:'momiji-goal',x:40,y:4.5,cost:100,reward:null,requires:['momiji-oku-14']},
  ].map(n=>({...n,from:MOMIJI_FROM})),
 };
 export const momijiOpen=dayKey=>typeof dayKey==='string'&&dayKey>=MOMIJI.from;
@@ -236,7 +259,7 @@ const DAY_RE=/^\d{4}-\d{2}-\d{2}$/;
 const nat=(v,max=100000)=>Number.isSafeInteger(v)&&v>=0?Math.min(v,max):0;
 const day=v=>typeof v==='string'&&DAY_RE.test(v)?v:null;
 const obj=v=>v&&typeof v==='object'&&!Array.isArray(v)?v:{};
-// earned は 残高の もとなので、古い記録が 切りすてられると pt が へる。10〜11月の 2か月（ぴよきちは おうえんの 記録も 入る）でも あふれない数に
+// earned は 残高の もとなので、古い記録が 切りすてられると pt が へる。10〜12月の 3か月（じぶん 270件＋おうえん 210件＝さいだい 480件）でも あふれない数に
 const EARNED_LIMIT=500,COIN_DAYS_LIMIT=120;
 
 export function sanitizeSeason(raw){

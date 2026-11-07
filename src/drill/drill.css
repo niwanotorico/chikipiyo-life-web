@@ -538,6 +538,9 @@ body[data-view="map"] .dq-top{display:none}
 /* もみじの もり（11月）：夕やけの もり */
 .dq-map-tabs button[data-map-tab="momiji"].is-on{background:#c2541b;border-color:#c2541b}
 .dq-map-space.is-momiji{border-color:#c2541b;background:radial-gradient(ellipse at 50% 12%,#ffc76a66,transparent 60%),linear-gradient(#5a2a14,#8a3a1a 55%,#4a5a22)}
+/* もみじの もりは 道が 長いので、マップの 中だけ 縦に スクロール（下の せつめいは いつも 見える） */
+.dq-map-space.is-momiji{overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.dq-map-space.is-momiji .dq-map-lines,.dq-map-space.is-momiji .dq-map-nodes,.dq-map-space.is-momiji .dq-map-stars{bottom:auto;height:175%}
 .dq-map-space.is-hard{border-color:#a8324f;background:radial-gradient(ellipse at 50% 15%,#ff7a5a55,transparent 60%),linear-gradient(#3b1240,#5a1a3a 60%,#7a2a2a)}
 .dq-map-star{font-weight:800;opacity:1;color:#ffe27a;font-size:11px}
 .dq-map-star[hidden]{display:none}

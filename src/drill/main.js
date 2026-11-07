@@ -11,7 +11,7 @@ import {CubeStore,localCubeAdapter,memoryCubeAdapter} from './cosmicube-store.js
 import {createCubeSync} from './cube-sync.js';
 import {createCubeMap,pixelChar,seasonPeriod,giftLabel,giftImg} from './cosmicube-ui.js';
 import {giftOn,giftAvailable,season,hardOpen,starBalance} from './cosmicube.js';
-import {themeTrack,trackElement} from './bgm-pool.js';
+import {themeTrack,trackElement,gameSong} from './bgm-pool.js';
 import {isParentMode,parentLabel} from './parent-mode.js';
 import * as festival from './festival.js';
 import {checkAnswer} from './questions.js';
@@ -35,6 +35,8 @@ const particles=new Particles($('[data-fx]'));
 let reduced=prefersReducedMotion();
 try{matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',e=>{reduced=e.matches;});}catch{}
 const params=new URLSearchParams(location.search);
+const TRY_ENMO=params.get('song')==='enmo';   // 試聴用：?song=enmo で えんもを 鳴らす（保存しない・ごほうびは ひらかない）
+const songEffects=player=>TRY_ENMO?new Set([...cube.effects(player),'enmo']):cube.effects(player);
 const FORCE_EGG=params.get('egg')==='1';   // 確認用：?egg=1 で次の正解に目玉焼き（1プレイ1回）
 const NO_EGG=params.get('egg')==='0';      // 録画用：?egg=0 で目玉焼きを出さない
 // 演出モード（ふつう／おまつり）。演出だけを切り替える。初回は「ふつう」、あとは最後に選んだほうを覚える（festival.js の専用キー）。
@@ -54,7 +56,7 @@ function onSyncChange(st){
  else if(done&&v==='home')renderHome();
 }
 const syncNow=()=>{cubeSync?.sync();};
-const cubeMap=createCubeMap({cube,audio,particles,flash:a=>flash(a),reduced:()=>reduced,getPlayer:()=>store.selected,today:()=>todayKey(),parent:PARENT,syncState:()=>cubeSync?.state()??null,onGateOpened:syncNow});
+const cubeMap=createCubeMap({cube,audio,particles,flash:a=>flash(a),reduced:()=>reduced,getPlayer:()=>store.selected,today:()=>todayKey(),parent:PARENT,syncState:()=>cubeSync?.state()??null,onGateOpened:()=>{syncNow();syncTheme();}});
 
 const lines={
  start:{piyokichi:'さくっと 10もん いこう！',piyomi:'よーし、いっしょに がんばろ！'},
@@ -79,7 +81,7 @@ function show(name){
 // 🎵 テーマソング（ごほうび）：トップとマップでだけ流す。えらんでいる子が ごほうびを持っているときだけ。ゲーム中は流さない
 function syncTheme(){
  const v=document.body.dataset.view,sel=store.selected;
- const track=(v==='home'||v==='map')&&sel?themeTrack(cube.effects(sel)):null;
+ const track=(v==='home'||v==='map')&&sel?themeTrack(songEffects(sel)):null;
  if(track&&!audio.muted)audio.playTheme(trackElement(track));else audio.stopTheme();
 }
 function persist(){saveStore(store,storage);}
@@ -150,7 +152,7 @@ function renderCubePanel(sel,today){
  $('[data-pix]').innerHTML=pixelChar(sel??'piyokichi');
  $('[data-cube-panel] [data-to-map]').disabled=!sel;
 }
-function openMap(){if(!store.selected)return;audio.unlock();cubeMap.reset();cube.reload();cube.applyCheer();cubeMap.render();show('map');syncNow();}
+function openMap(){if(!store.selected)return;audio.unlock();cubeMap.reset();cube.reload();cube.applyCheer();cubeMap.render();show('map');cubeMap.render();syncNow();}   // 2回目：見えてから いまの場所まで スクロールする
 
 function showNotice(){
  const n=$('[data-notice]');
@@ -170,6 +172,7 @@ function startPlay(){
  const fresh=loadStore(storage);if(fresh.status==='ok')store=fresh.store;   // 別タブでの記録も反映
  const dayKey=todayKey();
  cube.reload();const effects=cube.effects(player);
+ audio.setSong(gameSong(songEffects(player)));   // 🎵 もみじの曲マスを ひらいた子だけ、ゲーム中の BGM が えんも
  play={player,dayKey,sessionId:newSessionId(player),practice:sessionsLeft(store,player,dayKey)===0,run:createRun(makeQuestionSet(player,Math.random,undefined,{dayKey,round:dayInfo(store,player,dayKey).sessions,motifs:effects})),input:'',feedback:null,committed:false,award:null,stage:0,token:Symbol('play')};
  $('[data-fever-img]').src=POSE_URLS[DUO.high];
  actor.preload();actor.setIdle(art[player]);

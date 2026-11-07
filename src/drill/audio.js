@@ -29,6 +29,27 @@ const HOOK=[
 const TOY=[0,1,2,1,0,2,1,2];      // トイピアノの分散和音の並び
 const ARP=[0,1,2,3,2,1,2,3];      // 3 = 根音の1オクターブ上
 
+// 🎵 ごほうび「えんもたけなわ」のサビ頭4小節（Codex-3090 の採譜。約126 BPM）
+const ENMO_PROG=[
+ {bass:36,tones:[60,64,67]},  // C
+ {bass:45,tones:[60,64,69]},  // Am
+ {bass:41,tones:[60,65,69]},  // F
+ {bass:38,tones:[62,65,69]},  // Dm
+];
+const ENMO_HOOK=[
+ [79,0,76,0,74,72,72,72],
+ [74,76,77,76,0,0,0,0],
+ [79,0,76,0,74,72,72,72],
+ [74,76,77,76,0,76,74,76],
+];
+// ゲーム中の曲。default はこれまでの曲（何も えらばなければ これ）。
+// bpmShift：hype.js の tempo() に足す（だんだん速くなる しくみは そのまま）
+// leadFrom：この段階から メロディを鳴らす（ない曲は hype.js の 'lead' レイヤーどおり）。legato：次の音まで のばす
+export const SONGS={
+ default:{prog:PROG,hook:HOOK,bpmShift:0},
+ enmo:{prog:ENMO_PROG,hook:ENMO_HOOK,bpmShift:8,leadFrom:0,legato:true},
+};
+
 function readMuted(storage){try{return storage?.getItem(SOUND_KEY)==='off';}catch{return false;}}
 function safeStorage(){try{return typeof localStorage!=='undefined'?localStorage:null;}catch{return null;}}
 
@@ -39,6 +60,7 @@ export class QuestAudio{
   this.storage=storage;this.AudioCtx=AudioCtx;
   this.lite=lite;this.ahead=lite?.3:.12;
   this.muted=readMuted(storage);
+  this.song=SONGS.default;
   this.ctx=null;this.stage=0;this.trans=0;this.bpm=tempo(0);this.layers=layersFor(0);
   this.playing=false;this.reach=false;this.step=0;this.nextTime=0;this.timer=0;this.reachStart=0;
   this.onBeat=null;   // (delayMs, isBarStart) => void
@@ -113,7 +135,7 @@ export class QuestAudio{
   if(rev&&this.reverb){const s=this.ctx.createGain();s.gain.value=rev;last.connect(s);s.connect(this.reverb);}
  }
  ok(){return !!this.ctx&&!this.muted&&this.ctx.state!=='closed';}
- chordAt(step=this.step){return PROG[Math.floor(step/16)%4];}
+ chordAt(step=this.step){return this.song.prog[Math.floor(step/16)%4];}
  // コードの i 番目の音（3 以上はオクターブ上へ）
  tone(i,step){const ch=this.chordAt(step);return ch.tones[i%3]+12*Math.floor(i/3)+this.trans;}
 
@@ -184,8 +206,10 @@ export class QuestAudio{
  // ---------- BGM ----------
  setStage(stage){
   this.stage=stage;this.layers=layersFor(stage);
-  this.bpm=tempo(stage);this.trans=keyShift(stage);
+  this.bpm=tempo(stage)+this.song.bpmShift;this.trans=keyShift(stage);
  }
+ // ゲーム中の曲を えらぶ（SONGS の id。わからない id は いつもの曲）
+ setSong(id){this.song=SONGS[id]??SONGS.default;this.bpm=tempo(this.stage)+this.song.bpmShift;}
  startMusic(stage=0){
   this.unlock();this.setStage(stage);
   if(!this.ctx||this.playing)return;
@@ -238,7 +262,7 @@ export class QuestAudio{
  downbeat(){this.step=Math.ceil(this.step/16)*16;this.nextTime=this.now()+.005;}
 
  scheduleStep(step,t){
-  const s=step%16,bar=Math.floor(step/16)%4,ch=PROG[bar],k=this.trans,L=this.layers,sd=this.stepDur;
+  const s=step%16,bar=Math.floor(step/16)%4,ch=this.song.prog[bar],k=this.trans,L=this.layers,sd=this.stepDur;
   if(s%4===0&&this.onBeat)this.onBeat(Math.max(0,(t-this.now())*1000),s===0);
   if(this.muted)return;
   if(this.reach){ // さいごの1もん：音楽が消えて「ドクン…ドクン…」と時計の「チッ…チッ…」だけ。ドラムロール中は無音
@@ -262,7 +286,16 @@ export class QuestAudio{
   if(L.has('hat')&&s%4===2)this.hat(t,.13,this.stage>=4);
   if(L.has('hat16')&&!this.lite&&s%2===1)this.hat(t,.05);
   if(L.has('chirp')&&s===14&&bar%2===1)this.chirp(t,ch.tones[2]+24+k,.035,this.music,.35);
-  if(L.has('lead')&&s%2===0){const m=HOOK[bar][s/2];if(m)this.lead(t,m+k,sd*1.8);}
+  const song=this.song;
+  if(s%2===0&&(song.leadFrom!==undefined?this.stage>=song.leadFrom:L.has('lead'))){
+   const m=song.hook[bar][s/2];
+   if(m){
+    // 次の音まで のばす曲（さいだい 2拍）。序盤は 小さく、もりあがるほど いつもの大きさへ
+    let n=1;if(song.legato)while(n<4&&s/2+n<8&&!song.hook[bar][s/2+n])n++;
+    const vol=song.leadFrom!==undefined?.035+.00625*Math.min(4,this.stage):.06;
+    this.lead(t,m+k,song.legato?sd*2*n*.9:sd*1.8,vol);
+   }
+  }
   if(L.has('fill')&&bar===3&&s>=12)this.snare(t,.1+(s-12)*.06);
   if(L.has('crash')&&bar===0&&s===0)this.crash(t,.12);
   if(L.has('brass')&&s%4===2)this.brass(t,ch.tones.map(m=>m+12+k),sd*1.4,.035);

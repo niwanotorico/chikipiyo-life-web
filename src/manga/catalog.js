@@ -56,6 +56,9 @@ export const SERIES=[
    {id:'daily-31',no:31,title:'おみせやさん'},
    {id:'daily-32',no:32,title:'おかねもち'},
    {id:'daily-33',no:33,title:'ふかふかベッド'},
+   {id:'daily-34',no:34,title:'もうちょっとだけ'},
+   {id:'daily-35',no:35,title:'おやつのじかん'},
+   {id:'daily-36',no:36,title:'さいごのいっぽん'},
   ]},
  // 季節の本：イベントの話。ピヨ探検の マップの マス（ハロウィンは slot-e）で ふえる
  {id:'season',title:'季節の本',folder:'03_event',color:'#e8893a',ink:'#4a2d5c',paper:'#fbf0e2',

@@ -46,5 +46,8 @@ export const MANGA_PAGES={
  'daily-31':[{"src":"manga/daily/31/p01.webp","w":1024,"h":1536}],
  'daily-32':[{"src":"manga/daily/32/p01.webp","w":1122,"h":1402}],
  'daily-33':[{"src":"manga/daily/33/p01.webp","w":1122,"h":1402}],
+ 'daily-34':[{"src":"manga/daily/34/p01.webp","w":1055,"h":1492}],
+ 'daily-35':[{"src":"manga/daily/35/p01.webp","w":1024,"h":1536}],
+ 'daily-36':[{"src":"manga/daily/36/p01.webp","w":1199,"h":1312}],
  'season-01':[{"src":"manga/season/01/p01.webp","w":1024,"h":1536}],
 };

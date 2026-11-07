@@ -95,6 +95,7 @@ export function familyLines(player,p,dayKey){
 export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,today,parent=null,syncState=()=>null,onGateOpened=()=>{}}){
  const $=(sel,root=document)=>root.querySelector(sel);
  let selected=null,revealAt=0,mapId=null;   // mapId：'main'（ほしぞら）| 'momiji'（もみじの もり）| 'hard'（ハードモード）。null は おまかせ
+ let scrolledFor=null;   // もみじの もりを いまの場所まで スクロールした 子とマップ（開いたあとの 再描画では 動かさない）
  const MAP_OF={main:MAP,hard:HARD,momiji:MOMIJI};
 
  // いまの場所：そのマップの マスに いれば そこ。いなければ、ほしぞらでは（ハードモードに いる子は さいおく）そのマップで さいごに ひらいた マス、なければ 入口
@@ -127,7 +128,7 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
   $('[data-map-sub]').textContent=`${PLAYERS[player].name}の マップ・${seasonPeriod()}${parent?'（親モード：ぜんぶ見えています）':''}`;
   $('[data-map-found]').textContent=`${foundN}こ`;
   $('[data-map-note]').textContent=mapId==='hard'?'🔥 ハードモード：⭐の マスは「パーフェクトの ほし」も 1こ いるよ。ほしは 10もん ぜんぶ せいかい（ピヨ探検pt が もらえる回）で 1こ もらえる'
-   :mapId==='momiji'?`🍁 もみじの もり：11月の あたらしい マップ。ピヨ探検pt は ほしぞらと おなじ。${fmtDay(SEASON.end)} まで たまるよ`
+   :mapId==='momiji'?`🍁 もみじの もり：マップは うえへ スクロールできるよ。ピヨ探検pt は ほしぞらと おなじ。${fmtDay(SEASON.end)} まで たまるよ`
    :hard?'🔥 さいおくの さらに おくに ハードモードが あるよ！ うえの「ハードモード」から いけるよ'
    :dayKey>SEASON.end?`ピヨ探検pt を ためられるのは ${fmtDay(SEASON.end)} まで。のこりの pt で ゲートは ひらけるよ`
    :dayKey<SEASON.start?`ピヨ探検pt が たまるのは ${fmtDay(SEASON.start)} から`:'10もん クリアで ピヨ探検pt が たまるよ（1日3回まで）。ゲートは どの じゅんばんでも ぜんぶ ひらけるよ';
@@ -169,6 +170,13 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
    if(here===node.id){el.classList.add('is-here');const img=document.createElement('img');img.className='dq-map-char';img.src=MAP_CHAR[player];img.alt='';img.width=100;img.height=115;img.decoding='async';el.append(img);}
    box.append(el);
   }
+  // 見えているときだけ、はじめの 1回 いまの場所を まんなかへ（画面が かくれている あいだは 高さが 0 なので 次の 描画で）
+  const space=$('[data-map-space]'),scrollKey=`${player}/${mapId}`;
+  if(scrolledFor!==scrollKey&&space.clientHeight>0){
+   scrolledFor=scrollKey;
+   const hereEl=box.querySelector('.is-here');
+   space.scrollTop=hereEl?hereEl.offsetTop-space.clientHeight/2:0;
+  }
   renderDetail(player,s,bal,stateOf,stars);
   const fam=familyLines(player,p,dayKey),famBox=$('[data-map-family]');
   if(famBox){
@@ -202,7 +210,7 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
   const parts=[h,p];
   if(node.id===MAP.start){h.textContent='⭐ スタート';p.textContent='ここから ぼうけんが はじまる。';}
   else if(node.id===HARD.start){h.textContent='🔥 ハードモード';p.textContent='さいおくの さらに おく。⭐の マスは、パーフェクトの ほしが ないと ひらかないよ。';}
-  else if(node.id===MOMIJI.start){h.textContent='🍁 もみじの もり';p.textContent='11月の あたらしい もり。どんな ごほうびが かくれているかな？';}
+  else if(node.id===MOMIJI.start){h.textContent='🍁 もみじの もり';p.textContent='あたらしい もり。どんな ごほうびが かくれているかな？';}
   else if(st==='open'){
    const f=rewardFace(node.reward,player,parent),got=s.rewards[node.reward];
    h.textContent=`${f.icon} ${f.name}`;p.textContent=f.note+(got?.on?`（${fmtDay(got.on)}に ゲット）`:'');
@@ -267,6 +275,6 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
   $('[data-map-detail]').addEventListener('click',e=>{const b=e.target.closest('[data-open-gate]');if(b&&!b.disabled)open(b.dataset.openGate);});
   $('[data-cube-reveal]').addEventListener('click',closeReveal);
  }
- return {render,bind,reset(){selected=null;mapId=null;},isRevealing:()=>!$('[data-cube-reveal]').hidden};
+ return {render,bind,reset(){selected=null;mapId=null;scrolledFor=null;},isRevealing:()=>!$('[data-cube-reveal]').hidden};
 }
 
