@@ -9,10 +9,11 @@
 // とすればよい。データはプレイヤーごとに独立した1かたまり（players[id]）なので、そのまま1ドキュメントにできる。
 // 兄弟ゲートは snapshotAll()（2人ぶんのまとめ）を見て判定する想定。
 import {playerIds} from './questions.js';
-import {SEASON,emptyCubePlayer,sanitizeCubePlayer,recordSession,openGate,mergeCubePlayer,season,cubeBalance,cubeEarnedTotal,playsOn,cubeSessionsLeft,completion,foundCount,effectsOf,inSeason,boostFor,applyCheer,CHEER} from './cosmicube.js';
+import {SEASON,emptyCubePlayer,sanitizeCubePlayer,recordSession,openGate,mergeCubePlayer,season,cubeBalance,cubeEarnedTotal,playsOn,cubeSessionsLeft,completion,foundCount,effectsOf,inSeason,boostFor,applyCheer,CHEER,coopReached} from './cosmicube.js';
 
 export const CUBE_KEY='chikipiyo-cosmicube:v1';
 export const CUBE_BROKEN_KEY=CUBE_KEY+':broken';
+export const COOP_SEEN_KEY='chikipiyo-cosmicube:coop-seen';   // 「2人そろった」の 絵を この端末で 見たか（記録の データとは べつ）
 
 function emptyCubeStore(){return {version:1,device:null,players:Object.fromEntries(playerIds.map(id=>[id,emptyCubePlayer()]))};}
 function sanitizeCubeStore(raw){
@@ -36,6 +37,8 @@ export function localCubeAdapter(storage){
    catch{try{storage.setItem(CUBE_BROKEN_KEY,text);}catch{}return {data:null,status:'recovered'};}   // 壊れたデータは消さずに退避
   },
   save(data){if(!storage)return false;try{storage.setItem(CUBE_KEY,JSON.stringify(data));return true;}catch{return false;}},
+  coopSeen(){try{return storage?.getItem(COOP_SEEN_KEY)==='1';}catch{return false;}},
+  markCoopSeen(){try{storage?.setItem(COOP_SEEN_KEY,'1');}catch{}},
  };
 }
 // テスト・保存できない環境用
@@ -83,6 +86,10 @@ export class CubeStore{
  onChange(fn){this.listeners.add(fn);return ()=>this.listeners.delete(fn);}
 
  player(id){return this.data.players[id];}
+ // 協力ゴール：2人とも ひらいたか／この端末で もう 見たか
+ coopReached(){const [a,b]=playerIds;return coopReached(this.player(a),this.player(b));}
+ coopSeen(){return !!this.seenCoop||!!this.adapter.coopSeen?.();}
+ markCoopSeen(){this.seenCoop=true;this.adapter.markCoopSeen?.();}
  // 10問クリア → キューブpt を入金（＋その日の1回目クリアならコインミッション達成）
  // おかえりボーナス（BOOSTS）は ここで かける。そのあと きょうだいの おうえん（CHEER）を 足す
  recordSession(id,{sessionId,dayKey,award}){

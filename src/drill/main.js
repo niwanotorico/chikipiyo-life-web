@@ -54,6 +54,7 @@ function onSyncChange(st){
  const v=document.body.dataset.view;
  if(v==='map'&&!cubeMap.isRevealing())cubeMap.render();
  else if(done&&v==='home')renderHome();
+ if(done)cubeMap.checkCoop();   // 2人そろったか（おそい子が ゴールしたら 両方の 端末で 出る）
 }
 const syncNow=()=>{cubeSync?.sync();};
 const cubeMap=createCubeMap({cube,audio,particles,flash:a=>flash(a),reduced:()=>reduced,getPlayer:()=>store.selected,today:()=>todayKey(),parent:PARENT,syncState:()=>cubeSync?.state()??null,onGateOpened:()=>{syncNow();syncTheme();}});
@@ -152,7 +153,7 @@ function renderCubePanel(sel,today){
  $('[data-pix]').innerHTML=pixelChar(sel??'piyokichi');
  $('[data-cube-panel] [data-to-map]').disabled=!sel;
 }
-function openMap(){if(!store.selected)return;audio.unlock();cubeMap.reset();cube.reload();cube.applyCheer();cubeMap.render();show('map');cubeMap.render();syncNow();}   // 2回目：見えてから いまの場所まで スクロールする
+function openMap(){if(!store.selected)return;audio.unlock();cubeMap.reset();cube.reload();cube.applyCheer();cubeMap.render();show('map');cubeMap.render();cubeMap.checkCoop();syncNow();}   // 2回目：見えてから いまの場所まで スクロールする
 
 function showNotice(){
  const n=$('[data-notice]');

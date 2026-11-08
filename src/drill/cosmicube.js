@@ -19,6 +19,9 @@ export const UPDATE_FROM='2026-10-07';
 // ごほうび。effects はドリル側で読む効果。house:true をつけると、開けたときに「3DPハウス来訪待ち」フラグを保存する
 // （トラマナちゃんは 3DPハウスの src/world/toramana-visit.js が ゲート・ごほうびを 読んで 部屋に 出す）
 // secret：子どもの画面では中身を見せない（❓表示）。親にだけ見せる中身は parent-mode.js に置く
+// チキンポイント（11/8〜）：もみじの 足す道の マス。金額は マスごとに きまっている（2人 おなじ）。開けるまで 見せない（スクラッチで 出す）。
+// rewards の 記録は ごほうびID ごとに 1つなので、IDは マスごとに わける（chicken-<ノードID>）。通帳の 取り込みは この記録を 読む
+export const CHICKEN_POINTS={'momiji-oku-04':5,'momiji-oku-05':10,'momiji-oku-06':5,'momiji-oku-07':15,'momiji-oku-08':5,'momiji-oku-09':10,'momiji-oku-10':5,'momiji-oku-11':10,'momiji-oku-12':5,'momiji-oku-13':15,'momiji-oku-14':10};
 export const REWARDS={
  // うさこ：11月の「もみじの もり」の マス
  usako:{icon:'🐰',name:'うさこ',note:'もんだいに うさこが でてくる',effects:['usako']},   // 3DPハウス来訪は GLB ができたら house:true を足す
@@ -91,6 +94,9 @@ export const REWARDS={
  morisaku:{icon:'🎤',name:'もりと さくま',note:'もんだいに もりと さくまが でてくる',effects:['morisaku']},
  'momiji-song':{icon:'🎵',name:'えんもたけなわ',note:'トップと ドリルで えんもたけなわ が ながれる',effects:['enmo']},
  'momiji-secret':{icon:'🎁',name:'もみじの もりの ❓',note:'なにが あるかは まだ ひみつ。ひらいたら、おうちの人に つたえてね',secret:true},
+ // 大ゴール：2人の 協力ゴール。子どもの画面では シルエットだけ（中身は parent-mode.js）
+ switch2:{icon:'🎁',name:'もみじの もりの 大ゴール',note:'ふたりとも ここまで きたら、なにかが おこるよ',secret:true},
+ ...Object.fromEntries(Object.entries(CHICKEN_POINTS).map(([nodeId,pt])=>[`chicken-${nodeId}`,{icon:'🪙',name:`チキンポイント ${pt}pt`,note:'おうちの人が つうちょうに いれてくれるよ',chickenPoints:pt,effects:[]}])),
 };
 
 // マップ。x,y はマップ上の位置（%）。requires は「ぜんぶ開いていれば挑戦できる」ゲート。
@@ -161,8 +167,7 @@ export const HARD={
 //  - ぜんぶの マスに from:'2026-11-01'。それより前は タブも 出さない
 //  - 小ネタ（small）：マンガ（21〜33話）。小ゴール：もりと さくま・うさこ・曲・ひみつ（マクドナルド）。大ゴール：いちばん おく
 //    もとは シールの マスだった momiji-st1・st2 も マンガ（id は そのまま）。曲は 右の みちの より道（ゴールの じゃまを しない）
-//  - reward:null の マスは ❓じゅんびちゅう：momiji-oku-04〜14 と 大ゴール（momiji-goal）。
-//    中身が できたら REWARDS に 足して reward を 書けば、そのまま ひらけるようになる
+//  - momiji-oku-04〜14 は チキンポイントの スクラッチ（CHICKEN_POINTS）。大ゴール（momiji-goal）は 2人の 協力ゴール（switch2）
 //  - ひみつの 小ゴール（momiji-secret）の 中身は 親モードで 見える
 //  - 11/7：約1か月で 大ゴールに つくように、40・41 の 先に 50pt の 1本道（momiji-oku-01〜14）を 足した。
 //    大ゴールは いちばん おくへ（50→100pt。まだ だれも ひらけない マスなので 記録には 影響しない）。
@@ -194,18 +199,18 @@ export const MOMIJI={
   {id:'momiji-oku-01',x:50,y:46,cost:50,reward:'manga-42',requires:['momiji-40','momiji-41'],small:true},
   {id:'momiji-oku-02',x:78,y:43,cost:50,reward:'manga-43',requires:['momiji-oku-01'],small:true},
   {id:'momiji-oku-03',x:50,y:40,cost:50,reward:'manga-44',requires:['momiji-oku-02'],small:true},
-  {id:'momiji-oku-04',x:22,y:37,cost:50,reward:null,requires:['momiji-oku-03'],small:true},
-  {id:'momiji-oku-05',x:50,y:34,cost:50,reward:null,requires:['momiji-oku-04'],small:true},
-  {id:'momiji-oku-06',x:78,y:31,cost:50,reward:null,requires:['momiji-oku-05'],small:true},
-  {id:'momiji-oku-07',x:50,y:28,cost:50,reward:null,requires:['momiji-oku-06'],small:true},
-  {id:'momiji-oku-08',x:22,y:25,cost:50,reward:null,requires:['momiji-oku-07'],small:true},
-  {id:'momiji-oku-09',x:50,y:22,cost:50,reward:null,requires:['momiji-oku-08'],small:true},
-  {id:'momiji-oku-10',x:78,y:19,cost:50,reward:null,requires:['momiji-oku-09'],small:true},
-  {id:'momiji-oku-11',x:50,y:16,cost:50,reward:null,requires:['momiji-oku-10'],small:true},
-  {id:'momiji-oku-12',x:22,y:13,cost:50,reward:null,requires:['momiji-oku-11'],small:true},
-  {id:'momiji-oku-13',x:50,y:10,cost:50,reward:null,requires:['momiji-oku-12'],small:true},
-  {id:'momiji-oku-14',x:78,y:7,cost:50,reward:null,requires:['momiji-oku-13'],small:true},
-  {id:'momiji-goal',x:40,y:4.5,cost:100,reward:null,requires:['momiji-oku-14']},
+  {id:'momiji-oku-04',x:22,y:37,cost:50,reward:'chicken-momiji-oku-04',requires:['momiji-oku-03'],small:true},
+  {id:'momiji-oku-05',x:50,y:34,cost:50,reward:'chicken-momiji-oku-05',requires:['momiji-oku-04'],small:true},
+  {id:'momiji-oku-06',x:78,y:31,cost:50,reward:'chicken-momiji-oku-06',requires:['momiji-oku-05'],small:true},
+  {id:'momiji-oku-07',x:50,y:28,cost:50,reward:'chicken-momiji-oku-07',requires:['momiji-oku-06'],small:true},
+  {id:'momiji-oku-08',x:22,y:25,cost:50,reward:'chicken-momiji-oku-08',requires:['momiji-oku-07'],small:true},
+  {id:'momiji-oku-09',x:50,y:22,cost:50,reward:'chicken-momiji-oku-09',requires:['momiji-oku-08'],small:true},
+  {id:'momiji-oku-10',x:78,y:19,cost:50,reward:'chicken-momiji-oku-10',requires:['momiji-oku-09'],small:true},
+  {id:'momiji-oku-11',x:50,y:16,cost:50,reward:'chicken-momiji-oku-11',requires:['momiji-oku-10'],small:true},
+  {id:'momiji-oku-12',x:22,y:13,cost:50,reward:'chicken-momiji-oku-12',requires:['momiji-oku-11'],small:true},
+  {id:'momiji-oku-13',x:50,y:10,cost:50,reward:'chicken-momiji-oku-13',requires:['momiji-oku-12'],small:true},
+  {id:'momiji-oku-14',x:78,y:7,cost:50,reward:'chicken-momiji-oku-14',requires:['momiji-oku-13'],small:true},
+  {id:'momiji-goal',x:40,y:4.5,cost:100,reward:'switch2',requires:['momiji-oku-14'],silhouette:true},
  ].map(n=>({...n,from:MOMIJI_FROM})),
 };
 export const momijiOpen=dayKey=>typeof dayKey==='string'&&dayKey>=MOMIJI.from;
@@ -249,7 +254,7 @@ export function inSeason(dayKey,season=SEASON){return typeof dayKey==='string'&&
 // プレイヤー1人ぶん（この形のまま、将来 Firestore などに1ドキュメントとして置ける）
 //   earned:  [{id:セッションID, day:'YYYY-MM-DD', pt, perfect?, cheer?}]   キューブpt の入金記録（同じ id は二度入らない）。perfect:true＝パーフェクトの ほし 1こ。cheer:true＝きょうだいの おうえん（あそんだ回には 数えない）
 //   gates:   {ノードID: {on:日付, cost}}                  ひらいたゲート
-//   rewards: {ごほうびID: {on:日付, house:bool}}           もらったごほうび（house=3DPハウス来訪待ち）
+//   rewards: {ごほうびID: {on:日付, house:bool, chickenPoints?}}  もらったごほうび（house=3DPハウス来訪待ち。chickenPoints=チキンポイントの金額）
 //   position: ノードID                                     マップ上のいまの場所
 //   coin:    {日付: セッションID}                          チキンコインミッション達成（その日の1回目クリア）
 export function emptySeason(){return {earned:[],gates:{},rewards:{},position:MAP.start};}
@@ -271,7 +276,7 @@ export function sanitizeSeason(raw){
  }
  s.earned=s.earned.slice(-EARNED_LIMIT);
  for(const [id,g] of Object.entries(obj(r.gates)))if(NODE[id]&&!isStartId(id))s.gates[id]={on:day(obj(g).on),cost:nat(obj(g).cost,100000)};
- for(const [id,v] of Object.entries(obj(r.rewards)))if(REWARDS[id])s.rewards[id]={on:day(obj(v).on),house:obj(v).house===true&&!!REWARDS[id].house};   // 来訪のないごほうびにはフラグを残さない
+ for(const [id,v] of Object.entries(obj(r.rewards)))if(REWARDS[id])s.rewards[id]={on:day(obj(v).on),house:obj(v).house===true&&!!REWARDS[id].house,...(REWARDS[id].chickenPoints&&obj(v).chickenPoints===REWARDS[id].chickenPoints?{chickenPoints:REWARDS[id].chickenPoints}:{})};   // 来訪のないごほうびにはフラグを残さない
  s.position=NODE[r.position]&&(r.position===MAP.start||s.gates[r.position])?r.position:MAP.start;
  return s;
 }
@@ -305,6 +310,9 @@ export function completion(s){
  const done=list.filter(n=>s.gates[n.id]).length;
  return {done,total:list.length,percent:list.length?Math.floor(done/list.length*100):0};
 }
+// 協力ゴール：2人とも この マスを ひらいたら そろう（両方の 端末で 同期の あとに たしかめる）
+export const COOP_GOAL='momiji-goal';
+export const coopReached=(a,b)=>!!season(a).gates[COOP_GOAL]&&!!season(b).gates[COOP_GOAL];
 export const isOpen=(s,id)=>id===MAP.start||id===MOMIJI.start||!!s.gates[id]||(id===HARD.start&&!!s.gates[HARD.opensWith]);
 // パーフェクトの ほし：もらった数 − ⭐の マスで つかった数
 export function starsEarned(s){return s.earned.filter(e=>e.perfect&&!e.cheer).length;}
@@ -427,7 +435,8 @@ export function openGate(player,nodeId,dayKey){
  if(node.star&&starBalance(s0)<1)return {player,ok:false,reason:'star'};
  const next=sanitizeCubePlayer(clone(player)),s=season(next);
  s.gates[nodeId]={on:dayKey,cost};
- s.rewards[node.reward]={on:dayKey,house:!!REWARDS[node.reward].house};
+ const chickenPoints=REWARDS[node.reward].chickenPoints;
+ s.rewards[node.reward]={on:dayKey,house:!!REWARDS[node.reward].house,...(chickenPoints?{chickenPoints}:{})};
  s.position=nodeId;
  next.seasons[SEASON.id]=sanitizeSeason(s);
  return {player:next,ok:true,reason:'ok',reward:node.reward};
@@ -445,6 +454,8 @@ export function mergeCubePlayer(a,b){
   for(const [k,g] of Object.entries(x.gates))if(!gates[k]||(g.on??'')<=(gates[k].on??''))gates[k]=g;
   const rewards={...y.rewards};
   for(const [k,r] of Object.entries(x.rewards))rewards[k]=rewards[k]?{on:[r.on,rewards[k].on].filter(Boolean).sort()[0]??null,house:r.house&&rewards[k].house}:r;
+  // チキンポイントの 記録は 通帳の 取り込みが 読む。チキンポイントを 知らない 古いページ（キャッシュ）が 消しても、ゲートから 取りもどす
+  for(const [k,g] of Object.entries(gates)){const rid=NODE[k]?.reward,pt=REWARDS[rid]?.chickenPoints;if(pt)rewards[rid]={on:rewards[rid]?.on??g.on,house:false,chickenPoints:pt};}
   const newer=A.updatedAt>=B.updatedAt?x:y;
   out.seasons[id]=sanitizeSeason({earned,gates,rewards,position:newer.position});
  }

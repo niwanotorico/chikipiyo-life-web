@@ -111,7 +111,7 @@ test('ぜんぶ ひらける：ほし4こ ＋ 345pt で ゴールまで。ゴー
  const s=season(p);
  for(const n of HARD.nodes)if(n.id!==HARD.start)assert.ok(s.gates[n.id],n.id);
  assert.equal(s.position,'hard-goal');
- assert.equal(parentLabel('hard-goal','piyomi').name,'Switch 2 にだいめ かいほう券');
+ assert.equal(parentLabel('hard-goal','piyomi').name,'ママと赤羽でフルーツサンドデート');
  assert.ok(!JSON.stringify(REWARDS['hard-goal']).includes('Switch'),'子どもの画面には 出さない');
  const ui=readFileSync(new URL('../src/drill/cosmicube-ui.js',import.meta.url),'utf8');
  assert.ok(ui.includes('rewardFace'),'secret は rewardFace で ❓');

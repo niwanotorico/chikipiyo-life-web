@@ -1,6 +1,6 @@
 // ピヨドリル：ピヨ探検のマップ画面と、ゲートが開くときの演出。保存は cube（CubeStore）にまかせる。
 import {PLAYERS} from './questions.js';
-import {SEASON,MAP,HARD,MOMIJI,momijiOpen,REWARDS,nodeById,mapView,season,cubeBalance,costOf,foundCount,stickersOf,hardOpen,starBalance,BOOSTS,boostFor,CHEER,cheerReceived,cheerGiven} from './cosmicube.js';
+import {SEASON,MAP,HARD,MOMIJI,momijiOpen,REWARDS,nodeById,mapView,season,cubeBalance,costOf,foundCount,stickersOf,hardOpen,starBalance,BOOSTS,boostFor,CHEER,cheerReceived,cheerGiven,COOP_GOAL} from './cosmicube.js';
 
 // ---------- マップの現在地キャラ（ドット絵素材） ----------
 // 元素材：piyodrill/characters/*_ipad.png（100×115）。遊んでいる人の絵を出す
@@ -14,7 +14,10 @@ export const MAP_CHAR={
 //   元素材：piyodrill/characters/
 export const REWARD_ART={
  toramana:new URL('../../assets/drill/characters/toramana_jump.png',import.meta.url).href,
+ switch2:new URL('../../assets/drill/rewards/switch2-silhouette.svg',import.meta.url).href,   // 大ゴール：形だけ
 };
+// 2人そろった ときの 絵。ここ 1か所（この ファイルを おなじ名前で さしかえるだけ）
+export const COOP_GET_ART=new URL('../../assets/drill/rewards/switch2-get.png',import.meta.url).href;
 // 毎日の ごほうびの シール（ドット絵）。元素材：piyodrill/stickers/（01_music は 黄色いひよこの音楽スプライト集 から切り出し）
 const sticker=name=>new URL(`../../assets/drill/stickers/${name}.png`,import.meta.url).href;
 export const STICKER_ART={
@@ -163,7 +166,7 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
     el.setAttribute('aria-label',state==='open'?label:state==='ready'?`なにかが ある ゲート。${node.star?'パーフェクトの ほし 1こと ':''}${cost} ピヨ探検pt で ひらく`:state==='near'?'まだ ひらけない ゲート':'じゅんびちゅう');
    }
    el.innerHTML=`<span class="dq-node-icon"></span>${label?'<span class="dq-node-label"></span>':''}${tag?'<span class="dq-node-cost"></span>':''}`;
-   if(state==='open'&&REWARD_ART[node.reward])$('.dq-node-icon',el).append(artImg(node.reward,'dq-node-art'));
+   if(state==='open'&&REWARD_ART[node.reward]||node.silhouette&&state!=='fog')$('.dq-node-icon',el).append(artImg(node.reward,'dq-node-art'));
    else $('.dq-node-icon',el).textContent=icon;
    if(label)$('.dq-node-label',el).textContent=label;
    if(tag)$('.dq-node-cost',el).textContent=tag;
@@ -215,6 +218,11 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
    const f=rewardFace(node.reward,player,parent),got=s.rewards[node.reward];
    h.textContent=`${f.icon} ${f.name}`;p.textContent=f.note+(got?.on?`（${fmtDay(got.on)}に ゲット）`:'');
    if(got?.house&&!REWARDS[node.reward].secret){const q=document.createElement('p');q.textContent='🏠 3DPハウスに あそびにくる じゅんびを しているよ';parts.push(q);}
+   if(node.id===COOP_GOAL&&!parent){
+    const q=document.createElement('p');
+    if(cube.coopReached()){q.textContent='🤝 ふたりで ゴール！';const b=document.createElement('button');b.type='button';b.className='dq-btn';b.dataset.coopShow='1';b.textContent='もういちど みる';parts.push(q,b);}
+    else{q.textContent='🤝 もうひとりが ここに くるのを まっているよ';parts.push(q);}
+   }
   }
   else if(st==='ready'){
    h.textContent=parent&&node.reward?`❓ ${rewardFace(node.reward,player,parent).name}`:'❓ なにが でるかな？';
@@ -243,7 +251,7 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
   const res=cube.openGate(player,nodeId,today());
   if(!res.ok){render();return;}
   selected=nodeId;render();
-  reveal(player,res.reward);
+  if(REWARDS[res.reward].chickenPoints)openScratch(res.reward);else reveal(player,res.reward);
   onGateOpened(nodeId);
  }
 
@@ -267,14 +275,90 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
  function closeReveal(){
   if(performance.now()-revealAt<1200)return;
   $('[data-cube-reveal]').hidden=true;particles.clear();
+  checkCoop();
  }
+
+ // ---- チキポスクラッチ ----
+ // マスを ひらいた 時点で 記録は 保存ずみ。ここは 見せるだけ（とちゅうで アプリを とじても 金額は きえない）。
+ // 古い iPad でも かるいように、けずった 割合は 画素を 読まず、ゆびが とおった ます目で かぞえる
+ const SC_COLS=16,SC_ROWS=8,SC_NEED=.55;
+ let sc=null;
+ function openScratch(rewardId){
+  const pt=REWARDS[rewardId].chickenPoints,ov=$('[data-chicken-scratch]'),cv=$('[data-scratch-cover]');
+  $('[data-scratch-amount]').textContent=`${pt} pt`;
+  $('[data-scratch-msg]').textContent='ゆびで ごしごし けずってね';
+  $('[data-scratch-all]').hidden=false;$('[data-scratch-close]').hidden=true;
+  cv.hidden=false;ov.hidden=false;
+  const w=cv.clientWidth,h=cv.clientHeight,dpr=Math.min(devicePixelRatio||1,2);
+  cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);
+  const ctx=cv.getContext('2d');
+  ctx.scale(dpr,dpr);
+  const g=ctx.createLinearGradient(0,0,w,h);g.addColorStop(0,'#ffd76a');g.addColorStop(1,'#f2b23e');
+  ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+  ctx.fillStyle='#8a5a3c';ctx.font=`800 ${Math.round(h*.2)}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('けずってね',w/2,h/2);
+  ctx.globalCompositeOperation='destination-out';ctx.strokeStyle='#fff';ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=h*.3;
+  sc={pt,ctx,w,h,r:h*.15,hit:new Set(),last:null,down:false,done:false};
+  audio.whoosh();
+ }
+ function scratchTo(x,y){
+  if(!sc||sc.done)return;
+  const a=sc.last??{x,y},dist=Math.hypot(x-a.x,y-a.y),steps=Math.max(1,Math.ceil(dist/(sc.r/2)));
+  sc.ctx.beginPath();sc.ctx.moveTo(a.x,a.y);sc.ctx.lineTo(x+.01,y);sc.ctx.stroke();
+  for(let i=0;i<=steps;i++){
+   const px=a.x+(x-a.x)*i/steps,py=a.y+(y-a.y)*i/steps;
+   for(let c=0;c<SC_COLS;c++)for(let r=0;r<SC_ROWS;r++){
+    if(Math.hypot((c+.5)*sc.w/SC_COLS-px,(r+.5)*sc.h/SC_ROWS-py)<=sc.r)sc.hit.add(c*SC_ROWS+r);
+   }
+  }
+  sc.last={x,y};
+  if(sc.hit.size>=SC_COLS*SC_ROWS*SC_NEED)finishScratch();
+ }
+ function finishScratch(){
+  if(!sc||sc.done)return;
+  sc.done=true;
+  $('[data-scratch-cover]').hidden=true;
+  $('[data-scratch-msg]').textContent=`チキンポイント ${sc.pt}pt ゲット！`;
+  $('[data-scratch-all]').hidden=true;$('[data-scratch-close]').hidden=false;
+  audio.fanfare();flash(.5);
+  particles.burst(innerWidth/2,innerHeight*.45,{count:reduced()?16:60,kinds:['star','confetti','dot','feather'],speed:reduced()?260:650,up:240,life:1.1});
+ }
+ function closeScratch(){
+  if(!sc?.done)return;
+  $('[data-chicken-scratch]').hidden=true;particles.clear();sc=null;
+  checkCoop();
+ }
+ function scratchPoint(e){const cv=$('[data-scratch-cover]'),b=cv.getBoundingClientRect();return [(e.clientX-b.left)*cv.clientWidth/b.width,(e.clientY-b.top)*cv.clientHeight/b.height];}
+
+ // ---- 2人そろった ときの 絵 ----
+ const busy=()=>!$('[data-cube-reveal]').hidden||!$('[data-chicken-scratch]').hidden||!$('[data-coop-get]').hidden;
+ function showCoop(){
+  $('[data-coop-art]').src=COOP_GET_ART;
+  $('[data-coop-get]').hidden=false;
+  audio.fanfare();flash(.7);
+  particles.burst(innerWidth/2,innerHeight*.42,{count:reduced()?20:90,kinds:['star','confetti','dot','feather'],speed:reduced()?300:850,up:280,life:1.3});
+ }
+ // 同期の あと・マップを ひらいた とき・ほかの 演出が おわった ときに よぶ。ドリルの とちゅうでは 出さない。親モードでは 見た ことに しない
+ function checkCoop(){
+  const v=document.body.dataset.view;
+  if(parent||(v!=='map'&&v!=='home')||busy()||!cube.coopReached()||cube.coopSeen())return;
+  showCoop();
+ }
+ function closeCoop(){$('[data-coop-get]').hidden=true;particles.clear();if(!parent)cube.markCoopSeen();}
 
  function bind(){
   $('[data-map-nodes]').addEventListener('click',e=>{const b=e.target.closest('[data-node]');if(b)select(b.dataset.node);});
   $('[data-map-tabs]')?.addEventListener('click',e=>{const b=e.target.closest('[data-map-tab]');if(!b||b.dataset.mapTab===mapId)return;mapId=b.dataset.mapTab;selected=null;audio.tap();render();});
-  $('[data-map-detail]').addEventListener('click',e=>{const b=e.target.closest('[data-open-gate]');if(b&&!b.disabled)open(b.dataset.openGate);});
+  $('[data-map-detail]').addEventListener('click',e=>{if(e.target.closest('[data-coop-show]')){if(!busy())showCoop();return;}const b=e.target.closest('[data-open-gate]');if(b&&!b.disabled)open(b.dataset.openGate);});
   $('[data-cube-reveal]').addEventListener('click',closeReveal);
+  const cv=$('[data-scratch-cover]');
+  cv.addEventListener('pointerdown',e=>{if(!sc)return;e.preventDefault();sc.down=true;sc.last=null;try{cv.setPointerCapture(e.pointerId);}catch{}scratchTo(...scratchPoint(e));});
+  cv.addEventListener('pointermove',e=>{if(sc?.down)scratchTo(...scratchPoint(e));});
+  for(const t of ['pointerup','pointercancel'])cv.addEventListener(t,()=>{if(sc){sc.down=false;sc.last=null;}});
+  $('[data-scratch-all]').addEventListener('click',finishScratch);
+  $('[data-scratch-close]').addEventListener('click',closeScratch);
+  $('[data-coop-close]').addEventListener('click',closeCoop);
  }
- return {render,bind,reset(){selected=null;mapId=null;scrolledFor=null;},isRevealing:()=>!$('[data-cube-reveal]').hidden};
+ return {render,bind,checkCoop,reset(){selected=null;mapId=null;scrolledFor=null;},isRevealing:busy};
 }
 
