@@ -1,5 +1,6 @@
 // ピヨドリル：ピヨ探検のマップ画面と、ゲートが開くときの演出。保存は cube（CubeStore）にまかせる。
 import {PLAYERS} from './questions.js';
+import {episodeById} from '../manga/catalog.js';
 import {SEASON,MAP,HARD,MOMIJI,momijiOpen,REWARDS,nodeById,mapView,season,cubeBalance,costOf,foundCount,stickersOf,hardOpen,starBalance,BOOSTS,boostFor,CHEER,cheerReceived,cheerGiven,COOP_GOAL} from './cosmicube.js';
 
 // ---------- マップの現在地キャラ（ドット絵素材） ----------
@@ -65,15 +66,20 @@ export function pixelChar(player){
  return `<svg viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg">${rects}</svg>`;
 }
 
-// ごほうびの見せかた。secret のごほうびは、子どもには中身を出さない。
+// ごほうびの見せかた。secret のごほうびは、開ける前の子どもには中身を出さない。
 // parent：親モードのときだけ {label(rewardId, player)}（parent-mode.js の parentLabel）。それ以外は null
-export function rewardFace(id,player,parent=null){
+// opened：開けたマスのときだけ (rewardId, player) => {name, note} | null（parent-mode.js の openedLabel。開けた子に 中身を見せる）
+export function rewardFace(id,player,parent=null,opened=null){
  const r=REWARDS[id];
  if(!r)return {icon:'❓',name:'？',note:''};
  const p=parent?.label?.(id,player);
  if(p)return {icon:r.icon,name:p.name,note:p.note};
+ const o=opened?.(id,player);
+ if(o)return {icon:r.icon,name:o.name,note:o.note};
  return {icon:r.icon,name:r.name,note:r.note};
 }
+// マンガの ごほうび：じっさいに ふえた話の 名前（連載は 話数の じゅんに ふえるので、マスに 書いた話と ちがうことがある）
+export function mangaName(eps){return eps?.length?'マンガ'+eps.map(e=>`「${episodeById(e)?.title??e}」`).join(''):null;}
 
 const fmtDay=d=>`${Number(d.slice(5,7))}/${Number(d.slice(8,10))}`;
 export const seasonPeriod=()=>`${fmtDay(SEASON.start)}〜${fmtDay(SEASON.end)}`;
@@ -95,8 +101,13 @@ export function familyLines(player,p,dayKey){
  return {boost,cheer};
 }
 
-export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,today,parent=null,syncState=()=>null,onGateOpened=()=>{}}){
+export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,today,parent=null,opened=null,syncState=()=>null,onGateOpened=()=>{}}){
  const $=(sel,root=document)=>root.querySelector(sel);
+ function openFace(rewardId,player){
+  const f=rewardFace(rewardId,player,parent,opened);
+  if(!parent&&REWARDS[rewardId]?.manga){const n=mangaName(cube.mangaPlan(player,today()).byReward[rewardId]);if(n)return {...f,name:n};}
+  return f;
+ }
  let selected=null,revealAt=0,mapId=null;   // mapId：'main'（ほしぞら）| 'momiji'（もみじの もり）| 'hard'（ハードモード）。null は おまかせ
  let scrolledFor=null;   // もみじの もりを いまの場所まで スクロールした 子とマップ（開いたあとの 再描画では 動かさない）
  const MAP_OF={main:MAP,hard:HARD,momiji:MOMIJI};
@@ -157,7 +168,7 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
     if(node.id===MAP.start){icon='⭐';label=node.label;}
     else if(node.id===HARD.start){icon='🔥';label=node.label;}
     else if(node.id===MOMIJI.start){icon='🍁';label=node.label;}
-    else if(node.reward&&(state==='open'||parent)){const f=rewardFace(node.reward,player,parent);icon=f.icon;label=node.small?'':f.name;}   // 小さいマスは 絵だけ（名前は タップで）
+    else if(node.reward&&(state==='open'||parent)){const f=state==='open'?openFace(node.reward,player):rewardFace(node.reward,player,parent);icon=f.icon;label=node.small?'':f.name;}   // 小さいマスは 絵だけ（名前は タップで）
     else if(state==='soon'){label='じゅんびちゅう';}
     const cost=costOf(s,node);
     if(state==='ready')tag=node.star?`⭐+${cost}pt`:`${cost}pt`;
@@ -215,7 +226,7 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
   else if(node.id===HARD.start){h.textContent='🔥 ハードモード';p.textContent='さいおくの さらに おく。⭐の マスは、パーフェクトの ほしが ないと ひらかないよ。';}
   else if(node.id===MOMIJI.start){h.textContent='🍁 もみじの もり';p.textContent='あたらしい もり。どんな ごほうびが かくれているかな？';}
   else if(st==='open'){
-   const f=rewardFace(node.reward,player,parent),got=s.rewards[node.reward];
+   const f=openFace(node.reward,player),got=s.rewards[node.reward];
    h.textContent=`${f.icon} ${f.name}`;p.textContent=f.note+(got?.on?`（${fmtDay(got.on)}に ゲット）`:'');
    if(got?.house&&!REWARDS[node.reward].secret){const q=document.createElement('p');q.textContent='🏠 3DPハウスに あそびにくる じゅんびを しているよ';parts.push(q);}
    if(node.id===COOP_GOAL&&!parent){
@@ -236,7 +247,7 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
    b.textContent=needStar?`ひらく（⭐1 ＋ ${cost} pt）`:`ひらく（${cost} pt）`;b.disabled=bal<cost||!starOk;parts.push(b);
   }
   else if(st==='near'){
-   const need=node.requires.filter(id=>!s.gates[id]&&id!==MAP.start&&id!==HARD.start&&id!==MOMIJI.start).map(id=>{const n=nodeById(id);return stateOf[id]==='open'||parent?rewardFace(n.reward,player,parent).name:'となりの ❓';});
+   const need=node.requires.filter(id=>!s.gates[id]&&id!==MAP.start&&id!==HARD.start&&id!==MOMIJI.start).map(id=>{const n=nodeById(id);return stateOf[id]==='open'?openFace(n.reward,player).name:parent?rewardFace(n.reward,player,parent).name:'となりの ❓';});
    h.textContent=parent&&node.reward?`🔒 ${rewardFace(node.reward,player,parent).name}`:'🔒 まだ ひらけない ゲート';
    p.textContent=`${[...new Set(need)].join(' と ')} を ひらくと、いけるようになるよ。`;
   }
@@ -257,7 +268,7 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
 
  // 派手な非ドット演出：キューブがほどけて、光の中からごほうび
  function reveal(player,rewardId){
-  const f=rewardFace(rewardId,player,parent);
+  const f=openFace(rewardId,player);
   revealFace(REWARD_ART[rewardId]?artImg(rewardId,'dq-reveal-art'):f.icon,`${f.name} を 手に入れた！`,f.note);
  }
  // icon：絵（img）か 文字

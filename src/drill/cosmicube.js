@@ -366,15 +366,51 @@ export const giftAvailable=(player,dayKey)=>typeof dayKey==='string'&&dayKey>=GI
 export const AUTO_MANGA=[
  // いまは なし（ハロウィンの マンガは 10/10 から マップの ふつうの マス slot-e に した）
 ];
-export function mangaOf(player,dayKey){
- const owned=new Set();
- for(const s of Object.values(player.seasons))for(const id of [...Object.keys(s.rewards),...Object.keys(s.gates).map(id=>NODE[id]?.reward)])if(id)owned.add(id);
- const set=new Set();
- for(const id of owned)for(const e of REWARDS[id]?.manga??[])set.add(e);
+// 連載マンガ（マイクラ本・まったり日常本）は 話数の じゅんにしか よめるようにならない（2026-11-12 ちきんの決定）。
+//  - MANGA_ORDER_FROM から あとに ひらいた マンガの ごほうびは「その シリーズで 1話 ふえる」として かぞえ、
+//    ふえるのは その シリーズの まだ よめない いちばん わかい話（とばした話が あれば そこから うめる）。
+//    マスに 書いた話（REWARDS[].manga）は シリーズと 話の数を きめるだけ。マスの 開けかたは かえない（ゲートの みちは つまらない）
+//  - それより 前に ひらいた ごほうびは これまでどおり 書いた話（もう よめていた話は へらさない）
+//  - 保存は しない（毎回 記録から きめる）。開封の 記録は かきかえない
+export const MANGA_ORDER_FROM='2026-11-13';
+const SERIAL=new Set(['mc','daily']);
+const epParts=e=>{const m=/^(.+)-(\d+)$/.exec(e);return m?{series:m[1],no:Number(m[2])}:null;};
+const serialOf=e=>{const p=epParts(e);return p&&SERIAL.has(p.series)?p.series:null;};
+let serialEps=null;   // シリーズ → 話ID（話数の じゅん）
+function serialList(series){
+ if(!serialEps){
+  serialEps={};
+  const all=[...Object.values(REWARDS),...AUTO_MANGA,...DAILY_GIFTS].flatMap(r=>r.manga??[]);
+  for(const e of new Set(all)){const s=serialOf(e);if(s)(serialEps[s]??=[]).push(e);}
+  for(const list of Object.values(serialEps))list.sort((a,b)=>epParts(a).no-epParts(b).no);
+ }
+ return serialEps[series]??[];
+}
+let rewardOrder=null;   // おなじ日に ひらいた マスは マップの ならびの じゅん
+const orderOf=id=>(rewardOrder??=new Map(Object.values(NODE).map((n,i)=>[n.reward,i]).reverse())).get(id)??1e9;
+// 戻り値 {set:よめる話の Set, byReward:{ごほうびID:[その マスで ふえた話]}}（byReward は MANGA_ORDER_FROM から あとの ぶんだけ）
+export function mangaPlan(player,dayKey){
+ const owned=new Map();   // ごほうびID → ひらいた日（わからなければ ''）
+ for(const s of Object.values(player.seasons)){
+  for(const [id,r] of Object.entries(s.rewards))if(!owned.get(id))owned.set(id,typeof r?.on==='string'?r.on:'');
+  for(const [gid,g] of Object.entries(s.gates)){const id=NODE[gid]?.reward;if(id&&!owned.get(id))owned.set(id,typeof g?.on==='string'?g.on:'');}
+ }
+ const set=new Set(),slots=[];
+ for(const [id,on] of owned)for(const e of REWARDS[id]?.manga??[]){
+  const series=serialOf(e);
+  if(series&&on>=MANGA_ORDER_FROM)slots.push({id,on,series});else set.add(e);
+ }
  for(const a of AUTO_MANGA)if(nodeActive(a,dayKey)&&a.requires.every(id=>owned.has(id)))for(const e of a.manga)set.add(e);
  for(const g of giftsOf(player))for(const e of g.manga??[])set.add(e);   // 毎日の ごほうびの マンガ
- return set;
+ slots.sort((a,b)=>a.on<b.on?-1:a.on>b.on?1:orderOf(a.id)-orderOf(b.id));
+ const byReward={};
+ for(const sl of slots){
+  const next=serialList(sl.series).find(e=>!set.has(e));
+  if(next){set.add(next);(byReward[sl.id]??=[]).push(next);}
+ }
+ return {set,byReward};
 }
+export function mangaOf(player,dayKey){return mangaPlan(player,dayKey).set;}
 
 // ノードの見えかた
 //   'open'   ひらいた

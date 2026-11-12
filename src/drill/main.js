@@ -11,8 +11,8 @@ import {CubeStore,localCubeAdapter,memoryCubeAdapter} from './cosmicube-store.js
 import {createCubeSync} from './cube-sync.js';
 import {createCubeMap,pixelChar,seasonPeriod,giftLabel,giftImg} from './cosmicube-ui.js';
 import {giftOn,giftAvailable,season,hardOpen,starBalance} from './cosmicube.js';
-import {themeTrack,trackElement,gameSong} from './bgm-pool.js';
-import {isParentMode,parentLabel} from './parent-mode.js';
+import {themeTrack,trackBuffer,gameSong} from './bgm-pool.js';
+import {isParentMode,parentLabel,openedLabel} from './parent-mode.js';
 import * as festival from './festival.js';
 import {checkAnswer} from './questions.js';
 import {explain} from './explain.js';
@@ -57,7 +57,7 @@ function onSyncChange(st){
  if(done)cubeMap.checkCoop();   // 2人そろったか（おそい子が ゴールしたら 両方の 端末で 出る）
 }
 const syncNow=()=>{cubeSync?.sync();};
-const cubeMap=createCubeMap({cube,audio,particles,flash:a=>flash(a),reduced:()=>reduced,getPlayer:()=>store.selected,today:()=>todayKey(),parent:PARENT,syncState:()=>cubeSync?.state()??null,onGateOpened:()=>{syncNow();syncTheme();}});
+const cubeMap=createCubeMap({cube,audio,particles,flash:a=>flash(a),reduced:()=>reduced,getPlayer:()=>store.selected,today:()=>todayKey(),parent:PARENT,opened:openedLabel,syncState:()=>cubeSync?.state()??null,onGateOpened:()=>{syncNow();syncTheme();}});
 
 const lines={
  start:{piyokichi:'さくっと 10もん いこう！',piyomi:'よーし、いっしょに がんばろ！'},
@@ -83,7 +83,7 @@ function show(name){
 function syncTheme(){
  const v=document.body.dataset.view,sel=store.selected;
  const track=(v==='home'||v==='map')&&sel?themeTrack(songEffects(sel)):null;
- if(track&&!audio.muted)audio.playTheme(trackElement(track));else audio.stopTheme();
+ if(track&&!audio.muted)audio.playTheme(track,trackBuffer);else audio.stopTheme();
 }
 function persist(){saveStore(store,storage);}
 function setHeat(stage){document.body.dataset.heat=String(stage);}
@@ -693,6 +693,6 @@ function bind(){
 mountSiteNav($('[data-nav]'),'drill',{position:'afterbegin',variant:'floating'});
 for(const img of $$('[data-art]'))img.src=art[img.dataset.art];
 // 確認用（?debug=1）：残っているタイマー・演出の数を外から確かめる
-if(params.get('debug')==='1')window.__drill={cube:()=>cube.snapshotAll(todayKey()),theme:()=>({on:audio.themeOn,src:audio.themeEl?.src??''}),timers:()=>timers.size,actorTimers:()=>actor.timers.size,actorBusy:()=>actor.busy,eggs:()=>document.querySelectorAll('.dq-egg').length,flies:()=>document.querySelectorAll('.dq-fly').length,stageImg:()=>actor.img.getAttribute('src')||'',stageKind:()=>actor.stage.dataset.kind,eggUsed:()=>!!play?.eggUsed};
+if(params.get('debug')==='1')window.__drill={cube:()=>cube.snapshotAll(todayKey()),theme:()=>({on:audio.themeOn,src:audio.themeId??'',gain:audio.themeLevel}),timers:()=>timers.size,actorTimers:()=>actor.timers.size,actorBusy:()=>actor.busy,eggs:()=>document.querySelectorAll('.dq-egg').length,flies:()=>document.querySelectorAll('.dq-fly').length,stageImg:()=>actor.img.getAttribute('src')||'',stageKind:()=>actor.stage.dataset.kind,eggUsed:()=>!!play?.eggUsed};
 bind();renderSound();renderFxMode();showNotice();renderHome();show('home');setHeat(0);
 if(status==='recovered')persist();

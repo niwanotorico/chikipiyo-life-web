@@ -8,15 +8,17 @@ export function isParentMode(loc=globalThis.location){
  try{return new URLSearchParams(loc?.search??'').get('parent')==='1';}catch{return false;}
 }
 
-// 親にだけ見せる ごほうびの中身（プレイヤーごと）。子どもの画面には出さない
+// ごほうびの中身（プレイヤーごと）。name は親モードと、下の openedLabel（開けた子の画面）で つかう。
+// note は親むけの メモ（子どもには 出さない）。kid は 開けた子の画面に 出す 説明（kid が ないものは 開けても ❓ のまま）
 const PARENT_LABELS={
  deep:{
-  piyomi:{name:'メロガッパFC 3か月権',note:'10/27 に 黒コインで 前倒しスタート（ぴよきちと 交換した 黒コインを 使った）。ぴよみの画面では ひみつ'},
-  piyokichi:{name:'プリンター稼働券 600ポイント',note:'親から渡す特別ごほうび（ぴよきちの画面では ひみつ）'},
+  piyomi:{name:'メロガッパFC 3か月権',note:'10/27 に 黒コインで 前倒しスタート（ぴよきちと 交換した 黒コインを 使った）',kid:'メロガッパの ファンクラブに 3か月 はいれるよ'},
+  piyokichi:{name:'プリンター稼働券 600ポイント',note:'親から渡す特別ごほうび',kid:'3Dプリンターを 600ぷん つかえるよ'},
  },
  // ハードモードの ゴール：現実の ごほうび
  'hard-goal':{
-  piyomi:{name:'ママと赤羽でフルーツサンドデート',note:'ハードモードの ゴール。親から渡す 現実の ごほうび（子どもの画面では ひみつ）'},
+  piyomi:{name:'ママと赤羽でフルーツサンドデート',note:'ハードモードの ゴール。親から渡す 現実の ごほうび',kid:'ママと 赤羽で フルーツサンドを たべに いこう！'},
+  // 中身が まだ きまっていないので kid は なし（開けても ❓ のまま）。きまったら name と kid を 書く
   piyokichi:{name:'（未定）ハードモードの ごほうび',note:'親から渡す 現実の ごほうび。中身は ちきんが 決める（子どもの画面では ひみつ）'},
  },
  // もみじの もりの 大ゴール：2人の 協力ゴール
@@ -26,8 +28,17 @@ const PARENT_LABELS={
  },
  // もみじの もり（11月）の 小ゴール
  'momiji-secret':{
-  piyomi:{name:'マクドナルド ランチ券',note:'もみじの もりの 小ゴール。親から渡す 現実の ごほうび（子どもの画面では ひみつ）'},
-  piyokichi:{name:'マクドナルド ランチ券',note:'もみじの もりの 小ゴール。親から渡す 現実の ごほうび（子どもの画面では ひみつ）'},
+  piyomi:{name:'マクドナルド ランチ券',note:'もみじの もりの 小ゴール。親から渡す 現実の ごほうび',kid:'マクドナルドで ランチが たべられるよ'},
+  piyokichi:{name:'マクドナルド ランチ券',note:'もみじの もりの 小ゴール。親から渡す 現実の ごほうび',kid:'マクドナルドで ランチが たべられるよ'},
  },
 };
 export function parentLabel(rewardId,player){return PARENT_LABELS[rewardId]?.[player]??null;}
+
+// 開けた子の画面で 中身を 見せる ひみつの ごほうび（2026-11-12 ちきんの決定）。開ける前は これまでどおり ❓。
+// switch2（もみじの 大ゴール）は ふくめない：2人そろうまで シルエットだけ
+const SHOW_WHEN_OPENED=new Set(['deep','hard-goal','momiji-secret']);
+export function openedLabel(rewardId,player){
+ if(!SHOW_WHEN_OPENED.has(rewardId))return null;
+ const p=PARENT_LABELS[rewardId]?.[player];
+ return p?.kid?{name:p.name,note:p.kid}:null;
+}

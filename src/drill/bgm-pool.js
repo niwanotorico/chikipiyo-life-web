@@ -12,11 +12,17 @@ export function themeTrack(effects){
 // ゲーム中の 合成BGM（audio.js の SONGS の id）。'enmo' があれば えんも、なければ いつもの曲
 export function gameSong(effects){return effects?.has?.('enmo')?'enmo':'default';}
 
-// 再生用の <audio>（1つを使いまわす。Web Audio へは audio.js がつなぐ）
-let el=null;
-export function trackElement(track){
- if(!track||typeof Audio==='undefined')return null;
- if(!el){el=new Audio();el.loop=true;el.preload='auto';}
- if(el.dataset.track!==track.id){el.src=track.url;el.dataset.track=track.id;}
- return el;
+// 再生用の 音のデータ（AudioBuffer）。audio.js が Web Audio で ループ再生する。
+// <audio> を やめた理由：iPad（iOS）は <audio> の 音量（volume）が きかず、テーマ曲だけ 大きく なっていた（2026-11-12）。
+// おぼえるのは いま つかう 1曲だけ（古い iPad の メモリを まもる）。読めなければ null（音なしで つづける）
+let cache=null;
+export function trackBuffer(ctx,track){
+ if(!ctx||!track)return Promise.resolve(null);
+ if(cache&&cache.id===track.id&&cache.ctx===ctx)return cache.p;
+ const p=fetch(track.url)
+  .then(r=>{if(!r.ok)throw new Error(String(r.status));return r.arrayBuffer();})
+  .then(data=>new Promise((ok,ng)=>{const q=ctx.decodeAudioData(data,ok,ng);q?.catch?.(ng);}))
+  .catch(()=>{if(cache?.p===p)cache=null;return null;});
+ cache={id:track.id,ctx,p};
+ return p;
 }

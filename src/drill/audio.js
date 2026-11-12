@@ -50,12 +50,17 @@ export const SONGS={
  enmo:{prog:ENMO_PROG,hook:ENMO_HOOK,bpmShift:8,leadFrom:0,legato:true},
 };
 
+// テーマソング（トップ・マップ）の 大きさ。合成BGMと 同じ 通り道（master → コンプレッサー）を とおす。
+// 0.34 で うさこ −21.4／えんも −20.7 LUFS。ゲーム中の BGM の 中盤（stage 2〜4）が 約 −20.8 LUFS なので それに そろえた
+// （2026-11-12 実測。変更前は PC 0.65＝約 −15.6、iPad は <audio> の 音量が きかず 約 −14 LUFS だった）
+export const THEME_GAIN=.34;
+
 function readMuted(storage){try{return storage?.getItem(SOUND_KEY)==='off';}catch{return false;}}
 function safeStorage(){try{return typeof localStorage!=='undefined'?localStorage:null;}catch{return null;}}
 
 export class QuestAudio{
  // lite：古い端末むけの軽い設定。先読みを長く、残響・左右の広がり・重ねがけ（音の厚み）を省き、細かい打楽器を間引く。
- //       テーマソングは Web Audio を通さず <audio> のまま流す。効果音がわずかに遅れることがある
+ //       効果音がわずかに遅れることがある。テーマソングは lite でも Web Audio（AudioBuffer）で ならす
  constructor({storage=safeStorage(),AudioCtx=globalThis.AudioContext||globalThis.webkitAudioContext,lite=false}={}){
   this.storage=storage;this.AudioCtx=AudioCtx;
   this.lite=lite;this.ahead=lite?.3:.12;
@@ -64,7 +69,7 @@ export class QuestAudio{
   this.ctx=null;this.stage=0;this.trans=0;this.bpm=tempo(0);this.layers=layersFor(0);
   this.playing=false;this.reach=false;this.step=0;this.nextTime=0;this.timer=0;this.reachStart=0;
   this.onBeat=null;   // (delayMs, isBarStart) => void
-  this.themeEl=null;
+  this.themeSrc=null;this.themeGain=null;this.themeId=null;this.themeWant=null;
  }
  get available(){return !!this.AudioCtx;}
  get stepDur(){return 60/this.bpm/4;}
@@ -222,35 +227,36 @@ export class QuestAudio{
   if(this.ctx&&fade){const g=this.music.gain,t=this.now();g.cancelScheduledValues(t);g.setValueAtTime(g.value,t);g.linearRampToValueAtTime(.0001,t+fade);}
  }
 
- // ---------- テーマソング（トップ・マップで流す <audio>。bgm-pool.js が用意する） ----------
- // AudioContext は作らない（unlock はユーザー操作の中で main.js が呼ぶ）。ミュート中は流さない
- get themeOn(){return !!this.themeEl&&!this.themeEl.paused;}
- playTheme(el){
-  if(!this.ctx||!el||this.muted)return false;
-  if(this.lite){ // Web Audio を通さない（createMediaElementSource は古い iOS で途切れやすい）
-   clearTimeout(this.themeStop);this.themeEl=el;el.volume=.65;
-   if(el.paused)el.play()?.catch?.(()=>{});
-   return true;
-  }
-  try{
-   if(this.themeEl!==el){
-    // 1つの要素につなげるのは1回だけ（createMediaElementSource の制約）
-    this.themeEl=el;
-    const src=this.ctx.createMediaElementSource(el);
-    this.themeGain=this.ctx.createGain();src.connect(this.themeGain);this.themeGain.connect(this.master);
-   }
-   clearTimeout(this.themeStop);
-   const g=this.themeGain.gain,t=this.now();g.cancelScheduledValues(t);g.setValueAtTime(.65,t);
-   if(el.paused)el.play()?.catch?.(()=>{});
-   return true;
-  }catch{return false;}
+ // ---------- テーマソング（トップ・マップで流す。音のデータは bgm-pool.js の trackBuffer が用意する） ----------
+ // AudioContext は作らない（unlock はユーザー操作の中で main.js が呼ぶ）。ミュート中は流さない。
+ // load(ctx, track) → Promise<AudioBuffer|null>。読みこみ中に 画面が かわったら（themeWant が ちがう）ならさない
+ get themeOn(){return !!this.themeSrc;}
+ get themeLevel(){return this.themeSrc?THEME_GAIN:0;}
+ playTheme(track,load){
+  if(!this.ctx||!track||this.muted)return false;
+  const id=track.id;this.themeWant=id;
+  if(this.themeSrc&&this.themeId===id)return true;   // もう ながれている
+  this.stopTheme(.15);this.themeWant=id;
+  Promise.resolve(load(this.ctx,track)).then(buf=>{
+   if(!buf||this.themeWant!==id||this.muted||this.themeSrc&&this.themeId===id)return;
+   try{
+    const c=this.ctx,src=c.createBufferSource(),g=c.createGain();
+    src.buffer=buf;src.loop=true;g.gain.value=THEME_GAIN;src.connect(g);g.connect(this.master);src.start();
+    this.themeSrc=src;this.themeGain=g;this.themeId=id;
+   }catch{}
+  },()=>{});
+  return true;
  }
  stopTheme(fade=.4){
-  const el=this.themeEl;
-  if(!el||el.paused)return;
-  if(this.lite){clearTimeout(this.themeStop);el.pause();el.currentTime=0;return;}
-  const g=this.themeGain.gain,t=this.now();g.cancelScheduledValues(t);g.setValueAtTime(g.value,t);g.linearRampToValueAtTime(.0001,t+fade);
-  clearTimeout(this.themeStop);this.themeStop=setTimeout(()=>{el.pause();el.currentTime=0;},fade*1000+50);
+  this.themeWant=null;
+  const src=this.themeSrc,g=this.themeGain;
+  if(!src)return;
+  this.themeSrc=null;this.themeGain=null;this.themeId=null;
+  try{
+   const t=this.now();g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(.0001,t+fade);
+   src.stop(t+fade+.02);
+  }catch{try{src.stop();}catch{}}
+  setTimeout(()=>{try{g.disconnect();}catch{}},(fade+.2)*1000);
  }
  tick(){
   if(!this.playing||!this.ctx)return;

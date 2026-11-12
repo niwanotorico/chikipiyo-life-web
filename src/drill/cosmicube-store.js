@@ -9,7 +9,7 @@
 // とすればよい。データはプレイヤーごとに独立した1かたまり（players[id]）なので、そのまま1ドキュメントにできる。
 // 兄弟ゲートは snapshotAll()（2人ぶんのまとめ）を見て判定する想定。
 import {playerIds} from './questions.js';
-import {SEASON,emptyCubePlayer,sanitizeCubePlayer,recordSession,openGate,mergeCubePlayer,season,cubeBalance,cubeEarnedTotal,playsOn,cubeSessionsLeft,completion,foundCount,effectsOf,inSeason,boostFor,applyCheer,CHEER,coopReached} from './cosmicube.js';
+import {SEASON,emptyCubePlayer,sanitizeCubePlayer,recordSession,openGate,mergeCubePlayer,season,cubeBalance,cubeEarnedTotal,playsOn,cubeSessionsLeft,completion,foundCount,effectsOf,inSeason,boostFor,applyCheer,CHEER,coopReached,mangaPlan} from './cosmicube.js';
 
 export const CUBE_KEY='chikipiyo-cosmicube:v1';
 export const CUBE_BROKEN_KEY=CUBE_KEY+':broken';
@@ -123,4 +123,5 @@ export class CubeStore{
  }
  snapshotAll(dayKey){return Object.fromEntries(playerIds.map(id=>[id,this.snapshot(id,dayKey)]));}
  effects(id){return effectsOf(this.player(id));}
+ mangaPlan(id,dayKey){return mangaPlan(this.player(id),dayKey);}
 }
