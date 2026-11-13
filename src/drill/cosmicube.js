@@ -21,7 +21,8 @@ export const UPDATE_FROM='2026-10-07';
 // secret：子どもの画面では中身を見せない（❓表示）。親にだけ見せる中身は parent-mode.js に置く
 // チキンポイント（11/8〜）：もみじの 足す道の マス。金額は マスごとに きまっている（2人 おなじ）。開けるまで 見せない（スクラッチで 出す）。
 // rewards の 記録は ごほうびID ごとに 1つなので、IDは マスごとに わける（chicken-<ノードID>）。通帳の 取り込みは この記録を 読む
-export const CHICKEN_POINTS={'momiji-oku-04':5,'momiji-oku-05':10,'momiji-oku-06':5,'momiji-oku-07':15,'momiji-oku-08':5,'momiji-oku-09':10,'momiji-oku-10':5,'momiji-oku-11':10,'momiji-oku-12':5,'momiji-oku-13':15,'momiji-oku-14':10};
+// 11/13 ちきんの決定で 奥の道を 最終形に：スクラッチは oku-02・05・09・13・14 の 5マス（まだ だれも 開けていない ときに かえた）
+export const CHICKEN_POINTS={'momiji-oku-02':5,'momiji-oku-05':5,'momiji-oku-09':40,'momiji-oku-13':10,'momiji-oku-14':15};
 export const REWARDS={
  // うさこ：11月の「もみじの もり」の マス
  usako:{icon:'🐰',name:'うさこ',note:'もんだいに うさこが でてくる',effects:['usako']},   // 3DPハウス来訪は GLB ができたら house:true を足す
@@ -89,8 +90,14 @@ export const REWARDS={
  'manga-40':{icon:'📚',name:'マンガ「おかねもち」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-32'],effects:[]},
  'manga-41':{icon:'📚',name:'マンガ「ふかふかベッド」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-33'],effects:[]},
  'manga-42':{icon:'📚',name:'マンガ「もうちょっとだけ」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-34'],effects:[]},
- 'manga-43':{icon:'📚',name:'マンガ「おやつのじかん」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-35'],effects:[]},
- 'manga-44':{icon:'📚',name:'マンガ「さいごのいっぽん」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-36'],effects:[]},
+ // 11/13：oku-02 が スクラッチに なったので、日常本の 35・36話は oku-03 の 1マスで 2話（manga-43 は なくした。だれも 開けていない）
+ 'manga-44':{icon:'📚',name:'マンガ「おやつのじかん」「さいごのいっぽん」',note:'3DPハウスの 本だなで よめるよ',manga:['daily-35','daily-36'],effects:[]},
+ // 季節の本「クリスマス編」（season-02〜06）：奥の道の 5マス。話は 制作中。catalog.js に 話が 入るまでは、開けても「じゅんびちゅう」
+ // （記録には ごほうびID だけ 入る。話が とどいたら、もう 開けた マスでも そのまま よめるようになる）
+ ...Object.fromEntries([2,3,4,5,6].map((no,i)=>[`manga-${45+i}`,{icon:'🎄',name:'クリスマスの マンガ',note:'3DPハウスの 本だなで よめるよ',manga:[`season-0${no}`],titleFromCatalog:true,effects:[]}])),
+ // 奥の道の 現実の ごほうび（11/13〜）。開けた子には 中身が 見える（secret では ない）。親から 渡す
+ 'momiji-oku-mac':{icon:'🍔',name:'マクドナルド ランチ券',note:'マクドナルドで ランチが たべられるよ',effects:[]},
+ 'momiji-oku-cream':{icon:'🧁',name:'シュークリーム券',note:'シュークリームが たべられるよ',effects:[]},
  morisaku:{icon:'🎤',name:'もりと さくま',note:'もんだいに もりと さくまが でてくる',effects:['morisaku']},
  'momiji-song':{icon:'🎵',name:'えんもたけなわ',note:'トップと ドリルで えんもたけなわ が ながれる',effects:['enmo']},
  'momiji-secret':{icon:'🎁',name:'もみじの もりの ❓',note:'なにが あるかは まだ ひみつ。ひらいたら、おうちの人に つたえてね',secret:true},
@@ -167,7 +174,7 @@ export const HARD={
 //  - ぜんぶの マスに from:'2026-11-01'。それより前は タブも 出さない
 //  - 小ネタ（small）：マンガ（21〜33話）。小ゴール：もりと さくま・うさこ・曲・ひみつ（マクドナルド）。大ゴール：いちばん おく
 //    もとは シールの マスだった momiji-st1・st2 も マンガ（id は そのまま）。曲は 右の みちの より道（ゴールの じゃまを しない）
-//  - momiji-oku-04〜14 は チキンポイントの スクラッチ（CHICKEN_POINTS）。大ゴール（momiji-goal）は 2人の 協力ゴール（switch2）
+//  - 奥の道（11/13 最終形）：マンガ（既存 20pt・クリスマス編 30pt）・スクラッチ（CHICKEN_POINTS、20pt）・券2つ（30pt）。大ゴール（momiji-goal）は 2人の 協力ゴール（switch2）
 //  - ひみつの 小ゴール（momiji-secret）の 中身は 親モードで 見える
 //  - 11/7：約1か月で 大ゴールに つくように、40・41 の 先に 50pt の 1本道（momiji-oku-01〜14）を 足した。
 //    大ゴールは いちばん おくへ（50→100pt。まだ だれも ひらけない マスなので 記録には 影響しない）。
@@ -196,20 +203,20 @@ export const MOMIJI={
   {id:'momiji-41',x:68,y:27,cost:20,reward:'manga-41',requires:['momiji-st2'],small:true},
   {id:'momiji-40',x:24,y:17,cost:20,reward:'manga-40',requires:['momiji-st1'],small:true},
   ].map(momijiLower),
-  {id:'momiji-oku-01',x:50,y:46,cost:50,reward:'manga-42',requires:['momiji-40','momiji-41'],small:true},
-  {id:'momiji-oku-02',x:78,y:43,cost:50,reward:'manga-43',requires:['momiji-oku-01'],small:true},
-  {id:'momiji-oku-03',x:50,y:40,cost:50,reward:'manga-44',requires:['momiji-oku-02'],small:true},
-  {id:'momiji-oku-04',x:22,y:37,cost:50,reward:'chicken-momiji-oku-04',requires:['momiji-oku-03'],small:true},
-  {id:'momiji-oku-05',x:50,y:34,cost:50,reward:'chicken-momiji-oku-05',requires:['momiji-oku-04'],small:true},
-  {id:'momiji-oku-06',x:78,y:31,cost:50,reward:'chicken-momiji-oku-06',requires:['momiji-oku-05'],small:true},
-  {id:'momiji-oku-07',x:50,y:28,cost:50,reward:'chicken-momiji-oku-07',requires:['momiji-oku-06'],small:true},
-  {id:'momiji-oku-08',x:22,y:25,cost:50,reward:'chicken-momiji-oku-08',requires:['momiji-oku-07'],small:true},
-  {id:'momiji-oku-09',x:50,y:22,cost:50,reward:'chicken-momiji-oku-09',requires:['momiji-oku-08'],small:true},
-  {id:'momiji-oku-10',x:78,y:19,cost:50,reward:'chicken-momiji-oku-10',requires:['momiji-oku-09'],small:true},
-  {id:'momiji-oku-11',x:50,y:16,cost:50,reward:'chicken-momiji-oku-11',requires:['momiji-oku-10'],small:true},
-  {id:'momiji-oku-12',x:22,y:13,cost:50,reward:'chicken-momiji-oku-12',requires:['momiji-oku-11'],small:true},
-  {id:'momiji-oku-13',x:50,y:10,cost:50,reward:'chicken-momiji-oku-13',requires:['momiji-oku-12'],small:true},
-  {id:'momiji-oku-14',x:78,y:7,cost:50,reward:'chicken-momiji-oku-14',requires:['momiji-oku-13'],small:true},
+  {id:'momiji-oku-01',x:50,y:46,cost:20,reward:'manga-42',requires:['momiji-40','momiji-41'],small:true},
+  {id:'momiji-oku-02',x:78,y:43,cost:20,reward:'chicken-momiji-oku-02',requires:['momiji-oku-01'],small:true},
+  {id:'momiji-oku-03',x:50,y:40,cost:20,reward:'manga-44',requires:['momiji-oku-02'],small:true},
+  {id:'momiji-oku-04',x:22,y:37,cost:30,reward:'manga-45',requires:['momiji-oku-03'],small:true},
+  {id:'momiji-oku-05',x:50,y:34,cost:20,reward:'chicken-momiji-oku-05',requires:['momiji-oku-04'],small:true},
+  {id:'momiji-oku-06',x:78,y:31,cost:30,reward:'manga-46',requires:['momiji-oku-05'],small:true},
+  {id:'momiji-oku-07',x:50,y:28,cost:30,reward:'momiji-oku-mac',requires:['momiji-oku-06'],small:true},
+  {id:'momiji-oku-08',x:22,y:25,cost:30,reward:'manga-47',requires:['momiji-oku-07'],small:true},
+  {id:'momiji-oku-09',x:50,y:22,cost:20,reward:'chicken-momiji-oku-09',requires:['momiji-oku-08'],small:true},
+  {id:'momiji-oku-10',x:78,y:19,cost:30,reward:'manga-48',requires:['momiji-oku-09'],small:true},
+  {id:'momiji-oku-11',x:50,y:16,cost:30,reward:'momiji-oku-cream',requires:['momiji-oku-10'],small:true},
+  {id:'momiji-oku-12',x:22,y:13,cost:30,reward:'manga-49',requires:['momiji-oku-11'],small:true},
+  {id:'momiji-oku-13',x:50,y:10,cost:20,reward:'chicken-momiji-oku-13',requires:['momiji-oku-12'],small:true},
+  {id:'momiji-oku-14',x:78,y:7,cost:20,reward:'chicken-momiji-oku-14',requires:['momiji-oku-13'],small:true},
   {id:'momiji-goal',x:40,y:4.5,cost:100,reward:'switch2',requires:['momiji-oku-14'],silhouette:true},
  ].map(n=>({...n,from:MOMIJI_FROM})),
 };

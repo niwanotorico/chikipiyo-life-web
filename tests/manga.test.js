@@ -40,13 +40,15 @@ test('本だな：本はシリーズごとに1冊（マイクラ本・まった�
  const ids=allEpisodes().map(e=>e.id);assert.equal(new Set(ids).size,ids.length);
 });
 
+// クリスマス編（season-02〜06）は 制作中：catalog に 入るまでは ここだけ catalog に なくてよい（2026-11-13）
+const PENDING_EPS=new Set(['season-02','season-03','season-04','season-05','season-06']);
 test('ごほうび：マンガの話は どれか1つの ごほうび（ゲート・自動解放・毎日の ごほうび）にだけ入る。話IDは catalog にある', ()=>{
- const seen=new Map();
+ const seen=new Map();let pending=0;
  for(const [id,r] of [...Object.entries(REWARDS),...AUTO_MANGA.map(a=>[a.id,a]),...DAILY_GIFTS.map(g=>[g.id,g])])for(const ep of r.manga??[]){
-  assert.ok(episodeById(ep),`${id} → ${ep}`);
+  if(!episodeById(ep)){assert.ok(PENDING_EPS.has(ep),`${id} → ${ep}`);pending++;}
   assert.ok(!seen.has(ep),`${ep} が ${seen.get(ep)} と ${id} の両方にある`);seen.set(ep,id);
  }
- assert.equal(seen.size,allEpisodes().length);
+ assert.equal(seen.size,allEpisodes().length+pending);
  // マンガは ドリルの問題には 効かない・3DPハウス来訪フラグもつけない
  for(const [id,r] of Object.entries(REWARDS))if(r.manga){assert.deepEqual(r.effects,[],id);assert.ok(!r.house,id);assert.ok(!r.secret,id);}
 });

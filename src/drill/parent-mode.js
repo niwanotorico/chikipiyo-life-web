@@ -31,6 +31,15 @@ const PARENT_LABELS={
   piyomi:{name:'マクドナルド ランチ券',note:'もみじの もりの 小ゴール。親から渡す 現実の ごほうび',kid:'マクドナルドで ランチが たべられるよ'},
   piyokichi:{name:'マクドナルド ランチ券',note:'もみじの もりの 小ゴール。親から渡す 現実の ごほうび',kid:'マクドナルドで ランチが たべられるよ'},
  },
+ // もみじの 奥の道（11/13〜）の 券。ひみつでは ないので、開けた子にも この 名前が 見える（名前は cosmicube.js の REWARDS と おなじ）
+ 'momiji-oku-mac':{
+  piyomi:{name:'マクドナルド ランチ券',note:'奥の道 oku-07。親から渡す 現実の ごほうび（ひみつの マスの 券とは べつに もう1まい）'},
+  piyokichi:{name:'マクドナルド ランチ券',note:'奥の道 oku-07。親から渡す 現実の ごほうび（ひみつの マスの 券とは べつに もう1まい）'},
+ },
+ 'momiji-oku-cream':{
+  piyomi:{name:'シュークリーム券',note:'奥の道 oku-11。親から渡す 現実の ごほうび'},
+  piyokichi:{name:'シュークリーム券',note:'奥の道 oku-11。親から渡す 現実の ごほうび'},
+ },
 };
 export function parentLabel(rewardId,player){return PARENT_LABELS[rewardId]?.[player]??null;}
 

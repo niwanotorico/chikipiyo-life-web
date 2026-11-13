@@ -91,18 +91,19 @@ test('もみじの もり：26〜33話も ひらける。曲を ひらかなく�
  assert.equal(nodeState(season(p),nodeById('momiji-song'),N1),'ready');
  assert.equal(nodeState(season(p),nodeById('momiji-oku-01'),N1),'ready');   // 足した道の 1マス目
  assert.equal(nodeState(season(p),nodeById('momiji-goal'),N1),'fog');
- // 11/8 から ぜんぶの マスに 中身が ある（全体 1190pt）
+ // 11/8 から ぜんぶの マスに 中身が ある（全体 840pt。11/13 に 奥の道を 20・30pt に）
  assert.deepEqual(MOMIJI.nodes.filter(n=>!n.reward).map(n=>n.id),['momiji-start']);
  const total=MOMIJI.nodes.filter(n=>n.reward).reduce((a,n)=>a+n.cost,0);
- assert.equal(total,1190);
+ assert.equal(total,840);
 });
 
 const BEFORE_OKU=['momiji-01','momiji-02','momiji-morisaku','momiji-usako','momiji-04','momiji-05','momiji-34','momiji-secret','momiji-36','momiji-st1','momiji-40','momiji-35','momiji-37','momiji-st2','momiji-41'];
 
-test('足した道：50pt の 1本道 14マス。40・41 の 両方を ひらくと 入れて、34〜36話が よめる', ()=>{
+test('足した道：1本道 14マス（11/13 から 20・30pt）。40・41 の 両方を ひらくと 入れて、34〜36話が よめる', ()=>{
  const oku=MOMIJI.nodes.filter(n=>n.id.startsWith('momiji-oku-'));
  assert.equal(oku.length,14);
- assert.ok(oku.every(n=>n.cost===50&&n.small));
+ assert.deepEqual(oku.map(n=>n.cost),[20,20,20,30,20,30,30,30,20,30,30,30,20,20]);
+ assert.ok(oku.every(n=>n.small));
  oku.slice(1).forEach((n,i)=>assert.deepEqual(n.requires,[oku[i].id]));
  let p=rich(2000);
  p=openPath(p,BEFORE_OKU.filter(id=>id!=='momiji-41'));
@@ -110,58 +111,61 @@ test('足した道：50pt の 1本道 14マス。40・41 の 両方を ひらく
  p=openPath(p,['momiji-41']);
  const bal=cubeBalance(season(p));
  p=openPath(p,['momiji-oku-01','momiji-oku-02','momiji-oku-03']);
- assert.equal(cubeBalance(season(p)),bal-150);
+ assert.equal(cubeBalance(season(p)),bal-60);
  const m=mangaOf(p,N1);
  for(const ep of ['daily-34','daily-35','daily-36']){assert.ok(m.has(ep),ep);assert.ok(episodeById(ep),ep);}
 });
 
-const OKU_CHICKEN=[4,5,6,7,8,9,10,11,12,13,14].map(n=>`momiji-oku-${String(n).padStart(2,'0')}`);
-const toOku=()=>openPath(rich(2000),[...BEFORE_OKU,'momiji-oku-01','momiji-oku-02','momiji-oku-03']);
+// 11/13 の 最終形：スクラッチは 5マス（02・05・09・13・14）
+const OKU_CHICKEN=[2,5,9,13,14].map(n=>`momiji-oku-${String(n).padStart(2,'0')}`);
+const OKU_ALL=Array.from({length:14},(_,i)=>`momiji-oku-${String(i+1).padStart(2,'0')}`);
+const toOku=()=>openPath(rich(2000),[...BEFORE_OKU,'momiji-oku-01']);
 
-test('チキンポイント：マスごとの 金額は きまっている（合計 95pt）', ()=>{
- const want={'04':5,'06':5,'08':5,'10':5,'12':5,'05':10,'09':10,'11':10,'14':10,'07':15,'13':15};
+test('チキンポイント：マスごとの 金額は きまっている（合計 75pt）', ()=>{
+ const want={'02':5,'05':5,'09':40,'13':10,'14':15};
  let sum=0;
  for(const id of OKU_CHICKEN){const r=REWARDS[nodeById(id).reward];assert.equal(r.chickenPoints,want[id.slice(-2)],id);sum+=r.chickenPoints;}
- assert.equal(sum,95);
- assert.equal(new Set(OKU_CHICKEN.map(id=>nodeById(id).reward)).size,11,'記録が 上書きされないよう ごほうびIDは マスごと');
+ assert.equal(sum,75);
+ assert.equal(new Set(OKU_CHICKEN.map(id=>nodeById(id).reward)).size,5,'記録が 上書きされないよう ごほうびIDは マスごと');
 });
 
-test('チキンポイント：開けると 金額と 開けた日が のこる。50pt へる', ()=>{
+test('チキンポイント：開けると 金額と 開けた日が のこる。20pt へる', ()=>{
  let p=toOku();
  const s=season(p),bal=cubeBalance(s);
- assert.equal(nodeState(s,nodeById('momiji-oku-04'),N1),'ready');
- assert.equal(nodeState(s,nodeById('momiji-oku-05'),N1),'fog');
- const r=openGate(p,'momiji-oku-04','2026-11-08');
- assert.equal(r.ok,true);assert.equal(r.reward,'chicken-momiji-oku-04');
- assert.equal(cubeBalance(season(r.player)),bal-50);
- assert.deepEqual(season(r.player).rewards['chicken-momiji-oku-04'],{on:'2026-11-08',house:false,chickenPoints:5});
- p=openPath(r.player,['momiji-oku-05','momiji-oku-06'],'2026-11-09');
+ assert.equal(nodeState(s,nodeById('momiji-oku-02'),N1),'ready');
+ assert.equal(nodeState(s,nodeById('momiji-oku-03'),N1),'fog');
+ const r=openGate(p,'momiji-oku-02','2026-11-08');
+ assert.equal(r.ok,true);assert.equal(r.reward,'chicken-momiji-oku-02');
+ assert.equal(cubeBalance(season(r.player)),bal-20);
+ assert.deepEqual(season(r.player).rewards['chicken-momiji-oku-02'],{on:'2026-11-08',house:false,chickenPoints:5});
+ p=openPath(r.player,['momiji-oku-03','momiji-oku-04','momiji-oku-05','momiji-oku-06','momiji-oku-07','momiji-oku-08','momiji-oku-09'],'2026-11-09');
  const q=sanitizeCubePlayer(JSON.parse(JSON.stringify(p)));
- assert.equal(season(q).rewards['chicken-momiji-oku-04'].chickenPoints,5);
- assert.equal(season(q).rewards['chicken-momiji-oku-05'].chickenPoints,10);
- assert.equal(season(q).rewards['chicken-momiji-oku-06'].on,'2026-11-09');
+ assert.equal(season(q).rewards['chicken-momiji-oku-02'].chickenPoints,5);
+ assert.equal(season(q).rewards['chicken-momiji-oku-05'].chickenPoints,5);
+ assert.equal(season(q).rewards['chicken-momiji-oku-09'].chickenPoints,40);
+ assert.equal(season(q).rewards['chicken-momiji-oku-09'].on,'2026-11-09');
 });
 
 test('チキンポイント：2台を 合わせても 金額と 日付が のこる', ()=>{
- const p=openGate(toOku(),'momiji-oku-04','2026-11-08').player;
+ const p=openGate(toOku(),'momiji-oku-02','2026-11-08').player;
  const same=mergeCubePlayer(p,JSON.parse(JSON.stringify(p)));
- assert.deepEqual(season(same).rewards['chicken-momiji-oku-04'],{on:'2026-11-08',house:false,chickenPoints:5});
+ assert.deepEqual(season(same).rewards['chicken-momiji-oku-02'],{on:'2026-11-08',house:false,chickenPoints:5});
  assert.equal(cubeBalance(season(same)),cubeBalance(season(p)));
 });
 
 test('チキンポイント：古いページが 記録を 消しても ゲートから 取りもどす', ()=>{
- const p=openGate(toOku(),'momiji-oku-07','2026-11-08');
+ const p=openGate(toOku(),'momiji-oku-05','2026-11-08');
  assert.equal(p.reason,'locked');
- let q=openPath(toOku(),['momiji-oku-04','momiji-oku-05','momiji-oku-06','momiji-oku-07'],'2026-11-08');
+ let q=openPath(toOku(),['momiji-oku-02','momiji-oku-03','momiji-oku-04','momiji-oku-05'],'2026-11-08');
  const stale=JSON.parse(JSON.stringify(q));
  for(const k of Object.keys(season(stale).rewards))if(k.startsWith('chicken-'))delete season(stale).rewards[k];
  const m=mergeCubePlayer(stale,stale);
- assert.deepEqual(season(m).rewards['chicken-momiji-oku-07'],{on:'2026-11-08',house:false,chickenPoints:15});
+ assert.deepEqual(season(m).rewards['chicken-momiji-oku-05'],{on:'2026-11-08',house:false,chickenPoints:5});
  assert.equal(sameCube(stale,m),false,'サーバーに 書きもどされる');
 });
 
 test('チキンポイントでは ptの 残高・おうえんは かわらない（通帳の ぶんは ドリルの pt に 入らない）', ()=>{
- const p=toOku(),q=openGate(p,'momiji-oku-04',N1).player;
+ const p=toOku(),q=openGate(p,'momiji-oku-02',N1).player;
  assert.equal(cubeEarnedTotal(season(q)),cubeEarnedTotal(season(p)));
  assert.equal(season(q).earned.length,season(p).earned.length);
 });
@@ -171,7 +175,7 @@ test('大ゴール：Switch 2 は 2人の 協力ゴール。子どもには 名�
  assert.equal(REWARDS.switch2.secret,true);
  assert.ok(!JSON.stringify(REWARDS.switch2).includes('Switch'));
  for(const who of ['piyomi','piyokichi'])assert.equal(parentLabel('switch2',who).name,'Switch 2 かいほう券（2人そろったら）');
- const lone=openPath(toOku(),OKU_CHICKEN);
+ const lone=openPath(toOku(),OKU_ALL.slice(1));
  assert.equal(coopReached(lone,lone),false);
  const done=openGate(lone,'momiji-goal',N1).player;
  assert.equal(season(done).rewards.switch2.on,N1);
@@ -190,11 +194,11 @@ test('協力ゴール：この端末で 見たかは 記録の データと べ�
  assert.equal(new CubeStore({adapter:localCubeAdapter(storage)}).coopSeen(),true);
 });
 
-test('大ゴール：いちばん おくで 100pt。全体は 1190pt', ()=>{
+test('大ゴール：いちばん おくで 100pt。全体は 840pt', ()=>{
  const goal=nodeById('momiji-goal');
  assert.equal(goal.cost,100);assert.equal(goal.reward,'switch2');
  assert.deepEqual(goal.requires,['momiji-oku-14']);
- assert.equal(MOMIJI.nodes.reduce((a,n)=>a+n.cost,0),1190);
+ assert.equal(MOMIJI.nodes.reduce((a,n)=>a+n.cost,0),840);
 });
 
 test('前に ひらいた もみじの マスは 記録も pt も そのまま', ()=>{

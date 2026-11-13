@@ -80,6 +80,15 @@ export function rewardFace(id,player,parent=null,opened=null){
 }
 // マンガの ごほうび：じっさいに ふえた話の 名前（連載は 話数の じゅんに ふえるので、マスに 書いた話と ちがうことがある）
 export function mangaName(eps){return eps?.length?'マンガ'+eps.map(e=>`「${episodeById(e)?.title??e}」`).join(''):null;}
+// 開けた マンガの マスの 見せかた（子どもの画面）。plan：連載で じっさいに ふえた話（mangaPlan の byReward）。
+// 話が まだ catalog.js に ない（制作中）ときは「じゅんびちゅう」。titleFromCatalog の マス（クリスマス編）は、話が とどいたら その 題名
+export function mangaFace(f,r,plan){
+ if(plan?.length)return {...f,name:mangaName(plan)};
+ const eps=r?.manga??[];
+ if(eps.length&&!eps.some(e=>episodeById(e)))return {...f,name:`${r.name}（じゅんびちゅう）`,note:'いま つくっているよ。できたら 3DPハウスの 本だなで よめるよ'};
+ if(r?.titleFromCatalog)return {...f,name:mangaName(eps.filter(e=>episodeById(e)))};
+ return f;
+}
 
 const fmtDay=d=>`${Number(d.slice(5,7))}/${Number(d.slice(8,10))}`;
 export const seasonPeriod=()=>`${fmtDay(SEASON.start)}〜${fmtDay(SEASON.end)}`;
@@ -105,7 +114,7 @@ export function createCubeMap({cube,audio,particles,flash,reduced,getPlayer,toda
  const $=(sel,root=document)=>root.querySelector(sel);
  function openFace(rewardId,player){
   const f=rewardFace(rewardId,player,parent,opened);
-  if(!parent&&REWARDS[rewardId]?.manga){const n=mangaName(cube.mangaPlan(player,today()).byReward[rewardId]);if(n)return {...f,name:n};}
+  if(!parent&&REWARDS[rewardId]?.manga)return mangaFace(f,REWARDS[rewardId],cube.mangaPlan(player,today()).byReward[rewardId]);
   return f;
  }
  let selected=null,revealAt=0,mapId=null;   // mapId：'main'（ほしぞら）| 'momiji'（もみじの もり）| 'hard'（ハードモード）。null は おまかせ
