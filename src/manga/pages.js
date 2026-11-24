@@ -50,4 +50,9 @@ export const MANGA_PAGES={
  'daily-35':[{"src":"manga/daily/35/p01.webp","w":1024,"h":1536}],
  'daily-36':[{"src":"manga/daily/36/p01.webp","w":1199,"h":1312}],
  'season-01':[{"src":"manga/season/01/p01.webp","w":1024,"h":1536}],
+ 'season-02':[{"src":"manga/season/02/p01.webp","w":1199,"h":1312}],
+ 'season-03':[{"src":"manga/season/03/p01.webp","w":1199,"h":1312}],
+ 'season-04':[{"src":"manga/season/04/p01.webp","w":1199,"h":1312}],
+ 'season-05':[{"src":"manga/season/05/p01.webp","w":1199,"h":1312}],
+ 'season-06':[{"src":"manga/season/06/p01.webp","w":1199,"h":1312}],
 };

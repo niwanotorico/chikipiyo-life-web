@@ -1,5 +1,5 @@
 import './reader.css';
-import {SERIES,MANGA_PLAYERS,seriesById,readableEpisodes,allEpisodes} from './catalog.js';
+import {SERIES,MANGA_PLAYERS,seriesById,readableEpisodes,allEpisodes,epLabel} from './catalog.js';
 import {withPages,clampPosition,stepPosition,pageAt,createPageWindow,seedRead,isNewEpisode,markRead} from './reading.js';
 import {readUnlocks,readShelf,writeShelf,defaultPlayer,CUBE_KEY,QUEST_KEY} from './unlocks.js';
 
@@ -10,7 +10,6 @@ import {readUnlocks,readShelf,writeShelf,defaultPlayer,CUBE_KEY,QUEST_KEY} from 
 // 画像は「いま見ているページ」と「つぎの1枚」だけ読む。もくじの 小さな絵は 見えたものから 読む（loading=lazy）。
 // ピヨドリルの保存データは読むだけ。本だなが おぼえるのは「えらんだ人」「さいごに よんだ ところ」「よんだ話」だけ（unlocks.js）。
 
-const epLabel=e=>`第${e.no}話`;
 
 // ---------- 画面 ----------
 // host：3D 表示のエリア（.world）。storage：localStorage（読めない環境では null）

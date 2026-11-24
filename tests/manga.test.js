@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync,readdirSync,readFileSync,statSync} from 'node:fs';
-import {SERIES,allEpisodes,episodeById,episodePages,readableEpisodes,MANGA_PLAYERS} from '../src/manga/catalog.js';
+import {SERIES,allEpisodes,episodeById,episodePages,readableEpisodes,MANGA_PLAYERS,epLabel} from '../src/manga/catalog.js';
 import {MANGA_PAGES} from '../src/manga/pages.js';
 import {readUnlocks,readShelf,writeShelf,defaultPlayer,CUBE_KEY,QUEST_KEY,SHELF_KEY} from '../src/manga/unlocks.js';
 import {withPages,clampPosition,stepPosition,pageAt,createPageWindow} from '../src/manga/reading.js';
@@ -34,21 +34,28 @@ test('本だな：キーとプレイヤーは ピヨドリルと同じ', ()=>{
 
 test('本だな：本はシリーズごとに1冊（マイクラ本・まったり日常本・季節の本）', ()=>{
  assert.deepEqual(SERIES.map(s=>s.title),['マイクラ本','まったり日常本','季節の本']);
- assert.deepEqual(SERIES[2].episodes.map(e=>e.title),['ハロウィン攻略法']);
+ assert.deepEqual(SERIES[2].episodes.map(e=>e.title),['ハロウィン攻略法','どっちから？','サンタさんへの手紙','ツリーの星','ケンタッキー','イブのごちそう']);
+ assert.deepEqual(SERIES[2].episodes.map(e=>[e.id,e.no]),[1,2,3,4,5,6].map(n=>[`season-0${n}`,n]));
+ // 見出しは 季節の本の 通し番号ではなく、クリスマス編は「クリスマス 第1〜5話」（ちきんの 決定 2026-11-24）
+ assert.deepEqual(SERIES[2].episodes.map(epLabel),['第1話','クリスマス 第1話','クリスマス 第2話','クリスマス 第3話','クリスマス 第4話','クリスマス 第5話']);
+ // ほかの 本は これまでどおり「第N話」
+ for(const e of [...SERIES[0].episodes,...SERIES[1].episodes])assert.equal(epLabel(e),`第${e.no}話`);
  assert.deepEqual(SERIES[0].episodes.map(e=>e.title),['自動化の沼','寝る場所','宝さがし','おともだち','近道','人気者','いいながめ','ねこの指定席','ひみつの入口','おかわり','かくれんぼ','まんしつ']);
  assert.deepEqual(SERIES[1].episodes.map(e=>e.title),['葉っぱの行き先','かげのせいくらべ','くものおやつ','いしのひなた','かたつむりのかさ','みずたまりのそら','おなかのおへんじ','かぜのかくれんぼ','くものいす','くしゃみのしゅっぱつ','しずくのまちあわせ','おさんぽのおきゃくさん','かえりみちのおと','とんぼのとまりぎ','どんぐりのぼうし','ありさんのさんぽみち','はっぱのおめん','ちいさなふね','ゴールがにげた','ふーのあと','ちかみち','めじるし','くさのトンネル','ちず','いちばんのり','きのぼり','おいてけない','みてて','ひみつきち','とくべつ','おみせやさん','おかねもち','ふかふかベッド','もうちょっとだけ','おやつのじかん','さいごのいっぽん']);
  const ids=allEpisodes().map(e=>e.id);assert.equal(new Set(ids).size,ids.length);
 });
 
-// クリスマス編（season-02〜06）は 制作中：catalog に 入るまでは ここだけ catalog に なくてよい（2026-11-13）
-const PENDING_EPS=new Set(['season-02','season-03','season-04','season-05','season-06']);
+// 制作中で まだ catalog に ない 話（ここに 書いた 話だけ catalog に なくてよい）。
+// クリスマス編（season-02〜06）は 2026-11-24 に catalog に 入ったので、いまは なし
+const PENDING_EPS=new Set();
 test('ごほうび：マンガの話は どれか1つの ごほうび（ゲート・自動解放・毎日の ごほうび）にだけ入る。話IDは catalog にある', ()=>{
  const seen=new Map();let pending=0;
  for(const [id,r] of [...Object.entries(REWARDS),...AUTO_MANGA.map(a=>[a.id,a]),...DAILY_GIFTS.map(g=>[g.id,g])])for(const ep of r.manga??[]){
   if(!episodeById(ep)){assert.ok(PENDING_EPS.has(ep),`${id} → ${ep}`);pending++;}
   assert.ok(!seen.has(ep),`${ep} が ${seen.get(ep)} と ${id} の両方にある`);seen.set(ep,id);
  }
- assert.equal(seen.size,allEpisodes().length+pending);
+ assert.equal(pending,0);
+ assert.equal(seen.size,allEpisodes().length);
  // マンガは ドリルの問題には 効かない・3DPハウス来訪フラグもつけない
  for(const [id,r] of Object.entries(REWARDS))if(r.manga){assert.deepEqual(r.effects,[],id);assert.ok(!r.house,id);assert.ok(!r.secret,id);}
 });

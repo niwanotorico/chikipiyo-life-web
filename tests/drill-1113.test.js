@@ -72,17 +72,23 @@ test('日常本：11/13 から あとに 奥の道を 開けても、35・36話�
  assert.equal(daily,36);
 });
 
-test('クリスマス編：話が まだ ないうちは「じゅんびちゅう」。開けた 記録には ごほうびIDだけ。話が とどけば そのまま よめる', ()=>{
- const p=emptyCubePlayer();season(p).rewards['manga-45']={on:'2026-11-20',house:false};
- const set=mangaOf(sanitizeCubePlayer(p),'2026-11-20');
- assert.ok(set.has('season-02'),'よめる話の 計算には 入る（catalog に 話が 入った 日から 本だなに 出る）');
- // いまは catalog に ない → じゅんびちゅう
- assert.equal(episodeById('season-02'),null);
- const f=mangaFace(rewardFace('manga-45','piyomi'),REWARDS['manga-45'],undefined);
- assert.equal(f.name,'クリスマスの マンガ（じゅんびちゅう）');assert.match(f.note,/つくっているよ/);
- // 話が とどいたら 題名（catalog に ある 話で ためす）
- const ready=mangaFace({icon:'🎄',name:'クリスマスの マンガ',note:''},{name:'クリスマスの マンガ',manga:['season-01'],titleFromCatalog:true},undefined);
- assert.equal(ready.name,'マンガ「ハロウィン攻略法」');
+test('クリスマス編：話が とどいた（2026-11-24）。開けた マスは catalog の 題名で 出て、そのまま 本だなで よめる。開けた 記録は ごほうびIDだけ', ()=>{
+ const TITLES={'manga-45':['season-02','どっちから？'],'manga-46':['season-03','サンタさんへの手紙'],'manga-47':['season-04','ツリーの星'],
+  'manga-48':['season-05','ケンタッキー'],'manga-49':['season-06','イブのごちそう']};
+ // 話が まだ なかった ころに 開けた 子の 記録（ごほうびIDだけ）でも、話が とどいた いま そのまま よめる
+ const p=emptyCubePlayer();for(const id of Object.keys(TITLES))season(p).rewards[id]={on:'2026-11-20',house:false};
+ const before=JSON.stringify(p);
+ const set=mangaOf(sanitizeCubePlayer(p),'2026-11-24');
+ assert.equal(JSON.stringify(p),before,'記録は かきかえない');
+ for(const [id,[ep,title]] of Object.entries(TITLES)){
+  assert.ok(set.has(ep),`${id} → ${ep}`);
+  assert.equal(episodeById(ep).title,title);
+  const f=mangaFace(rewardFace(id,'piyomi'),REWARDS[id],undefined);
+  assert.equal(f.name,`マンガ「${title}」`,id);assert.doesNotMatch(f.name,/じゅんびちゅう/);
+ }
+ // まだ とどいていない 話（制作中）の マスは これまでどおり「じゅんびちゅう」
+ const pend=mangaFace({icon:'🎄',name:'クリスマスの マンガ',note:''},{name:'クリスマスの マンガ',manga:['season-99'],titleFromCatalog:true},undefined);
+ assert.equal(pend.name,'クリスマスの マンガ（じゅんびちゅう）');assert.match(pend.note,/つくっているよ/);
  // これまでの マンガの マスは 名前が かわらない
  const old=rewardFace('manga-42','piyomi');assert.deepEqual(mangaFace(old,REWARDS['manga-42'],undefined),old);
 });

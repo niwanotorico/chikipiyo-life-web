@@ -65,11 +65,20 @@ export const SERIES=[
   hint:'ピヨ探検の マップで みつかるかも？',
   episodes:[
    {id:'season-01',no:1,title:'ハロウィン攻略法'},
+   // クリスマス編（もみじの 奥の道 oku-04・06・08・10・12。2026-11-24 到着）
+   // 見出しは 季節の本の 通し番号ではなく「クリスマス 第1〜5話」（ちきんの 決定 2026-11-24）。no は 画像の フォルダ・ならび順用
+   {id:'season-02',no:2,title:'どっちから？',label:'クリスマス 第1話'},
+   {id:'season-03',no:3,title:'サンタさんへの手紙',label:'クリスマス 第2話'},
+   {id:'season-04',no:4,title:'ツリーの星',label:'クリスマス 第3話'},
+   {id:'season-05',no:5,title:'ケンタッキー',label:'クリスマス 第4話'},
+   {id:'season-06',no:6,title:'イブのごちそう',label:'クリスマス 第5話'},
   ]},
 ];
 export const seriesById=id=>SERIES.find(s=>s.id===id)??null;
 export const allEpisodes=()=>SERIES.flatMap(s=>s.episodes.map(e=>({...e,series:s.id})));
 export const episodeById=id=>allEpisodes().find(e=>e.id===id)??null;
+// 本だなに 出す 話数の 見出し。label が あれば それ（クリスマス編は「クリスマス 第1話」など）、なければ「第N話」
+export const epLabel=e=>e.label??`第${e.no}話`;
 
 // ピヨドリルのプレイヤー（src/drill/questions.js の PLAYERS と同じ。ドリルの問題データまで読みこまないよう、ここに名前だけ持つ）
 export const MANGA_PLAYERS=[{id:'piyokichi',name:'ぴよきち'},{id:'piyomi',name:'ぴよみ'}];
